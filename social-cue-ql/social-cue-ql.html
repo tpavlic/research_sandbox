@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Q-Learning Social Cue Model</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:#f5f0e8; --cream-dk:#ede7da; --green:#2d5016; --green-mid:#4a7c25;
+  --green-lt:#d4e8c0; --orange:#e07b39; --orange-dk:#c8611a; --teal:#2a7a6a;
+  --text:#1a2e0a; --muted:#6a7e5a; --border:#c8c0a8; --shadow:rgba(45,80,22,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--cream-dk);color:var(--text);padding:16px;min-height:100vh;}
+.widget{max-width:960px;margin:0 auto;background:white;border-radius:14px;box-shadow:0 4px 28px var(--shadow);overflow:hidden;}
+.hdr{background:var(--green);padding:13px 22px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:4px;}
+.hdr h1{color:white;font-size:17px;font-weight:600;letter-spacing:-.02em;}
+.hdr .sub{color:rgba(255,255,255,.6);font-size:10.5px;font-family:'IBM Plex Mono',monospace;}
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--cream);}
+.tab-btn{padding:9px 20px;border:none;background:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;}
+.tab-btn:hover{color:var(--green);}
+.tab-btn.active{color:var(--green);border-bottom-color:var(--green);font-weight:600;}
+.tab-pane{display:none;}
+.tab-pane.active{display:flex;}
+
+.ctrl-col{width:232px;min-width:232px;background:var(--cream);padding:13px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:9px;overflow-y:auto;}
+.plot-col{flex:1;padding:14px 16px 10px;display:flex;flex-direction:column;gap:8px;min-width:0;}
+.sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+hr.d{border:none;border-top:1px solid var(--border);}
+.ctl{display:flex;flex-direction:column;gap:3px;}
+.ctl-r{display:flex;justify-content:space-between;align-items:center;}
+.ctl-n{font-size:11.5px;font-weight:500;}
+.ctl-v{font-size:11px;font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--green);background:var(--green-lt);padding:1px 6px;border-radius:10px;min-width:42px;text-align:right;}
+input[type=range]{width:100%;height:4px;-webkit-appearance:none;background:var(--border);border-radius:2px;outline:none;cursor:pointer;margin-top:1px;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--green);cursor:pointer;transition:background .15s;}
+input[type=range]:hover::-webkit-slider-thumb{background:var(--green-mid);}
+.tog-row{display:flex;gap:5px;}
+.tog{flex:1;padding:5px 3px;border:1.5px solid var(--border);background:white;border-radius:6px;font-size:10px;font-family:'IBM Plex Mono',monospace;cursor:pointer;color:var(--muted);transition:all .15s;text-align:center;line-height:1.4;}
+.tog.active{border-color:var(--green);background:var(--green);color:white;}
+.tog3{flex:1;padding:4px 2px;border:1.5px solid var(--border);background:white;border-radius:6px;font-size:9.5px;font-family:'IBM Plex Mono',monospace;cursor:pointer;color:var(--muted);transition:all .15s;text-align:center;line-height:1.3;}
+.tog3.active{border-color:var(--orange-dk);background:var(--orange-dk);color:white;}
+.btn-p{background:var(--green);color:white;width:100%;border:none;border-radius:20px;padding:9px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,transform .1s,opacity .15s;margin-top:2px;}
+.btn-p:hover:not(:disabled){background:var(--green-mid);}
+.btn-p:active:not(:disabled){transform:scale(.97);}
+.btn-p:disabled{opacity:.45;cursor:not-allowed;}
+.btn-s{border:1.5px solid var(--border);background:var(--cream);color:var(--green);border-radius:8px;padding:6px 10px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
+.btn-s:hover{border-color:var(--green);background:var(--green-lt);}
+.btn-row{display:flex;gap:6px;}
+canvas{display:block;border-radius:6px;border:1px solid var(--border);}
+.legend{display:flex;flex-wrap:wrap;gap:5px 12px;padding:7px 11px;background:var(--cream);border-radius:8px;border:1px solid var(--border);}
+.li{display:flex;align-items:center;gap:5px;font-size:10.5px;font-family:'IBM Plex Mono',monospace;}
+.lsw{width:20px;height:3px;border-radius:2px;flex-shrink:0;}
+.lsw-dash{width:20px;height:0;border-top:2.5px dashed;flex-shrink:0;}
+.foot{display:flex;align-items:center;gap:10px;}
+.pw{width:120px;flex-shrink:0;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.pb{height:100%;background:var(--green);border-radius:2px;width:0%;transition:width .15s;}
+.st{font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);white-space:nowrap;}
+/* model tab */
+.mpane{display:none;padding:26px 34px;flex-direction:column;gap:22px;max-width:1020px;margin:0 auto;}
+.mpane.active{display:flex;}
+.mh{font-size:13px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--green-lt);padding-bottom:5px;}
+.mb{font-size:13px;line-height:1.7;}
+.mb p{margin-bottom:8px;}
+/* building-blocks grid: term | definition */
+.bb-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin-top:6px;}
+.bb-term{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--green);font-weight:500;white-space:nowrap;padding-top:2px;}
+.bb-def{font-size:12.5px;line-height:1.55;}
+/* compact equation rows: short fixed LHS + flexible RHS */
+.eq2-row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;}
+.eq2-lhs{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text);white-space:nowrap;width:170px;flex-shrink:0;}
+.eq2-rhs{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text);flex:1;}
+/* simple model equations block */
+.meq{background:var(--cream);border-radius:8px;padding:14px 18px;margin:8px 0;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:2.1;}
+.meq .cm{color:var(--muted);font-family:'Outfit',sans-serif;font-size:11px;}
+.mdef{font-size:12.5px;line-height:1.75;margin:8px 0 4px 0;}
+.mdef code{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--green);background:var(--green-lt);padding:1px 5px;border-radius:4px;}
+/* grid-based equation block: equation | comment, always aligned */
+.meq-grid{background:var(--cream);border-radius:8px;padding:14px 20px;margin:8px 0;
+  display:grid;grid-template-columns:auto 1fr;gap:5px 20px;align-items:center;}
+.meq-eq{font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap;}
+.meq-cm{font-family:'Outfit',sans-serif;font-size:11px;color:var(--muted);}
+/* grid-based parameter definitions */
+.mdef-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;
+  margin:8px 0 12px 0;align-items:baseline;}
+.mdef-term{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--green);
+  background:var(--green-lt);padding:1px 5px;border-radius:4px;white-space:nowrap;}
+.mdef-def{font-size:12.5px;line-height:1.5;}
+
+
+.eq-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:10px;}
+.eq-row{display:flex;align-items:baseline;gap:0;margin-bottom:6px;}
+.eq-lhs{font-family:'IBM Plex Mono',monospace;font-size:12px;min-width:220px;color:var(--text);}
+.eq-rhs{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text);flex:1;}
+.eq-note{font-size:11px;color:var(--muted);margin-left:12px;}
+.eq-where{font-size:11.5px;line-height:1.8;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.eq-where code{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--green);background:var(--green-lt);padding:1px 5px;border-radius:4px;}
+.pt{width:100%;border-collapse:collapse;font-size:12px;}
+.pt th{text-align:left;padding:5px 10px;background:var(--green);color:white;font-weight:600;font-size:11px;letter-spacing:.03em;}
+.pt td{padding:5px 9px;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;vertical-align:top;font-size:11.5px;}
+.pt td:first-child{color:var(--green);font-weight:500;white-space:nowrap;}
+.pt tr:last-child td{border-bottom:none;}
+.diff{background:#fff8f0;border:1px solid #e0c090;border-radius:8px;padding:11px 15px;font-size:12.5px;line-height:1.65;}
+.dummy-note{background:#f0f8ff;border:1px solid #a0c0e0;border-radius:8px;padding:11px 15px;font-size:12.5px;line-height:1.65;}
+
+@media (max-width:760px){#tab-connections .meq-grid{grid-template-columns:1fr;}
+  #tab-connections .meq-eq{white-space:normal;}
+  #tab-connections .meq-cm{padding-left:12px;border-left:2px solid var(--border);margin-bottom:6px;}}
+@media (max-width:640px){
+  #tab-btns{display:none;}
+  #tab-select-wrap{display:block!important;}
+  /* layout: plot above controls */
+  .tab-pane.active{flex-direction:column;}
+  .ctrl-col{width:100%!important;min-width:0!important;border-right:none;border-bottom:1px solid var(--border);order:2;}
+  .plot-col{order:1;padding:10px 10px 6px;}
+  canvas#cPlot{height:220px!important;}
+  canvas#wPlot{height:420px!important;}
+  /* equations: stack vertically */
+  .meq-grid{grid-template-columns:1fr;}
+  .meq-eq{white-space:normal;}
+  .meq-cm{padding-left:12px;border-left:2px solid var(--border);margin-bottom:6px;}
+}
+#cTooltip{position:fixed;pointer-events:none;display:none;background:rgba(20,40,15,0.92);
+  color:#f0ede5;font:11px "IBM Plex Mono",monospace;padding:6px 10px;border-radius:6px;
+  white-space:pre;line-height:1.6;z-index:100;border:1px solid #3a6030;}
+</style>
+</head>
+<body>
+<div class="widget">
+<div class="hdr">
+  <div><h1>Q-Learning Social Cue Model</h1>
+  <div class="sub">RL Perspectives on the Conspecific Cue Model · Gildea et al. (2025) · R. Soc. Open Sci.</div></div>
+  <div class="sub" style="text-align:right">Q(s,a)  ·  s = count of others  ·  limit = max distinguishable</div>
+</div>
+<div class="tabs" id="tab-btns">
+  <button class="tab-btn active" onclick="showTab('curves')">📈 Learning Curves</button>
+  <button class="tab-btn" onclick="showTab('watch')">👁 Animated Run</button>
+  <button class="tab-btn" onclick="showTab('model')">📐 Model</button>
+  <button class="tab-btn" onclick="showTab('connections')">🔗 CCM as Linear FA</button>
+</div>
+<div id="tab-select-wrap" style="display:none;padding:8px 12px;background:var(--cream);border-bottom:1px solid var(--border);">
+  <select id="tab-select" onchange="showTab(this.value)" style="width:100%;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;color:var(--green);background:white;border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;outline:none;">
+    <option value="curves">📈 Learning Curves</option>
+    <option value="watch">👁 Animated Run</option>
+    <option value="model">📐 Model</option>
+    <option value="connections">🔗 CCM as Linear FA</option>
+  </select>
+</div>
+
+<!-- ═══ CURVES TAB ═══ -->
+<div id="tab-curves" class="tab-pane active">
+<div class="ctrl-col">
+  <div class="sec">Cue Reliability</div>
+  <div class="tog-row">
+    <button class="tog active" id="cr-perf" onclick="cRel('perfect')">Perfect<br>[1.0, 0.0]</button>
+    <button class="tog" id="cr-noisy" onclick="cRel('noisy')">Noisy<br>[0.8, 0.2]</button>
+  </div>
+  <hr class="d"><div class="sec">Agent parameters</div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">α — learning rate</span><span class="ctl-v" id="cv-a">0.005</span></div>
+  <input type="range" id="cs-a" min="1" max="80" value="5" oninput="pairSlider('a',this.value,v=>(+v/1000).toFixed(3))"></div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">τ — choice stochasticity</span><span class="ctl-v" id="cv-t">0.20</span></div>
+  <input type="range" id="cs-t" min="5" max="2000" value="20" oninput="pairSlider('t',this.value,v=>(+v/100).toFixed(2))"></div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">N agents</span><span class="ctl-v" id="cv-n">10</span></div>
+  <input type="range" id="cs-n" min="1" max="20" value="10" oninput="pairSlider('n',this.value,String)"></div>
+  <hr class="d"><div class="sec">Trial structure</div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">Acquisition trials</span><span class="ctl-v" id="cv-aq">600</span></div>
+  <input type="range" id="cs-aq" min="100" max="1500" step="50" value="600" oninput="pairSlider('aq',this.value,String)"></div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">Reversal trials</span><span class="ctl-v" id="cv-rv">600</span></div>
+  <input type="range" id="cs-rv" min="100" max="1500" step="50" value="600" oninput="pairSlider('rv',this.value,String)"></div>
+  <hr class="d"><div class="sec">Dummy cues (CCM Fig. 4)</div>
+  <div class="tog-row">
+    <button class="tog3 active" id="cd-none" onclick="cDummy('none')">None</button>
+    <button class="tog3" id="cd-fixed" onclick="cDummy('fixed')">Fixed</button>
+    <button class="tog3" id="cd-random" onclick="cDummy('random')">Random</button>
+  </div>
+  <div class="ctl" id="cd-k-wrap" style="display:none">
+    <div class="ctl-r"><span class="ctl-n" id="cd-k-label">k dummies</span><span class="ctl-v" id="cv-dk">3</span></div>
+    <input type="range" id="cs-dk" min="1" max="9" value="3" oninput="pairSlider('dk',this.value,String)">
+  </div>
+  <div class="ctl place-wrap" style="display:none">
+    <div class="sec" style="margin-top:4px">Dummy placement</div>
+    <div class="tog-row" style="margin-top:4px">
+      <button class="tog3 active" id="cd-pl-equal"   onclick="cPlace('equal')">Equal</button>
+      <button class="tog3"        id="cd-pl-correct" onclick="cPlace('correct')">Correct</button>
+      <button class="tog3"        id="cd-pl-wrong"   onclick="cPlace('wrong')">Wrong</button>
+    </div>
+  </div>
+  <hr class="d"><div class="sec">Social parameters</div>
+  <div class="sec" style="font-size:9px;color:var(--muted);margin-top:-4px">Sweep independent variable:</div>
+  <div class="tog-row">
+    <button class="tog active" id="civ-nb"  onclick="cSetIV('nb')">Counting limit</button>
+    <button class="tog"        id="civ-rho" onclick="cSetIV('rho')">Social reward</button>
+  </div>
+  <div id="c-rho-free" style="display:block">
+    <div class="ctl" style="margin-top:6px"><div class="ctl-r"><span class="ctl-n">ρ — social reward (fixed)</span><span class="ctl-v" id="cv-rho">0.00</span></div>
+    <input type="range" id="cs-rho" min="0" max="100" value="0" oninput="pairSlider('rho',this.value,v=>(+v/100).toFixed(2))"></div>
+  </div>
+  <div id="c-nb-free" style="display:none">
+    <div class="ctl" style="margin-top:6px"><div class="ctl-r"><span class="ctl-n">Counting limit (fixed)</span><span class="ctl-v" id="cv-nb">∞</span></div>
+    <input type="range" id="cs-nb" min="0" max="20" value="20" oninput="pairSlider('nb',this.value,v=>+v===0?'0 (off)':+v>=20?'∞':String(+v))"></div>
+  </div>
+  <hr class="d"><div class="sec">Simulation</div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">Ensemble runs</span><span class="ctl-v" id="cv-r">400</span></div>
+  <input type="range" id="cs-r" min="50" max="1500" step="50" value="400" oninput="cV('r',+this.value,String)"></div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">Smooth window</span><span class="ctl-v" id="cv-sm">12</span></div>
+  <input type="range" id="cs-sm" min="1" max="60" value="12" oninput="cV('sm',+this.value,String)"></div>
+  <button class="btn-p" id="c-run" onclick="cRunAll()">▶ Run Simulation</button>
+</div>
+<div class="plot-col">
+  <div id="c-prompt" style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);padding:6px 4px 2px;text-align:center;">Configure parameters, then press <strong style="color:var(--green)">▶ Run Simulation</strong> to generate curves for each counting limit value.</div>
+<canvas id="cPlot" style="width:100%;height:360px;"></canvas>
+  <div class="legend" id="cLeg"><span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted)">Press ▶ Run Simulation — shows one curve per counting limit value.</span></div>
+  <div class="foot"><div class="pw"><div class="pb" id="cPb"></div></div><div class="st" id="cSt">—</div></div>
+</div>
+</div>
+
+<!-- ═══ WATCH TAB ═══ -->
+<div id="tab-watch" class="tab-pane">
+<div class="ctrl-col">
+  <div class="sec">Cue Reliability</div>
+  <div class="tog-row">
+    <button class="tog active" id="wr-perf" onclick="wRel('perfect')">Perfect<br>[1.0, 0.0]</button>
+    <button class="tog" id="wr-noisy" onclick="wRel('noisy')">Noisy<br>[0.8, 0.2]</button>
+  </div>
+  <hr class="d"><div class="sec">Agent parameters</div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">α — learning rate</span><span class="ctl-v" id="wv-a">0.005</span></div>
+  <input type="range" id="ws-a" min="1" max="80" value="5" oninput="pairSlider('a',this.value,v=>(+v/1000).toFixed(3))"></div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">τ — choice stochasticity</span><span class="ctl-v" id="wv-t">0.20</span></div>
+  <input type="range" id="ws-t" min="5" max="2000" value="20" oninput="pairSlider('t',this.value,v=>(+v/100).toFixed(2))"></div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">N agents</span><span class="ctl-v" id="wv-n">10</span></div>
+  <input type="range" id="ws-n" min="1" max="20" value="10" oninput="pairSlider('n',this.value,String)"></div>
+  <hr class="d"><div class="sec">Trial structure</div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">Acquisition trials</span><span class="ctl-v" id="wv-aq">600</span></div>
+  <input type="range" id="ws-aq" min="100" max="1500" step="50" value="600" oninput="pairSlider('aq',this.value,String)"></div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">Reversal trials</span><span class="ctl-v" id="wv-rv">600</span></div>
+  <input type="range" id="ws-rv" min="100" max="1500" step="50" value="600" oninput="pairSlider('rv',this.value,String)"></div>
+  <hr class="d"><div class="sec">Dummy cues (CCM Fig. 4)</div>
+  <div class="tog-row">
+    <button class="tog3 active" id="wd-none" onclick="wDummy('none')">None</button>
+    <button class="tog3" id="wd-fixed" onclick="wDummy('fixed')">Fixed</button>
+    <button class="tog3" id="wd-random" onclick="wDummy('random')">Random</button>
+  </div>
+  <div class="ctl" id="wd-k-wrap" style="display:none">
+    <div class="ctl-r"><span class="ctl-n">k dummies</span><span class="ctl-v" id="wv-dk">3</span></div>
+    <input type="range" id="ws-dk" min="1" max="9" value="3" oninput="pairSlider('dk',this.value,String)">
+  </div>
+  <div class="ctl place-wrap" style="display:none">
+    <div class="sec" style="margin-top:4px">Dummy placement</div>
+    <div class="tog-row" style="margin-top:4px">
+      <button class="tog3 active" id="wd-pl-equal"   onclick="cPlace('equal')">Equal</button>
+      <button class="tog3"        id="wd-pl-correct" onclick="cPlace('correct')">Correct</button>
+      <button class="tog3"        id="wd-pl-wrong"   onclick="cPlace('wrong')">Wrong</button>
+    </div>
+  </div>
+  <hr class="d"><div class="sec">Social parameters</div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">ρ — max social reward</span><span class="ctl-v" id="wv-rho">0.00</span></div>
+  <input type="range" id="ws-rho" min="0" max="100" value="0" oninput="pairSlider('rho',this.value,v=>(+v/100).toFixed(2))"></div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">Counting limit</span><span class="ctl-v" id="wv-nb">∞</span></div>
+  <input type="range" id="ws-nb" min="0" max="20" value="20" oninput="pairSlider('nb',this.value,v=>+v===0?'0 (off)':+v>=20?'∞':String(+v))"></div>
+
+  <hr class="d"><div class="sec">Animation</div>
+  <div class="ctl"><div class="ctl-r"><span class="ctl-n">Speed (trials/sec)</span><span class="ctl-v" id="wv-sp">5</span></div>
+  <input type="range" id="ws-sp" min="1" max="60" value="5" oninput="wV('sp',+this.value,String)"></div>
+  <div class="btn-row">
+    <button class="btn-s" id="w-play" onclick="wToggle()" style="flex:2">▶ Play</button>
+    <button class="btn-s" onclick="wStep()" style="flex:1">▸ Step</button>
+  </div>
+  <button class="btn-s" onclick="wReset()" style="width:100%;margin-top:2px">↺ Reset</button>
+</div>
+<div class="plot-col">
+  <div id="w-prompt" style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);padding:6px 4px 2px;text-align:center;">Configure parameters, then press <strong style="color:var(--green)">▶ Play</strong> or <strong style="color:var(--green)">▸ Step</strong> to run a single trial sequence.</div>
+  <canvas id="wPlot" style="width:100%;height:460px;"></canvas>
+  <div class="foot"><div class="st" id="wSt" style="flex:1;white-space:normal"></div></div>
+</div>
+</div>
+
+<!-- ═══ MODEL TAB ═══ -->
+<div id="tab-model" class="tab-pane mpane">
+
+<div>
+<div class="mh">From Rescorla–Wagner to Q-learning</div>
+<div class="mb">
+<p>Behavioral scientists and engineers arrived at the same learning rule from different directions.
+In Rescorla–Wagner, associative strength updates in proportion to prediction error — the gap
+between reward received and reward predicted. In <strong>Q-learning</strong>, an agent maintains
+Q(s,&nbsp;a): the expected reward for choosing action <em>a</em> in situation <em>s</em>. The update rule is
+identical: Q(s,a) ← Q(s,a) + α·δ, where δ = r − Q(s,a). The formal connection is exact —
+Rescorla–Wagner is Q-learning without temporal discounting.</p>
+<p>What Q-learning makes explicit is the <strong>state</strong> s — everything the agent observes before
+choosing. Standard associative learning models populate s with environmental cues alone.
+The Conspecific Cue Model (CCM; Gildea et al. 2025) proposes that co-presence of conspecifics
+at a food site is just another cue in s. This widget asks the same question using
+<strong>tabular Q-learning</strong>: each option's state is the observed social
+co-presence capped at the agent's counting limit. Each (option, perceived-count) pair
+gets its own Q-value, updated by the standard TD rule Q(s,a) ← Q(s,a) + α·δ.
+When limit=0 all options share state 0 and the agent is a pure individual learner
+with one Q-value per option — no weights, no gradient, no λ.</p>
+</div>
+</div>
+
+<div>
+<div class="mh">The model equations</div>
+<div class="mdef-grid">
+  <span class="mdef-term">count<sub>a</sub></span>
+  <span class="mdef-def">integer number of other agents (and dummies) at option a on the previous trial (simultaneous decisions; previous trial used as proxy)</span>
+  <span class="mdef-term">s<sub>a</sub></span>
+  <span class="mdef-def">perceived count at option a: s<sub>a</sub> = min(count<sub>a</sub>, limit) — the raw headcount capped at the animal's counting ceiling</span>
+  <span class="mdef-term">limit</span>
+  <span class="mdef-def">counting limit — maximum number of conspecifics the agent can individually distinguish. limit=1: only presence/absence; limit=∞: full resolution up to group size</span>
+  <span class="mdef-term">Q(s, a)</span>
+  <span class="mdef-def">expected reward for choosing option a when s others are perceived there — one table entry per (option, perceived-count) pair, all initialized to 0</span>
+  <span class="mdef-term">ρ ∈ [0,1]</span>
+  <span class="mdef-def">social reward per perceived conspecific — each conspecific the agent can distinguish at its chosen option adds ρ to the effective reward, up to the counting limit. ρ=0: no social attraction; ρ=1: each perceived rat is worth as much as food. With large groups and high counting limits, social reward can dominate task reward.</span>
+  <span class="mdef-term">α</span>
+  <span class="mdef-def">learning rate</span>
+  <span class="mdef-term">τ</span>
+  <span class="mdef-def">choice stochasticity (softmax temperature)</span>
+</div>
+<div class="meq-grid">
+  <span class="meq-eq">s<sub>a</sub> = min(count<sub>a</sub>, limit)</span>
+  <span class="meq-cm">perceived count — raw headcount capped at counting limit</span>
+
+  <span class="meq-eq">δ = (r + ρ·s<sub>chosen</sub>) − Q(s<sub>chosen</sub>, chosen)</span>
+  <span class="meq-cm">prediction error; r ∈ {0,1} task reward; ρ·s<sub>chosen</sub> social reward (ρ per perceived conspecific)</span>
+
+  <span class="meq-eq">Q(s<sub>chosen</sub>, chosen) ← Q(s<sub>chosen</sub>, chosen) + α·δ</span>
+  <span class="meq-cm">standard tabular Q update — identical to R–W at γ=0</span>
+
+  <span class="meq-eq" style="padding-left:16px;color:var(--muted)">full form: r + γ·max Q(s′,a′) − Q(s,a),  γ=0 here</span>
+  <span class="meq-cm">episodic trials — one choice, one reward, no future states to discount</span>
+
+  <span class="meq-eq">P(a|s) = exp(Q(s<sub>a</sub>, a)/τ) / Σ exp(Q(s<sub>a′</sub>, a′)/τ)</span>
+  <span class="meq-cm">softmax choice rule; replaces CCM's horse-race timing</span>
+</div>
+<div class="mb"><p>Each agent maintains its own Q-table and receives its own reward — no communication,
+shared reward, or centralized training. Social information enters only through the state bucket.</p></div>
+</div>
+
+<div>
+<div class="mh">The dummy conditions  (CCM Figure 4)</div>
+<div class="mb">
+<p>Two control conditions ask whether any group-training advantage requires specifically
+<em>social</em> information, or arises from having more cues of any kind.</p>
+<p><strong>Fixed dummies</strong> — k non-learning agents permanently assigned to fixed positions
+and never moving. By default they are split roughly equally between options, adding
+consistent but uninformative social cues. If fixed dummies produce curves similar to
+social agents, the group advantage is not unique to social information — any additional
+consistent state signal would do.</p>
+<div style="border-left:2px solid var(--border);padding:4px 0 4px 12px;margin:6px 0 10px 0;font-family:'Outfit',sans-serif;font-size:12.5px;color:var(--muted);line-height:1.6;">
+  <strong style="color:var(--text)">Simulator extension beyond CCM:</strong> dummy placement can be set explicitly —
+  <strong>Equal</strong> (default, half at each option),
+  <strong>Correct</strong> (all dummies always at the currently rewarded option, simulating knowledgeable conspecifics), or
+  <strong>Wrong</strong> (all dummies at the unrewarded option, simulating misinformation).
+  The Correct condition tests whether genuinely <em>informative</em> social cues — rather than merely consistent ones — produce a different learning advantage.
+</div>
+<p><strong>Random dummies</strong> — k non-learning agents that independently pick a random option
+each trial, uncorrelated with reward. Their shuffling corrupts the perceived count s<sub>a</sub>,
+diluting its reliability. Degraded performance confirms that the value of social cues
+depends on their consistency, not merely their presence.</p>
+</div>
+</div>
+
+<div>
+<div class="mh">Correspondence to CCM  (Gildea et al. 2025, <em>R. Soc. Open Sci.</em>)</div>
+<table class="pt">
+<tr><th>Q-learning (this widget)</th><th>CCM</th><th>Notes</th></tr>
+<tr><td>Q(s<sub>a</sub>, a)</td><td>ΣV at option a</td><td>Expected reward / total associative strength</td></tr>
+<tr><td>Q(0, a)  (s=0 bucket)</td><td>V(N<sub>i</sub>)</td><td>Value at zero social context ≈ env-only strength</td></tr>
+<tr><td>Q(s, a) for s&gt;0</td><td>V(N<sub>i</sub>)+V(S<sub>i</sub>)</td><td>Value at non-zero social context; interaction effects captured automatically</td></tr>
+<tr><td>count<sub>a</sub></td><td>count of conspecifics</td><td>CCM notionally assigns a separate weight per individual; in practice all are interchangeable</td></tr>
+<tr><td>limit</td><td>β<sub>soc</sub>/β<sub>non</sub> (approx.)</td><td>Both govern social influence; here a perceptual ceiling, not a learning rate ratio</td></tr>
+<tr><td>α·δ (tabular update)</td><td>β[λ−ΣV] (R–W)</td><td>Identical prediction-error logic at γ=0; no separate weights or gradient</td></tr>
+<tr><td>Softmax (τ)</td><td>Horse-race timing</td><td>Both convert learned values to probabilistic choice</td></tr>
+</table>
+<br>
+<div class="diff">
+<strong style="color:var(--orange-dk)">Key difference from CCM:</strong>
+CCM uses separate learning rates β<sub>soc</sub> and β<sub>non</sub>, conflating perceptual
+salience with learning rate. Here the counting limit is a purely <em>perceptual</em>
+parameter — it determines how finely the animal can distinguish social density, with no
+direct effect on the learning rate itself. The Q-update (α·δ) is the same regardless of
+which state is visited. There are no separate social weights and no decomposition.
+Importantly, different (option, perceived-count) pairs get fully independent Q-values,
+so interaction effects between social context and option identity are captured automatically
+without any special machinery.
+</div>
+</div>
+
+</div><!-- end mpane -->
+
+<!-- ═══ CONNECTIONS TAB ═══ -->
+<div id="tab-connections" class="tab-pane mpane">
+
+<div>
+<div class="mh">CCM is a standard RL model in disguise</div>
+<div class="mb">
+<p>The Conspecific Cue Model (CCM; Gildea et al. 2025) was developed within the
+associative learning tradition, building on Rescorla–Wagner. But its mathematical
+structure is identical to a well-known class of reinforcement learning model —
+one that places it in direct dialogue with the tabular Q-learning model simulated
+in the other tabs of this widget.</p>
+
+<p>Both approaches are variants of Q-learning. What distinguishes them is how
+the Q-function is <em>represented</em> — the prediction-error update rule and
+Bellman target are the same throughout. This gives a spectrum:</p>
+<ul style="margin:6px 0 10px 18px;line-height:1.7;font-family:'Outfit',sans-serif;font-size:13.5px;">
+  <li><strong>Tabular</strong> (other tabs) — one free parameter per (state, action)
+  pair; maximally flexible, no structural assumptions, no generalization across states.</li>
+  <li><strong>Linear Function Approximation / Linear FA</strong> (this tab; equivalent to CCM) —
+  Q is a weighted sum of observable cues; generalizes across states, but assumes cue
+  contributions are additive and independent.</li>
+  <li><strong>Nonlinear FA</strong> (e.g., deep Q-networks) — a neural network
+  approximates Q; can represent interactions and complex structure, at the cost of
+  additional assumptions and training instability.</li>
+</ul>
+<p>The tabular model explored in this widget encodes social context directly in the
+state, giving each (option, perceived-count) pair its own independent Q-value. CCM
+instead represents value as a learned weighted sum of environmental and social cues —
+exactly the Linear FA structure. The additivity assumption this entails (that V(N)
+and V(S) contribute independently) is precisely what CCM makes when it sums the two
+associative strengths. Recognizing this makes that assumption explicit and testable,
+and connects CCM to a large literature on when linear approximations succeed or fail.</p>
+
+<p>In CCM, each option i is described by two observable quantities: N<sub>i</sub>,
+the environmental cue (shape, light, etc.), and S<sub>i</sub>, the social co-presence
+signal (how many conspecifics are there). The animal learns a separate associative
+strength for each — V(N) and V(S) — and the total predicted value of an option is
+their sum:</p>
+</div>
+
+<div class="meq-grid">
+  <span class="meq-eq">N<sub>i</sub> = 1 (env cue present)</span>
+  <span class="meq-cm">environmental cue at option i (always present) — using CCM's own notation</span>
+  <span class="meq-eq">S<sub>i</sub> = count of conspecifics at option i</span>
+  <span class="meq-cm">social co-presence signal at option i</span>
+
+  <span class="meq-eq">Q(i) = w<sub>env</sub>·N<sub>i</sub> + w<sub>soc</sub>·S<sub>i</sub></span>
+  <span class="meq-cm">predicted value of option i; w<sub>env</sub> and w<sub>soc</sub> are single shared weights learned from experience</span>
+
+  <span class="meq-eq">δ = r − Q(chosen)</span>
+  <span class="meq-cm">prediction error — identical to Rescorla–Wagner's λ − ΣV</span>
+
+  <span class="meq-eq">w<sub>env</sub> ← w<sub>env</sub> + β<sub>non</sub>·δ·N<sub>chosen</sub></span>
+  <span class="meq-cm">env weight update; N<sub>chosen</sub>=1 always, so this is just β<sub>non</sub>·δ</span>
+
+  <span class="meq-eq">w<sub>soc</sub> ← w<sub>soc</sub> + β<sub>soc</sub>·δ·S<sub>chosen</sub></span>
+  <span class="meq-cm">social weight update; scales with how many conspecifics were at the chosen option</span>
+</div>
+
+<div class="mb" style="margin-top:8px">
+<p>Both weights start at zero and are updated every trial by the same prediction-error
+rule. This is standard Linear FA Q-learning — the weights are the animal's learned
+beliefs about how predictive each type of cue is, and those beliefs are revised
+whenever reality deviates from expectation.</p>
+</div>
+</div>
+
+<div>
+<div class="mh">Term-by-term correspondence</div>
+<table class="pt">
+<tr><th>CCM (Gildea et al. 2025)</th><th>Linear FA / RL</th><th>Notes</th></tr>
+<tr><td>N<sub>i</sub></td><td>env cue at option i</td><td>Always 1 in both models (cue is present or absent)</td></tr>
+<tr><td>S<sub>i</sub></td><td>social co-presence at option i</td><td>Count of conspecifics present; same quantity, same role</td></tr>
+<tr><td>V(N<sub>i</sub>) = w<sub>env</sub>·N<sub>i</sub></td><td>w<sub>env</sub>·N<sub>i</sub></td><td>Associative strength of the env cue — identical expressions</td></tr>
+<tr><td>V(S<sub>i</sub>) = w<sub>soc</sub>·S<sub>i</sub></td><td>w<sub>soc</sub>·S<sub>i</sub></td><td>Associative strength of social co-presence — identical expressions</td></tr>
+<tr><td>ΣV = V(N)+V(S)</td><td>Q(i) = w<sub>env</sub>·N<sub>i</sub> + w<sub>soc</sub>·S<sub>i</sub></td><td>Total predicted value — identical</td></tr>
+<tr><td>λ − ΣV</td><td>δ = r − Q(chosen)</td><td>Prediction error — identical; λ in R–W = reward magnitude r in RL</td></tr>
+<tr><td>β<sub>non</sub>·δ·N<sub>i</sub></td><td>β<sub>non</sub>·δ·N<sub>i</sub></td><td>Env weight update — identical; N<sub>i</sub>=1 so reduces to β<sub>non</sub>·δ</td></tr>
+<tr><td>β<sub>soc</sub>·δ·S<sub>i</sub></td><td>β<sub>soc</sub>·δ·S<sub>i</sub></td><td>Social weight update — identical; asymmetric rates are standard RL practice</td></tr>
+<tr><td>Horse-race timing rule</td><td>Softmax action selection</td><td>Both convert learned values into probabilistic choice</td></tr>
+</table>
+
+<div class="mb" style="margin-top:10px">
+<p>The correspondence is exact. CCM's β<sub>soc</sub>/β<sub>non</sub> asymmetry is not
+a structural departure from RL — separate learning rates per cue type are a standard
+implementation choice in Linear FA, often used when some cues are believed to be more
+volatile or salient than others.</p>
+<div style="border-left:2px solid var(--border);padding:4px 0 4px 12px;margin:8px 0 4px 0;font-family:'Outfit',sans-serif;font-size:12.5px;color:var(--muted);line-height:1.6;">
+<strong style="color:var(--text)">Additional flexibility in the RL framing:</strong>
+Linear FA also supports <em>option-specific</em> weights — w<sub>env</sub>[i] and
+w<sub>soc</sub>[i] that can differ across options, allowing the animal to learn that
+social cues at option A are more predictive than at option B. CCM uses shared weights
+(one w<sub>env</sub>, one w<sub>soc</sub> for all options), which is the simpler and
+more parsimonious choice. The per-option extension is straightforward and may be worth
+exploring empirically.
+</div>
+</div>
+</div>
+
+<div>
+<div class="mh">What the RL framing adds</div>
+<div class="mb">
+<p>Recognizing CCM as Linear FA immediately connects it to a large literature on when
+this class of model works well and when it doesn't — and clarifies how it differs from
+the tabular Q model simulated in the other tabs:</p>
+
+<p><strong>1. The additivity assumption and interaction effects.</strong>
+The CCM-analogous Linear FA model represents value as a weighted sum of independent cues.
+Environmental and social cues contribute independently, with no way to represent
+interactions. A single shared w<sub>soc</sub> summarizes how reward-predictive social
+co-presence has been on average — it cannot learn that the same social cue means
+different things in different circumstances. The tabular Q model simulated in the other
+tabs does not have this constraint: each (option, social-count) pair gets its own
+independent Q-value, so interaction effects are representable in principle.</p>
+
+<p>Consider the reversal task. During acquisition, many conspecifics at option A reliably
+signals reward. During reversal, the crowd is <em>still</em> at A for the first several
+trials — now as a misleading signal. A CCM/Linear FA agent must reverse the sign of
+w<sub>soc</sub> to accommodate the flip, which is slow because the same weight is
+fighting against a well-learned history.</p>
+
+<p>The tabular Q model in this widget handles the same situation differently. As the crowd
+shifts during reversal, the focal agent increasingly encounters social counts it rarely
+saw during acquisition — states with little learned history and therefore fast-updating
+Q-values. The redistribution of conspecifics effectively moves the agent into a novel
+region of experience, allowing the new contingency to be learned quickly. This is the
+tabular model's key structural advantage: each (option, social-count) pair is a genuinely
+independent context, not a single shared weight.</p>
+
+<p>True interaction effects — where the value of a social cue depends on which environmental
+cue is present — are actually representable in the tabular Q model on the other tabs,
+because each (option, social-count) pair gets its own independent Q-value with no
+additivity constraint. CCM/Linear FA cannot represent such interactions because w<sub>soc</sub>
+is a single number that applies regardless of context. In the current task design this
+distinction does not arise — the environmental cue is always present at each option, so
+there is no env-cue variation to interact with. But in a richer task where environmental
+cues varied across trials, the tabular model could learn that "social cues matter when
+the env cue is also present, but not otherwise" — a conjunction CCM cannot express.
+Whether animals represent such conjunctions is an empirical question the reversal paradigm
+could probe with appropriate modifications.</p>
+
+<p><strong>2. What "salience" means mechanically.</strong>
+In CCM, β<sub>soc</sub> controls both how fast social associations are learned and how
+strongly they influence behavior — these are conflated in a single parameter. In the
+Linear FA framing they separate naturally: the learning rate governs update speed,
+while the weight magnitude governs influence on Q(i). The tabular Q model sidesteps
+this question entirely: there is no salience parameter, only a counting limit that
+determines what the animal can perceive. What gets learned follows from what gets
+observed.</p>
+
+<p><strong>3. The state augmentation question.</strong>
+Linear FA and CCM ask: <em>given that social cues are present, how do their learning
+dynamics compare to environmental cues?</em> The tabular Q model in this widget asks a
+more fundamental prior question: <em>does having access to social context at all — at
+whatever granularity — change what the agent can learn?</em> The counting limit
+manipulation probes this directly, asking how coarsely social context can be perceived
+before its benefits disappear. These are complementary questions, not competing ones.</p>
+</div>
+</div>
+
+<div>
+<div class="mh">Do they predict the same things?</div>
+<div class="mb">
+<p>For the core CCM prediction — a reversal advantage for collectively-trained animals —
+the two models agree qualitatively but for different reasons.</p>
+
+<p>In <strong>CCM / Linear FA</strong>, the reversal advantage emerges from w<sub>soc</sub>
+acting as an early-warning signal: socially-informed animals begin updating when they
+observe their conspecifics shifting toward the new correct option, before environmental
+prediction errors alone would drive learning. The asymmetric β<sub>soc</sub> rate
+amplifies this effect.</p>
+
+<p>In the <strong>tabular Q model</strong>, the reversal advantage depends on state-space
+structure. Social context provides discriminating states that shift as conspecifics
+redistribute after reversal, moving agents into less-familiar territory where Q-values
+update quickly. Coarser counting limits reduce this effect — predicting that animals
+with limited social numerosity show weaker reversal advantages, a prediction CCM does
+not make.</p>
+
+<p>Both models predict that individually-trained animals (no social context) show slower
+reversal. But the tabular model additionally predicts a non-monotonic effect of social
+perception granularity: very fine-grained social perception can <em>hurt</em> reversal by
+over-specifying social states and building up rich history that must be overwritten
+(visible in the Learning Curves tab at limit=∞). CCM has no analog to this prediction.</p>
+</div>
+</div>
+
+</div><!-- end connections pane -->
+</div><!-- end widget -->
+<div style="text-align:center;padding:8px 0 4px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:#aaa;">
+  © 2026 Theodore P. Pavlic<span class="footer-sep"> · </span><a href="https://opensource.org/licenses/MIT" target="_blank" class="footer-lic" style="color:#aaa;text-decoration:underline;">MIT&nbsp;License</a>
+</div>
+<style>
+@media(max-width:480px){
+  .footer-sep{display:none;}
+  .footer-lic{display:block;margin-top:2px;}
+}
+
+</style>
+
+<script>
+// ═══ CONSTANTS ═══
+const LIMITS=[0,1,2,4,20];
+const COLS=['#1a3a0a','#1a6e8a','#7a3090','#c8611a','#e0a020'];
+const DASHES=[[],[6,3],[3,3],[8,3,2,3],[5,2]];  // solid, dashed, dotted, dash-dot, long-dash
+const CLABS=['limit=0 (individual)','limit=1 (absent/present)','limit=2','limit=4','limit=∞ (full)'];
+const DUMMY_COL='#5566aa';
+
+// Draw empty axes as placeholder for Tab 1 before simulation runs
+function cDrawEmpty(ctx, W, H) {
+  const ml=54,mr=16,mt=20,mb=52,pw=W-ml-mr,ph=H-mt-mb;
+  const p0=cP(),T=p0.nAcq+p0.nRev;
+  const tx=t=>ml+(t/(T-1))*pw, ty=v=>mt+ph*(1-v);
+  const rx=tx(p0.nAcq);
+
+  ctx.fillStyle='#faf9f6';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='white';ctx.fillRect(ml,mt,pw,ph);
+
+  // Grid lines
+  ctx.strokeStyle='#ede9e1';ctx.lineWidth=1;
+  for(const v of[.25,.5,.75,1]){
+    ctx.beginPath();ctx.moveTo(ml,ty(v));ctx.lineTo(ml+pw,ty(v));ctx.stroke();
+  }
+
+  // Chance line
+  ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle='#b0a898';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(ml,ty(.5));ctx.lineTo(ml+pw,ty(.5));ctx.stroke();ctx.restore();
+
+  // Reversal marker
+  ctx.save();ctx.setLineDash([7,4]);ctx.strokeStyle='#8a7a6a';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(rx,mt);ctx.lineTo(rx,mt+ph);ctx.stroke();ctx.restore();
+
+  // Axis lines (L + bottom, separate paths to avoid stray connectors)
+  ctx.strokeStyle='#2d5016';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,mt+ph);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(ml,mt+ph);ctx.lineTo(ml+pw,mt+ph);ctx.stroke();
+
+  // Y ticks + labels
+  ctx.strokeStyle='#4a5a3a';ctx.lineWidth=1;
+  ctx.fillStyle='#4a5a3a';ctx.font='400 10px "IBM Plex Mono",monospace';ctx.textAlign='right';
+  for(const v of[0,.25,.5,.75,1]){
+    const y=ty(v);
+    ctx.beginPath();ctx.moveTo(ml-4,y);ctx.lineTo(ml,y);ctx.stroke();
+    ctx.fillText(v.toFixed(2),ml-7,y+3.5);
+  }
+
+  // X ticks + labels
+  ctx.textAlign='center';
+  for(let i=0;i<=6;i++){
+    const t=Math.round(i*(T-1)/6),x=tx(t);
+    ctx.beginPath();ctx.moveTo(x,mt+ph);ctx.lineTo(x,mt+ph+4);ctx.stroke();
+    ctx.fillText(t,x,mt+ph+15);
+  }
+
+  // Phase labels
+  ctx.fillStyle='#8a7a6a';ctx.font='500 10px "Outfit",sans-serif';ctx.textAlign='center';
+  ctx.fillText('← Acquisition →',ml+(rx-ml)/2,mt+ph+30);
+  ctx.fillText('← Reversal →',rx+(ml+pw-rx)/2,mt+ph+30);
+
+  // Axis titles
+  ctx.fillStyle='#2d5016';ctx.font='500 11.5px "Outfit",sans-serif';ctx.textAlign='center';
+  ctx.fillText('Trial',ml+pw/2,H-4);
+  ctx.save();ctx.translate(13,mt+ph/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('Proportion Correct',0,0);ctx.restore();
+
+  // Prompt
+  ctx.fillStyle='#aaa';ctx.font='400 12px "Outfit",sans-serif';ctx.textAlign='center';
+  ctx.fillText('Press ▶ Run Simulation to generate curves',ml+pw/2,mt+ph/2+4);
+}
+
+
+function smooth(a,w){
+  if(w<=1)return a;
+  const o=new Float64Array(a.length);
+  for(let i=0;i<a.length;i++){let s=0,n=0;for(let j=Math.max(0,i-w);j<=Math.min(a.length-1,i+w);j++){s+=a[j];n++;}o[i]=s/n;}
+  return o;
+}
+
+// ═══ SIMULATION CORE ═══
+// Clean tabular Q-learning.
+// State for option a: s_a = bucket(λ · soc_a_prev), bucket ∈ 0..10
+// Q-table: Q[agent][option][bucket]  — one value per (option, social-context) pair
+// Update: Q[a][s] ← Q[a][s] + α·δ   (standard tabular Q)
+// When λ=0: bucket is always 0 for every option → pure individual learning
+// Dummies (fixed or random) affect the social observation (soc_a), which
+// determines the state bucket; the Q-table just learns from whatever states arrive.
+
+const COUNT_UNLIMITED = 20;
+
+// State = min(count_of_others_at_option * λ_presence, counting_limit)
+// lam=0: state always 0 (no social info)
+// lam=1: full count up to limit
+// count is the raw integer number of others at the option
+function socBucket(count, lam, limit) {
+  if(lam===0) return 0;
+  const perceived = Math.round(count * lam);
+  const lim = (limit>=COUNT_UNLIMITED) ? 999 : limit;
+  return Math.min(perceived, lim);
+}
+
+function runEnsemble(limit, p) {
+  const {alpha, tau, nA, nAcq, nRev, nRuns, pC, pI, dT, nD, sw, rho=0, place='equal'} = p;  // limit passed as first arg
+  // no normalization: ρ = reward per perceived conspecific
+  const normFactor = 1;
+  const lam = 1;  // social info fully observed; limit parameter controls max distinguishable count
+  const T = nAcq + nRev, tot = new Float64Array(T);
+  const grpSize = nA + (dT!=='none' ? nD : 0);  // total social group size
+
+  for (let run = 0; run < nRuns; run++) {
+    // Q[agent][option][bucket]
+    const Q = Array.from({length:nA}, () => [new Float64Array(COUNT_UNLIMITED+1), new Float64Array(COUNT_UNLIMITED+1)]);
+    let prevFracA = 0.5;
+    const corOpt = Math.random()<0.5 ? 0 : 1;  // randomize correct option each run
+
+    for (let t = 0; t < T; t++) {
+      const cor = t < nAcq ? corOpt : 1-corOpt;
+
+      // Random dummy positions this trial
+      let rndAtA = 0;
+      if (dT==='random') for (let d=0; d<nD; d++) rndAtA += Math.random()<.5 ? 1 : 0;
+
+      // Social fractions incorporating dummies
+      const fixedAtA = place==='correct' ? nD : place==='wrong' ? 0 : Math.ceil(nD/2);
+      const rawAtA = prevFracA * nA + (dT==='fixed' ? fixedAtA : dT==='random' ? rndAtA : 0);
+      const socA = grpSize > 0 ? rawAtA / grpSize : prevFracA;
+      const socB = 1 - socA;
+
+      // State buckets for each option
+      // count of others at each option (excluding self, but for ensemble we use group counts)
+      // exclude focal agent from "others" count
+      const learnersAtA = Math.round(prevFracA * nA);
+      const learnersAtB = nA - learnersAtA;
+      const dummiesAtA_cnt = dT==='fixed' ? fixedAtA : dT==='random' ? rndAtA : 0;
+      const activeDum = dT!=='none';
+      const cntOthersA = Math.max(0, learnersAtA - 1) + (activeDum?dummiesAtA_cnt:0);
+      const cntOthersB = Math.max(0, learnersAtB - 1) + (activeDum?(nD - dummiesAtA_cnt):0);
+      const bkA = socBucket(cntOthersA, lam, limit);
+      const bkB = socBucket(cntOthersB, lam, limit);
+
+      // Choose actions
+      const ch = new Int8Array(nA), qc = new Float64Array(nA), bk = new Uint8Array(nA);
+      for (let i = 0; i < nA; i++) {
+        const qA = Q[i][0][bkA], qB = Q[i][1][bkB];
+        const mx = Math.max(qA, qB);
+        const eA = Math.exp((qA-mx)/tau), eB = Math.exp((qB-mx)/tau);
+        ch[i] = Math.random() < eA/(eA+eB) ? 0 : 1;
+        qc[i] = ch[i]===0 ? qA : qB;
+        bk[i] = ch[i]===0 ? bkA : bkB;
+      }
+      let cA = 0; for (let i=0; i<nA; i++) if (ch[i]===0) cA++;
+
+      // Update Q-table
+      let nc = 0;
+      for (let i = 0; i < nA; i++) {
+        const a = ch[i]; if (a===cor) nc++;
+        const r = Math.random() < (a===cor ? pC : pI) ? 1 : 0;
+        const bkChosen = a===0 ? bkA : bkB;
+        const effR = r + (rho * bkChosen) / normFactor;  // social reward normalized: ρ = max reward at counting limit
+        Q[i][a][bk[i]] += alpha * (effR - qc[i]);  // standard tabular Q update
+      }
+      tot[t] += nc/nA;
+      prevFracA = cA/nA;
+    }
+  }
+  const raw = new Float64Array(T);
+  for (let t=0; t<T; t++) raw[t] = tot[t]/nRuns;
+  return smooth(raw, sw);
+}
+
+// pairSlider: keeps shared sliders in both tabs in sync in real time
+function pairSlider(key, rawVal, fmt) {
+  const text = fmt ? fmt(rawVal) : String(rawVal);
+  ['cv-','wv-'].forEach(p => { const el=document.getElementById(p+key); if(el) el.textContent=text; });
+  ['cs-','ws-'].forEach(p => { const el=document.getElementById(p+key); if(el) el.value=rawVal; });
+}
+
+// ═══ CURVES TAB ═══
+let cCurves=[],cRef=null,cRunning=false,cRelMode='perfect',cDumMode='none',cActiveLabels=CLABS;
+function cV(k,v,f){document.getElementById('cv-'+k).textContent=f(v);}
+let cPlaceMode='equal', wPlaceMode='equal';
+function cPlace(m){
+  cPlaceMode=m; wPlaceMode=m;
+  // update all placement buttons in both tabs
+  ['equal','correct','wrong'].forEach(v=>{
+    ['cd-pl-','wd-pl-'].forEach(pfx=>{
+      const el=document.getElementById(pfx+v);
+      if(el) el.classList.toggle('active',v===m);
+    });
+  });
+}
+function wPlace(m){cPlace(m);}
+let cIVMode = 'nb';  // 'nb' = sweep counting limits, 'rho' = sweep social rewards
+
+const RHO_SWEEP = [0, 0.1, 0.25, 0.5, 1.0];
+const RHO_CLABS = ['ρ=0.00 (none)','ρ=0.10','ρ=0.25','ρ=0.50','ρ=1.00'];
+
+function cSetIV(mode) {
+  cIVMode = mode;
+  document.getElementById('civ-nb').classList.toggle('active', mode==='nb');
+  document.getElementById('civ-rho').classList.toggle('active', mode==='rho');
+  document.getElementById('c-nb-free').style.display  = mode==='nb'  ? 'none'  : 'block';
+  document.getElementById('c-rho-free').style.display = mode==='rho' ? 'none'  : 'block';
+  // update prompt
+  const prompt = document.getElementById('c-prompt');
+  if(prompt) prompt.innerHTML = mode==='nb'
+    ? 'Configure parameters, then press <strong style="color:var(--green)">▶ Run Simulation</strong> to generate curves for each counting limit value.'
+    : 'Configure parameters, then press <strong style="color:var(--green)">▶ Run Simulation</strong> to generate curves for each social reward (ρ) value.';
+}
+
+function cRel(m){cRelMode=m;wRelMode=m;
+  ['cr-perf','cr-noisy','wr-perf','wr-noisy'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.classList.toggle('active', id.includes(m==='perfect'?'perf':'noisy'));
+  });
+}
+function cDummy(m){
+  cDumMode=m; wDumMode=m;
+  if(m!=='none') pairSlider('n','1',String);
+  ['cd-none','cd-fixed','cd-random','wd-none','wd-fixed','wd-random'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.classList.toggle('active', id.endsWith(m));
+  });
+  ['cd-k-wrap','wd-k-wrap'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display=m==='none'?'none':'flex';
+  });
+  document.querySelectorAll('.place-wrap').forEach(el=>{ el.style.display=m==='fixed'?'flex':'none'; });
+  const cl=document.getElementById('cd-k-label'); if(cl) cl.textContent=m==='fixed'?'k fixed dummies':'k random dummies';
+}
+function cP(){
+  return{alpha:+document.getElementById('cs-a').value/1000,tau:+document.getElementById('cs-t').value/100,
+  nA:+document.getElementById('cs-n').value,nAcq:+document.getElementById('cs-aq').value,
+  nRev:+document.getElementById('cs-rv').value,nRuns:+document.getElementById('cs-r').value,
+  sw:+document.getElementById('cs-sm').value,pC:cRelMode==='perfect'?1:.8,pI:cRelMode==='perfect'?0:.2,
+  dT:cDumMode,nD:+document.getElementById('cs-dk').value,rho:+document.getElementById('cs-rho').value/100,nb:+document.getElementById('cs-nb').value,place:cPlaceMode};
+}
+async function cRunAll(){
+  if(cRunning)return;cRunning=true;cCurves=[];cRef=null;
+  document.getElementById('c-run').disabled=true;
+  document.getElementById('cLeg').innerHTML='<span style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--muted)">Computing…</span>';
+
+  const p=cP();
+  // If dummies active, also compute a λ=0 no-dummy reference curve
+  if(p.dT!=='none'){
+    await new Promise(r=>setTimeout(r,0));
+    document.getElementById('cSt').textContent=`λ=0.00 (no dummies, reference)…`;
+    const p0={...p,dT:'none'};
+    cRef=runEnsemble(0,p0);
+    cDraw(p);
+  }
+  const ivVals  = cIVMode==='nb' ? LIMITS   : RHO_SWEEP;
+  const ivLabels= cIVMode==='nb' ? CLABS    : RHO_CLABS;
+  cActiveLabels = ivLabels;
+  for(let li=0;li<ivVals.length;li++){
+    await new Promise(r=>setTimeout(r,0));
+    document.getElementById('cPb').style.width=`${(li+(p.dT!=='none'?1:0))/(ivVals.length+(p.dT!=='none'?1:0))*100}%`;
+    const tag = cIVMode==='nb' ? `limit=${ivVals[li]===20?'∞':ivVals[li]}` : `ρ=${ivVals[li].toFixed(2)}`;
+    document.getElementById('cSt').textContent=`${tag}, ${p.nRuns} runs…`;
+    const pRun = cIVMode==='nb'
+      ? {...p, rho: p.rho}
+      : {...p, nb: p.nb, rho: ivVals[li]};
+    const limitRun = cIVMode==='nb' ? ivVals[li] : p.nb;
+    cCurves.push(runEnsemble(limitRun, pRun));cDraw(p,ivLabels);
+  }
+  document.getElementById('cPb').style.width='100%';
+  const doneTag = cIVMode==='nb' ? `${ivVals.length} counting limits` : `${ivVals.length} ρ values`;
+  document.getElementById('cSt').textContent=`Done — ${p.nRuns} runs × ${doneTag} × ${p.nA} agents`;
+  cBuildLeg(p);cRunning=false;document.getElementById('c-run').disabled=false;
+}
+
+function cDraw(p, labelsOverride){  const activeLabels = labelsOverride || cActiveLabels;
+  const cv=document.getElementById('cPlot'),dpr=window.devicePixelRatio||1;
+  const W=cv.offsetWidth||600,H=cv.offsetHeight||360;
+  cv.width=W*dpr;cv.height=H*dpr;const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  const ml=54,mr=16,mt=20,mb=52,pw=W-ml-mr,ph=H-mt-mb,T=p.nAcq+p.nRev;
+  const tx=t=>ml+(t/(T-1))*pw,ty=v=>mt+ph*(1-v);
+  ctx.fillStyle='#faf9f6';ctx.fillRect(0,0,W,H);ctx.fillStyle='white';ctx.fillRect(ml,mt,pw,ph);
+  ctx.strokeStyle='#ede9e1';ctx.lineWidth=1;
+  for(const v of[.25,.5,.75,1]){ctx.beginPath();ctx.moveTo(ml,ty(v));ctx.lineTo(ml+pw,ty(v));ctx.stroke();}
+  ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle='#b0a898';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(ml,ty(.5));ctx.lineTo(ml+pw,ty(.5));ctx.stroke();ctx.restore();
+  const rx=tx(p.nAcq);
+  ctx.save();ctx.setLineDash([7,4]);ctx.strokeStyle='#8a7a6a';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(rx,mt);ctx.lineTo(rx,mt+ph);ctx.stroke();ctx.restore();
+  // Phase labels below x-axis
+  ctx.fillStyle='#8a7a6a';ctx.font='500 10px "Outfit",sans-serif';ctx.textAlign='center';
+  ctx.fillText('← Acquisition →',ml+(rx-ml)/2,mt+ph+28);
+  ctx.fillText('← Reversal →',rx+(ml+pw-rx)/2,mt+ph+28);
+  // dummy reference (dashed)
+  if(cRef){
+    ctx.save();ctx.setLineDash([5,4]);ctx.strokeStyle=DUMMY_COL;ctx.lineWidth=1.8;
+    ctx.beginPath();for(let t=0;t<cRef.length;t++){const x=tx(t),y=ty(cRef[t]);t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.stroke();ctx.restore();
+  }
+  for(let li=0;li<cCurves.length;li++){
+    const d=cCurves[li];
+    ctx.save();ctx.strokeStyle=COLS[li];ctx.lineWidth=2.2;ctx.setLineDash(DASHES[li]||[]);
+    ctx.beginPath();for(let t=0;t<d.length;t++){const x=tx(t),y=ty(d[t]);t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.stroke();ctx.restore();
+  }
+  ctx.strokeStyle='#2d5016';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,mt+ph);ctx.lineTo(ml+pw,mt+ph);ctx.stroke();
+  ctx.fillStyle='#4a5a3a';ctx.font='400 10px "IBM Plex Mono",monospace';ctx.textAlign='right';
+  for(const v of[0,.25,.5,.75,1]){const y=ty(v);ctx.beginPath();ctx.moveTo(ml-4,y);ctx.lineTo(ml,y);ctx.stroke();ctx.fillText(v.toFixed(2),ml-7,y+3.5);}
+  ctx.textAlign='center';
+  for(let i=0;i<=6;i++){const t=Math.round(i*(T-1)/6),x=tx(t);ctx.beginPath();ctx.moveTo(x,mt+ph);ctx.lineTo(x,mt+ph+4);ctx.stroke();ctx.fillText(t,x,mt+ph+15);}
+  ctx.fillStyle='#2d5016';ctx.font='500 11.5px "Outfit",sans-serif';ctx.textAlign='center';
+  ctx.fillText('Trial',ml+pw/2,H-4);
+  ctx.save();ctx.translate(13,mt+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('Proportion Correct',0,0);ctx.restore();
+  ctx.fillStyle='#aaa';ctx.font='400 10px "IBM Plex Mono",monospace';ctx.textAlign='right';
+  ctx.textAlign='left';
+  const annLine1='p(r|corr,incorr)='+(p.pC===1?'[1.0,0.0]':'[0.8,0.2]')+(p.dT!=='none'?'  dummies='+p.dT:'');
+  const annLine2=cIVMode==='nb'?('ρ='+p.rho.toFixed(2)+' (fixed)'):('limit='+(p.nb>=COUNT_UNLIMITED?'∞':p.nb===0?'0 (off)':String(p.nb))+' (fixed)');
+  ctx.fillText(annLine1,ml+4,mt+ph-18);
+  ctx.fillText(annLine2,ml+4,mt+ph-6);
+  ctx.textAlign='center';
+}
+function cBuildLeg(p,labelsOverride){
+  const activeLabels=labelsOverride||cActiveLabels;
+  let h=cCurves.map((_,li)=>{
+    // draw a small inline SVG showing the actual line style
+    const dashAttr=DASHES[li].length?`stroke-dasharray="${DASHES[li].join(' ')}"`:''; 
+    const svg=`<svg width="28" height="12" style="vertical-align:middle;margin-right:5px"><line x1="2" y1="6" x2="26" y2="6" stroke="${COLS[li]}" stroke-width="2.5" ${dashAttr}/></svg>`;
+    return `<div class="li">${svg}<span>${activeLabels[li]}</span></div>`;
+  }).join('');
+  if(cRef) h=`<div class="li"><div class="lsw-dash" style="border-color:${DUMMY_COL}"></div><span>limit=0, no dummies (reference)</span></div>`+h;
+  document.getElementById('cLeg').innerHTML=h;
+}
+
+// ═══ WATCH TAB ═══
+let wRelMode='perfect',wPlaying=false,wRafId=null,wLastTs=0,wDumMode='none';
+const WS={t:0,wE:null,wS:null,wD:null,pf:[.5,.5],ch:null,rw:null,qV:null,sf:null,hist:[],p:null,ok:false};
+
+function wV(k,v,f){document.getElementById('wv-'+k).textContent=f(v);}
+function wRel(m){wRelMode=m;cRelMode=m;
+  ['cr-perf','cr-noisy','wr-perf','wr-noisy'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.classList.toggle('active', id.includes(m==='perfect'?'perf':'noisy'));
+  });
+}
+function wDummy(m){
+  wDumMode=m; cDumMode=m;
+  if(m!=='none') pairSlider('n','1',String);
+  ['cd-none','cd-fixed','cd-random','wd-none','wd-fixed','wd-random'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.classList.toggle('active', id.endsWith(m));
+  });
+  ['cd-k-wrap','wd-k-wrap'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display=m==='none'?'none':'flex';
+  });
+  document.querySelectorAll('.place-wrap').forEach(el=>{ el.style.display=m==='fixed'?'flex':'none'; });
+}
+function wP(){
+  return{lam:1,alpha:+document.getElementById('ws-a').value/1000,
+  tau:+document.getElementById('ws-t').value/100,nA:+document.getElementById('ws-n').value,
+  nAcq:+document.getElementById('ws-aq').value,nRev:+document.getElementById('ws-rv').value,
+  speed:+document.getElementById('ws-sp').value,pC:wRelMode==='perfect'?1:.8,pI:wRelMode==='perfect'?0:.2,
+  dT:wDumMode,nD:+document.getElementById('ws-dk').value,rho:+document.getElementById('ws-rho').value/100,nb:+document.getElementById('ws-nb').value,place:wPlaceMode,lam:1};
+}
+function wReset(){
+  if(wRafId){cancelAnimationFrame(wRafId);wRafId=null;}
+  wPlaying=false;document.getElementById('w-play').textContent='▶ Play';
+  const p=wP(),n=p.nA;
+  WS.t=0;
+  WS.Q=Array.from({length:n},()=>[new Float64Array(COUNT_UNLIMITED+1),new Float64Array(COUNT_UNLIMITED+1)]);
+  WS.prevFracA=0.5;
+  WS.corOpt=Math.random()<0.5?0:1;  // randomize which option is rewarded each run
+  const pl=p.place||'equal';
+  if(pl==='equal'){
+    // Shuffle balanced assignment so odd k doesn't always favor option A
+    const half=Math.ceil(p.nD/2);
+    const arr=Array.from({length:p.nD},(_,i)=>i<half?0:1);
+    for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}
+    WS.fixedAssign=arr;
+  } else {
+    WS.fixedAssign=Array.from({length:p.nD},()=>pl==='correct'?0:1);
+  }
+  WS.hist=[];WS.histGroupA=[];WS.histRealA=[];WS.histDumA=[];WS.p=p;WS.ch=null;WS.rw=null;WS.qVals=null;WS.sf=null;WS.rdf=null;
+  WS.bkA=0;WS.bkB=0;  // initial state (no others seen yet)
+  WS.ok=true;
+  wDrawBlank(p);document.getElementById('wSt').textContent=`Reset — Trial 0/${p.nAcq+p.nRev} · λ=${p.lam.toFixed(2)} · dummies=${p.dT}`;
+}
+function wParamsChanged(p){
+  if(!WS.p) return true;
+  return p.alpha!==WS.p.alpha||p.tau!==WS.p.tau||
+         p.nA!==WS.p.nA||p.nAcq!==WS.p.nAcq||p.nRev!==WS.p.nRev||
+         p.pC!==WS.p.pC||p.dT!==WS.p.dT||p.nD!==WS.p.nD||p.rho!==WS.p.rho||p.nb!==WS.p.nb||p.place!==WS.p.place;
+}
+function wStep(){
+  const currentP=wP();
+  if(!WS.ok||wParamsChanged(currentP)){WS.p=currentP;wReset();return;}
+  const p=WS.p,T=p.nAcq+p.nRev,t=WS.t,n=p.nA,lam=p.lam;
+  if(t>=T)return;
+  const cor=t<p.nAcq?WS.corOpt:1-WS.corOpt;
+  // no normalization: ρ = reward per perceived conspecific (fixed, biologically natural)
+  const normFactor=1;
+
+  // Dummy positions this trial
+  let rndAtA=0;
+  const rdf=p.dT==='random'?Array.from({length:p.nD},()=>{const x=Math.random()<.5?1:0;rndAtA+=x;return x;}):null;
+  const fixedAtA=p.place==='correct'?p.nD:p.place==='wrong'?0:Math.ceil(p.nD/2);
+  const grpSize=n+(p.dT!=='none'?p.nD:0);
+  const rawAtA=WS.prevFracA*n+(p.dT==='fixed'?fixedAtA:p.dT==='random'?rndAtA:0);
+  const socA=grpSize>0?rawAtA/grpSize:WS.prevFracA;
+  const socB=1-socA;
+
+  // State buckets
+  // exclude focal agent: others = group at option minus 1 (self)
+  const learnAtA=Math.round(WS.prevFracA*n);
+  const learnAtB=n-learnAtA;
+  const dumAtA=p.dT==='fixed'?fixedAtA:p.dT==='random'?(rdf?rdf.filter(x=>x===1).length:0):0;
+  const activeDummies=p.dT!=='none';
+  const cntOthersA=Math.max(0,learnAtA-1)+(activeDummies?dumAtA:0);
+  const cntOthersB=Math.max(0,learnAtB-1)+(activeDummies?(p.nD-dumAtA):0);
+  const bkA=socBucket(cntOthersA,lam,p.nb), bkB=socBucket(cntOthersB,lam,p.nb);
+  WS.bkA=bkA; WS.bkB=bkB;
+
+  // Choose
+  const ch=new Int8Array(n),qc=new Float64Array(n),bk=new Uint8Array(n),qVals=[];
+  for(let i=0;i<n;i++){
+    const qA=WS.Q[i][0][bkA],qB=WS.Q[i][1][bkB];
+    const mx=Math.max(qA,qB),eA=Math.exp((qA-mx)/p.tau),eB=Math.exp((qB-mx)/p.tau);
+    ch[i]=Math.random()<eA/(eA+eB)?0:1;
+    qc[i]=ch[i]===0?qA:qB;
+    bk[i]=ch[i]===0?bkA:bkB;
+    qVals.push([qA,qB]);
+  }
+  let cA=0;for(let i=0;i<n;i++)if(ch[i]===0)cA++;
+
+  // Update Q-table
+  const rw=new Int8Array(n);let nc=0;
+  for(let i=0;i<n;i++){
+    const a=ch[i];if(a===cor)nc++;
+    rw[i]=Math.random()<(a===cor?p.pC:p.pI)?1:0;
+    const bkC=ch[i]===0?bkA:bkB;
+    const effR=rw[i]+(p.rho*bkC)/normFactor;  // social reward normalized
+    WS.Q[i][a][bk[i]]+=p.alpha*(effR-qc[i]);  // standard tabular Q update
+  }
+  WS.ch=ch;WS.rw=rw;WS.qVals=qVals;WS.sf=[cA/n,1-cA/n];
+
+  // full group fraction at A (includes dummies)
+  const grpSz=n+(p.dT!=='none'?p.nD:0);
+  const dummyAtA=p.dT==='fixed'?fixedAtA:p.dT==='random'?(rdf?rdf.filter(x=>x===1).length:0):0;
+  const groupFracA=grpSz>0?(cA+dummyAtA)/grpSz:cA/n;
+  const realFracA=grpSz>0?cA/grpSz:cA/n;
+  const dumFracA=grpSz>0?dummyAtA/grpSz:0;
+  WS.rdf=rdf;WS.hist.push(nc/n);WS.histGroupA.push(groupFracA);
+  WS.histRealA.push(realFracA);WS.histDumA.push(dumFracA);
+  WS.prevFracA=cA/n;WS.t++;
+  wDraw();
+  const ph=t<p.nAcq?'ACQUISITION':'REVERSAL';
+  document.getElementById('wSt').textContent=`Trial ${WS.t}/${T} · ${ph} · Correct: Opt ${cor===0?'A':'B'} · ${nc}/${n} correct`;
+}
+function wToggle(){
+  const needsReset=!WS.ok||wParamsChanged(wP());
+  if(needsReset) wReset();
+  // If reset was needed (fresh start or params changed), auto-play immediately
+  // If not needed but currently playing, pause; if paused, resume
+  if(needsReset||!wPlaying){
+    wPlaying=true;
+    document.getElementById('w-play').textContent='‖ Pause';
+    wLastTs=performance.now();
+    wRafId=requestAnimationFrame(wLoop);
+  } else {
+    wPlaying=false;
+    document.getElementById('w-play').textContent='▶ Play';
+    if(wRafId){cancelAnimationFrame(wRafId);wRafId=null;}
+  }
+}
+function wLoop(ts){
+  if(!wPlaying)return;
+  const T=WS.p.nAcq+WS.p.nRev;
+  if(WS.t>=T){wPlaying=false;document.getElementById('w-play').textContent='▶ Play';return;}
+  const spd=+document.getElementById('ws-sp').value;
+  if(ts-wLastTs>=1000/spd){wStep();wLastTs=ts;}
+  wRafId=requestAnimationFrame(wLoop);
+}
+
+function wDrawBlank(p){
+  const cv=document.getElementById('wPlot'),dpr=window.devicePixelRatio||1;
+  const W=cv.offsetWidth||640,H=cv.offsetHeight||460;
+  cv.width=W*dpr;cv.height=H*dpr;const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  ctx.fillStyle='#faf9f6';ctx.fillRect(0,0,W,H);
+  const bOff=16,gap=10,bY=24,bH=165;
+  const bW=(W-bOff*2-gap)/2;
+  // Draw placeholder option boxes with dummies shown immediately
+  const assign=p.dT==='fixed'?(p.place==='correct'?Array.from({length:p.nD},()=>0):p.place==='wrong'?Array.from({length:p.nD},()=>1):(()=>{const half=Math.ceil(p.nD/2);const a=Array.from({length:p.nD},(_,i)=>i<half?0:1);return a;})()):(p.dT==='random'?Array.from({length:p.nD},()=>Math.random()<.5?0:1):null);
+  for(let opt=0;opt<2;opt++){
+    const bx=bOff+opt*(bW+gap);
+    ctx.fillStyle='white';ctx.beginPath();ctx.roundRect(bx,bY,bW,bH,8);ctx.fill();
+    ctx.strokeStyle='#c0b8a8';ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(bx,bY,bW,bH,8);ctx.stroke();
+    ctx.fillStyle='#9a9a8a';ctx.textAlign='center';
+    if(opt===0){const sq=10,sx=bx+bW/2-sq/2,sy=bY+22;ctx.fillRect(sx,sy,sq,sq);}
+    else{ctx.font='20px sans-serif';ctx.fillText('★',bx+bW/2,bY+35);}
+    ctx.font='8px "IBM Plex Mono",monospace';ctx.fillStyle='#bbb';ctx.fillText('env cue',bx+bW/2,bY+46);
+    // Draw dummies at their assigned positions
+    if(assign){
+      const dummiesHere=assign.reduce((acc,a,i)=>a===opt?[...acc,i]:acc,[]);
+      const aX=bx+6,aY=bY+52,aW=bW-12,aH=bH-68;
+      const nc=Math.max(dummiesHere.length,1);
+      const cols=Math.min(5,nc),r=Math.min(11,(aW/cols)*.38);
+      dummiesHere.forEach((d,sl)=>{
+        const cx=aX+(aW/cols)*(sl%cols+.5),cy=aY+r+8;
+        ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);
+        ctx.fillStyle='#8888aa';ctx.fill();
+        ctx.strokeStyle='#5566aa';ctx.lineWidth=1.5;ctx.stroke();
+        ctx.fillStyle='white';ctx.font=`500 ${Math.max(6,r*.65)}px "IBM Plex Mono",monospace`;
+        ctx.textAlign='center';ctx.fillText('d'+(d+1),cx,cy+r*.35);
+      });
+      if(dummiesHere.length===0){
+        ctx.fillStyle='#aaa';ctx.font='12px "Outfit",sans-serif';ctx.textAlign='center';
+        ctx.fillText('Option '+(opt===0?'A':'B'),bx+bW/2,bY+bH/2+8);
+      }
+    } else {
+      ctx.fillStyle='#aaa';ctx.font='12px "Outfit",sans-serif';ctx.textAlign='center';
+      ctx.fillText('Option '+(opt===0?'A':'B'),bx+bW/2,bY+bH/2+8);
+    }
+  }
+  // Draw placeholder time-series panels
+  const tsH=Math.floor((H-bY-bH-gap*3)/2);
+  const ts1Y=bY+bH+gap, ts2Y=ts1Y+tsH+gap;
+  drawFocalAcc(ctx,bOff,ts1Y,W-bOff*2,tsH,p);
+  drawCollective(ctx,bOff,ts2Y,W-bOff*2,H-ts2Y-4,p);
+  // Prompt
+  // (shown in the status bar below, not overlaid on the canvas)
+}
+
+function wDraw(){
+  const cv=document.getElementById('wPlot'),dpr=window.devicePixelRatio||1;
+  const W=cv.offsetWidth||640,H=cv.offsetHeight||460;
+  cv.width=W*dpr;cv.height=H*dpr;const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  ctx.fillStyle='#faf9f6';ctx.fillRect(0,0,W,H);
+  const p=WS.p,t=WS.t,T=p.nAcq+p.nRev,n=p.nA,lam=1;
+  const cor=WS.corOpt!==undefined?(t<=p.nAcq?WS.corOpt:1-WS.corOpt):0;
+  const narrow=W<480;
+  // Info bar
+  const ph=t<=p.nAcq?'ACQUISITION':'REVERSAL';
+  ctx.fillStyle=t<=p.nAcq?'#2d5016':'#c8611a';
+  ctx.font=`700 ${narrow?10:11.5}px "IBM Plex Mono",monospace`;ctx.textAlign='left';
+  ctx.fillText(ph,10,20);
+  ctx.fillStyle='#4a5a3a';ctx.font=`400 ${narrow?9:10.5}px "IBM Plex Mono",monospace`;ctx.textAlign='right';
+  const rhoTag=p.rho>0?(narrow?` ρ=${p.rho.toFixed(1)}`:`  ·  ρ=${p.rho.toFixed(2)}`):'';
+  const nbTag=p.nb<20?`  ·  limit=${p.nb}`:'';  // blank when unlimited
+  const infoRight=narrow?`t=${t}/${T} N=${n}${rhoTag}`:`Trial ${t}/${T}  ·  N=${n}${rhoTag}${nbTag}  ·  Correct: Opt ${cor===0?'A':'B'}`;
+  ctx.fillText(infoRight,W-8,20);
+  // Layout: option boxes | focal acc | group dist stacked
+  const bOff=narrow?8:16, gap=narrow?6:10;
+  const bY=24, bH=narrow?130:165;
+  const bW=(W-bOff*2-gap)/2;
+  drawBox(ctx,bOff,bY,bW,bH,0,cor,p);
+  drawBox(ctx,bOff+bW+gap,bY,bW,bH,1,cor,p);
+  const tsH=Math.floor((H-bY-bH-gap*3)/2);
+  const ts1Y=bY+bH+gap;
+  const ts2Y=ts1Y+tsH+gap;
+  drawFocalAcc(ctx,bOff,ts1Y,W-bOff*2,tsH,p);
+  drawCollective(ctx,bOff,ts2Y,W-bOff*2,H-ts2Y-4,p);
+}
+
+function drawBox(ctx,x,y,w,h,opt,cor,p){
+  const isCor=opt===cor;
+  ctx.fillStyle='white';ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.fill();
+  ctx.strokeStyle=isCor?'#2d5016':'#c0b8a8';ctx.lineWidth=isCor?2.5:1.5;
+  ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.stroke();
+
+  // Header on one line — checkmark only (no "REWARD" text to avoid overlap)
+  ctx.fillStyle=isCor?'#2d5016':'#7a7a6a';ctx.font='600 11px "Outfit",sans-serif';ctx.textAlign='left';
+  ctx.fillText('Option '+(opt===0?'A':'B'),x+8,y+16);
+  if(isCor){ctx.fillStyle='#c8611a';ctx.font='bold 11px sans-serif';ctx.textAlign='right';ctx.fillText('✓',x+w-6,y+16);}
+
+  // Env cue
+  ctx.fillStyle=isCor?'#2d5016':'#9a9a8a';ctx.textAlign='center';
+  if(opt===0){const sq=10,sx=x+w/2-sq/2,sy=y+22;ctx.fillRect(sx,sy,sq,sq);}
+  else{ctx.font='20px sans-serif';ctx.fillText('★',x+w/2,y+35);}
+  ctx.font='8px "IBM Plex Mono",monospace';ctx.fillStyle='#bbb';ctx.fillText('env cue',x+w/2,y+46);
+
+  if(!WS.ch)return;
+  const ch=WS.ch,rw=WS.rw,n=p.nA,rdf=WS.rdf;
+
+  // Fixed grid based on max possible circles — stays constant across trials
+  // Worst case: ALL dummies could be at one option (correct/wrong placement)
+  const maxDum = p.dT!=='none' ? p.nD : 0;
+  const maxTotal = n + maxDum;
+  const fixedCols = Math.min(6, Math.max(1, Math.ceil(Math.sqrt(maxTotal))+1));
+  const fixedRows = Math.ceil(maxTotal/fixedCols)||1;
+
+  // Build present circles: dummies first, then agents
+  const circles=[];
+  if(p.dT==='fixed'){
+    const assign=WS.fixedAssign||Array.from({length:p.nD},(_,i)=>i%2===0?0:1);
+    for(let d=0;d<p.nD;d++) if(assign[d]===opt) circles.push({label:'d'+(d+1),fill:'#8888aa',stroke:'#5566aa',sw:1.5,isReal:false});
+  } else if(p.dT==='random'&&rdf){
+    for(let d=0;d<p.nD;d++) if((rdf[d]===1&&opt===0)||(rdf[d]===0&&opt===1)) circles.push({label:'d'+(d+1),fill:'#aaa8c8',stroke:'#5566aa',sw:1.2,isReal:false});
+  }
+  for(let i=0;i<n;i++) if(ch[i]===opt) circles.push({label:String(i),fill:rw[i]?'#1a7a6a':'#c86018',stroke:i===0?'#e07b39':null,sw:i===0?2.5:0,isReal:true});
+
+  const aX=x+6,aY=y+50,aW=w-12,aH=h-68;
+  const cW=aW/fixedCols,cHt=aH/fixedRows,r=Math.min(11,cW*.38,cHt*.38);
+
+  circles.forEach((c,sl)=>{
+    const col=sl%fixedCols,row=Math.floor(sl/fixedCols);
+    const cx=aX+cW*(col+.5),cy=aY+cHt*(row+.5);
+    ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);
+    ctx.fillStyle=c.fill;ctx.fill();
+    if(c.stroke){ctx.strokeStyle=c.stroke;ctx.lineWidth=c.sw;ctx.stroke();}
+    ctx.fillStyle='white';ctx.font=`500 ${Math.max(6,r*.65)}px "IBM Plex Mono",monospace`;
+    ctx.textAlign='center';ctx.fillText(c.label,cx,cy+r*.35);
+  });
+
+  if(circles.length===0){ctx.fillStyle='#ccc';ctx.font='10px "Outfit",sans-serif';ctx.textAlign='center';ctx.fillText('none here',x+w/2,y+h/2);}
+
+  // Footer: count only, no soc — clipped
+  const nReal=circles.filter(c=>c.isReal).length;
+  const nDum=circles.filter(c=>!c.isReal).length;
+  let footText=`${nReal} agent${nReal!==1?'s':''}`;
+  if(nDum>0) footText+=` + ${nDum} dummy${nDum!==1?'s':''}`;
+  ctx.fillStyle='#2a7a6a';ctx.font='8.5px "IBM Plex Mono",monospace';ctx.textAlign='center';
+  ctx.save();ctx.beginPath();ctx.rect(x+2,y+h-13,w-4,13);ctx.clip();
+  ctx.fillText(footText,x+w/2,y+h-3);ctx.restore();
+}
+
+function drawQ(ctx,x,y,w,h,p){
+  ctx.fillStyle='white';ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.fill();
+  ctx.strokeStyle='#d0c8b8';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.stroke();
+  ctx.fillStyle='#2d5016';ctx.font='600 10px "IBM Plex Mono",monospace';ctx.textAlign='left';
+  ctx.fillText('Focal agent ①  Q-value table',x+10,y+14);
+  if(!WS.qVals){
+    ctx.fillStyle='#aaa';ctx.font='10px "Outfit",sans-serif';ctx.textAlign='center';
+    ctx.fillText('(step or play to see Q-values)',x+w/2,y+h/2+4);return;
+  }
+  const ch=WS.ch,rw=WS.rw,bkA=WS.bkA,bkB=WS.bkB,lam=p.lam;
+  const qA=WS.Q[0][0][bkA],qB=WS.Q[0][1][bkB];
+  const chosen=ch[0],rew=rw[0],qChosen=chosen===0?qA:qB;
+  const delta=rew-qChosen;
+
+  // State info
+  ctx.fillStyle='#5566aa';ctx.font='9.5px "IBM Plex Mono",monospace';ctx.textAlign='left';
+  const socALabel=(WS.sf[0]*100).toFixed(0)+'%',socBLabel=(WS.sf[1]*100).toFixed(0)+'%';
+  ctx.fillText(`others at A: ${Math.round(WS.sf[0]*(n+(p.dT!=='none'?p.nD:0)))}  →state ${bkA}    others at B: ${Math.round(WS.sf[1]*(n+(p.dT!=='none'?p.nD:0)))}  →state ${bkB}`,x+8,y+26);
+
+  // Q bars
+  const sc=Math.max(0.4,Math.abs(qA)*1.3,Math.abs(qB)*1.3);
+  const bx=x+80,maxW=Math.min(180,w-bx-160);
+  [{lb:'Q(s,A)',q:qA,bk:bkA,isCh:chosen===0},{lb:'Q(s,B)',q:qB,bk:bkB,isCh:chosen===1}].forEach((row,ri)=>{
+    const my=y+38+ri*(h-38)/2;
+    ctx.fillStyle=row.isCh?'#2d5016':'#7a8a6a';
+    ctx.font=`${row.isCh?'600':'400'} 10px "IBM Plex Mono",monospace`;ctx.textAlign='left';
+    const tag=row.isCh?`  chosen  r=${rew}  δ=${delta.toFixed(3)}`:`  bucket ${row.bk}`;
+    ctx.fillText(row.lb+tag,x+8,my+4);
+    const bw=Math.max(0,Math.min(maxW,row.q/sc*maxW));
+    ctx.fillStyle=row.isCh?'#2d5016':'#a0b090';
+    ctx.fillRect(bx,my-6,bw,11);
+    ctx.strokeStyle='#bbb';ctx.lineWidth=.5;ctx.strokeRect(bx,my-6,maxW,11);
+    ctx.fillStyle='#333';ctx.font='10px "IBM Plex Mono",monospace';ctx.textAlign='left';
+    ctx.fillText(`Q=${row.q.toFixed(3)}`,bx+maxW+8,my+4);
+  });
+}
+
+function drawCollective(ctx,x,y,w,h,p){
+  ctx.fillStyle='white';ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.fill();
+  ctx.strokeStyle='#d0c8b8';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.stroke();
+  const T=p?p.nAcq+p.nRev:1200;
+  const ml=22,mr=4,mt=16,mb=14,pw=w-ml-mr,ph=h-mt-mb;
+  const tx=t=>x+ml+(t/(T-1))*pw, ty=v=>y+mt+ph*(1-v);
+
+  // Title
+  ctx.fillStyle='#2d5016';ctx.font='9px "IBM Plex Mono",monospace';ctx.textAlign='left';
+  const hasD=p&&p.dT!=='none';
+  ctx.fillText(hasD?'group distribution — real agents + dummies':'group distribution — all real agents',x+ml+3,y+mt-3);
+
+  // Grid
+  ctx.strokeStyle='#ede9e1';ctx.lineWidth=.5;
+  for(const v of[.25,.5,.75,1]){ctx.beginPath();ctx.moveTo(x+ml,ty(v));ctx.lineTo(x+ml+pw,ty(v));ctx.stroke();}
+  ctx.save();ctx.setLineDash([3,3]);ctx.strokeStyle='#b0a898';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(x+ml,ty(.5));ctx.lineTo(x+ml+pw,ty(.5));ctx.stroke();ctx.restore();
+  if(p){const rx=tx(p.nAcq);ctx.save();ctx.setLineDash([5,3]);ctx.strokeStyle='#c86414';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(rx,y+mt);ctx.lineTo(rx,y+mt+ph);ctx.stroke();ctx.restore();
+    ctx.fillStyle='#b08060';ctx.font='8px "Outfit",sans-serif';ctx.textAlign='center';
+    ctx.fillText('Acq',x+ml+(rx-(x+ml))/2,y+mt+ph-3);
+    ctx.fillText('Rev',rx+(x+ml+pw-rx)/2,y+mt+ph-3);}
+  ctx.fillStyle='#aaa';ctx.font='8.5px "IBM Plex Mono",monospace';ctx.textAlign='right';
+  for(const v of[0,.5,1]){ctx.fillText(v.toFixed(1),x+ml-1,ty(v)+3);}
+
+  // Legend
+  const lx=x+ml+3, ly=y+h-11;
+  const swatches=[
+    {fill:'rgba(30,100,160,0.45)', label:'Option A'},
+    {fill:'rgba(200,130,20,0.45)', label:'Option B'},
+    {fill:'rgba(80,80,180,0.35)', label:'Dummies'},
+  ];
+  let lxOff=0;
+  swatches.forEach(s=>{
+    ctx.fillStyle=s.fill;ctx.fillRect(lx+lxOff,ly,10,7);
+    ctx.fillStyle='#8a7a6a';ctx.font='8px "IBM Plex Mono",monospace';ctx.textAlign='left';
+    ctx.fillText(s.label,lx+lxOff+13,ly+7);
+    lxOff+=13+ctx.measureText(s.label).width+8;
+  });
+
+  const histRA=WS.histRealA, histDA=WS.histDumA;
+  if(!histRA||histRA.length<2){
+    ctx.fillStyle='#ccc';ctx.font='10px "Outfit",sans-serif';ctx.textAlign='center';
+    ctx.fillText('waiting for data…',x+w/2,y+h/2+4);return;
+  }
+
+  const smRA=smooth(new Float64Array(histRA),6);
+  const smDA=smooth(new Float64Array(histDA),6);
+
+  // Compute boundaries: bottom→top: dum@A | real@A | real@B | dum@B
+  // b0=0, b1=dumA, b2=dumA+realA, b3=1-dumB, b4=1
+  // dumB = total group size fraction at B from dummies = (nD-dumA)/grpSz → 1-dumA-realA-realB
+  // But we only have dumA and realA stored. dumB = (1-dumA-realA)-realB... complex.
+  // Simpler: realB = (1 - smRA - smDA*2)... no.
+  // Actually: dumA+realA+realB+dumB = 1.
+  // We stored: realFracA = cA/grpSz, dumFracA = dummyAtA/grpSz.
+  // realFracB = cB/grpSz = (n-cA)/grpSz.
+  // dumFracB = (nD-dummyAtA)/grpSz.
+  // realFracB = 1 - realFracA - dumFracA - dumFracB
+  //           = 1 - realFracA - nD/grpSz  [since dumA+dumB = nD/grpSz]
+  // So we need to track dumTotal = nD/grpSz (constant per run).
+  const grpSz = p ? p.nA + (p.dT!=='none'?p.nD:0) : p ? p.nA : 10;
+  const dumTotal = p && p.dT!=='none' ? p.nD/grpSz : 0;
+
+  // Build smoothed per-frame boundaries
+  const len=smRA.length;
+  const b1=new Float64Array(len); // top of dum@A band
+  const b2=new Float64Array(len); // top of real@A band
+  const b3=new Float64Array(len); // top of real@B band (= 1 - dum@B)
+  for(let i=0;i<len;i++){
+    b1[i]=smDA[i];
+    b2[i]=smDA[i]+smRA[i];
+    b3[i]=1-(dumTotal-smDA[i]);  // = smDA[i]+smRA[i] + realB[i]
+  }
+
+  function fillBand(lo,hi,fill){
+    ctx.fillStyle=fill;
+    ctx.beginPath();
+    ctx.moveTo(tx(0),ty(lo[0]));
+    for(let i=0;i<len;i++) ctx.lineTo(tx(i),ty(lo[i]));
+    for(let i=len-1;i>=0;i--) ctx.lineTo(tx(i),ty(hi[i]));
+    ctx.closePath();ctx.fill();
+  }
+
+  const zero=new Float64Array(len); // all zeros
+  const one=new Float64Array(len).fill(1);  // all ones
+
+  if(dumTotal>0){
+    fillBand(zero,b1,'rgba(80,80,180,0.28)');          // dum@A bottom
+    fillBand(b1,b2,'rgba(30,100,160,0.35)');            // real@A (blue)
+    fillBand(b2,b3,'rgba(200,130,20,0.35)');            // real@B (amber)
+    fillBand(b3,one,'rgba(80,80,180,0.28)');            // dum@B top
+  } else {
+    fillBand(zero,b2,'rgba(30,100,160,0.30)');          // real@A - blue (no dummies)
+    fillBand(b2,one,'rgba(200,130,20,0.30)');           // real@B - amber
+  }
+
+  // Boundary line (total @A = dum@A + real@A)
+  ctx.strokeStyle='#1a5080';ctx.lineWidth=1.5;ctx.beginPath();
+  for(let i=0;i<len;i++){const px=tx(i),py=ty(b2[i]);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+  ctx.stroke();
+
+  const lt=len-1;
+  ctx.beginPath();ctx.arc(tx(lt),ty(b2[lt]),3,0,2*Math.PI);ctx.fillStyle='#1a5080';ctx.fill();
+}
+
+
+function drawFocalAcc(ctx,x,y,w,h,p){
+  ctx.fillStyle='white';ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.fill();
+  ctx.strokeStyle='#d0c8b8';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.stroke();
+  const T=p?p.nAcq+p.nRev:1200;
+  const ml=22,mr=4,mt=16,mb=14,pw=w-ml-mr,ph=h-mt-mb;
+  const tx=t=>x+ml+(t/(T-1))*pw,ty=v=>y+mt+ph*(1-v);
+  ctx.fillStyle='#e07b39';ctx.font='9px "IBM Plex Mono",monospace';ctx.textAlign='left';
+  ctx.fillText('focal agent ① — proportion correct',x+ml+3,y+mt-3);
+  ctx.strokeStyle='#ede9e1';ctx.lineWidth=.5;
+  for(const v of[.25,.5,.75,1]){ctx.beginPath();ctx.moveTo(x+ml,ty(v));ctx.lineTo(x+ml+pw,ty(v));ctx.stroke();}
+  ctx.save();ctx.setLineDash([3,3]);ctx.strokeStyle='#b0a898';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(x+ml,ty(.5));ctx.lineTo(x+ml+pw,ty(.5));ctx.stroke();ctx.restore();
+  if(p){const rx=tx(p.nAcq);ctx.save();ctx.setLineDash([5,3]);ctx.strokeStyle='#c86414';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(rx,y+mt);ctx.lineTo(rx,y+mt+ph);ctx.stroke();ctx.restore();
+    ctx.fillStyle='#b08060';ctx.font='8px "Outfit",sans-serif';ctx.textAlign='center';
+    ctx.fillText('Acq',x+ml+(rx-(x+ml))/2,y+mt+ph-3);
+    ctx.fillText('Rev',rx+(x+ml+pw-rx)/2,y+mt+ph-3);}
+  ctx.fillStyle='#aaa';ctx.font='8.5px "IBM Plex Mono",monospace';ctx.textAlign='right';
+  for(const v of[0,.5,1]){ctx.fillText(v.toFixed(1),x+ml-1,ty(v)+3);}
+  const hist=WS.hist;
+  if(!hist||hist.length<2){
+    ctx.fillStyle='#ccc';ctx.font='10px "Outfit",sans-serif';ctx.textAlign='center';
+    ctx.fillText('waiting for data…',x+w/2,y+h/2+4);return;
+  }
+  const sm=smooth(new Float64Array(hist),8);
+  ctx.strokeStyle='#e07b39';ctx.lineWidth=1.8;ctx.beginPath();
+  for(let t=0;t<sm.length;t++){const px=tx(t),py=ty(sm[t]);t===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+  ctx.stroke();
+  const lt=sm.length-1;
+  ctx.beginPath();ctx.arc(tx(lt),ty(sm[lt]),3,0,2*Math.PI);ctx.fillStyle='#e07b39';ctx.fill();
+}
+
+// ═══ TAB SYNC ═══
+// Shared parameters: sync whichever tab you're leaving → the tab you're entering
+const SHARED_KEYS = ['a','t','n','aq','rv','dk','rho','nb'];
+function syncToWatch() {
+  SHARED_KEYS.forEach(k => {
+    const src = document.getElementById('cs-'+k);
+    const dst = document.getElementById('ws-'+k);
+    if(src && dst) {
+      dst.value = src.value;
+      const dv = document.getElementById('wv-'+k);
+      const sv = document.getElementById('cv-'+k);
+      if(dv && sv) dv.textContent = sv.textContent;
+    }
+  });
+  // reliability
+  wRelMode = cRelMode;
+  document.getElementById('wr-perf').classList.toggle('active', cRelMode==='perfect');
+  document.getElementById('wr-noisy').classList.toggle('active', cRelMode==='noisy');
+  // dummy type
+  wDumMode = cDumMode;
+  ['none','fixed','random'].forEach(x => document.getElementById('wd-'+x).classList.toggle('active', x===cDumMode));
+  document.getElementById('wd-k-wrap').style.display = cDumMode==='none'?'none':'flex';
+}
+function syncToCurves() {
+  SHARED_KEYS.forEach(k => {
+    const src = document.getElementById('ws-'+k);
+    const dst = document.getElementById('cs-'+k);
+    if(src && dst) {
+      dst.value = src.value;
+      const dv = document.getElementById('cv-'+k);
+      const sv = document.getElementById('wv-'+k);
+      if(dv && sv) dv.textContent = sv.textContent;
+    }
+  });
+  // reliability
+  cRelMode = wRelMode;
+  document.getElementById('cr-perf').classList.toggle('active', wRelMode==='perfect');
+  document.getElementById('cr-noisy').classList.toggle('active', wRelMode==='noisy');
+  // dummy type
+  cDumMode = wDumMode;
+  ['none','fixed','random'].forEach(x => document.getElementById('cd-'+x).classList.toggle('active', x===wDumMode));
+  document.getElementById('cd-k-wrap').style.display = wDumMode==='none'?'none':'flex';
+}
+
+// ═══ TAB SWITCHING ═══
+function showTab(name){
+  // Pause animation whenever leaving the watch tab
+  if(wPlaying){wPlaying=false;if(wRafId){cancelAnimationFrame(wRafId);wRafId=null;}document.getElementById('w-play').textContent='▶ Play';}
+  if(name==='watch') syncToWatch();
+  if(name==='curves') syncToCurves();
+  ['curves','watch','model','connections'].forEach((n,i)=>{
+    document.querySelectorAll('.tab-btn')[i].classList.toggle('active',n===name);
+  });
+  document.getElementById('tab-curves').classList.toggle('active',name==='curves');
+  document.getElementById('tab-watch').classList.toggle('active',name==='watch');
+  const mp=document.querySelector('.mpane');
+  if(mp){mp.classList.toggle('active',name==='model');mp.style.display=name==='model'?'flex':'none';}
+  const cp=document.querySelector('#tab-connections');
+  if(cp){cp.classList.toggle('active',name==='connections');cp.style.display=name==='connections'?'flex':'none';}
+  const tc=document.getElementById('tab-curves'),tw=document.getElementById('tab-watch');
+  tc.style.display=name==='curves'?'flex':'none';
+  tw.style.display=name==='watch'?'flex':'none';
+  setTimeout(()=>{
+    if(name==='curves'){if(cCurves.length>0)cDraw(cP());else{requestAnimationFrame(()=>{const cv=document.getElementById('cPlot'),dpr=window.devicePixelRatio||1;const W=cv.offsetWidth||600,H=360;cv.width=W*dpr;cv.height=H*dpr;const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);cDrawEmpty(ctx,W,H);});}}
+    if(name==='watch'){if(!WS.ok)wDrawBlank(wP());else wDraw();}
+  // sync dropdown
+  const sel=document.getElementById('tab-select');if(sel)sel.value=name;
+  },40);
+}
+
+window.addEventListener('load',()=>{
+  cSetIV('nb');  // initialize IV mode display
+
+  document.getElementById('tab-watch').style.display='none';
+  const mp=document.querySelector('.mpane');if(mp)mp.style.display='none';
+  const cp=document.querySelector('#tab-connections');if(cp)cp.style.display='none';
+  // defer initial draw so layout is complete and canvas has real dimensions
+  requestAnimationFrame(()=>{
+    const cv=document.getElementById('cPlot'),dpr=window.devicePixelRatio||1;
+    const W=cv.offsetWidth||600,H=360;
+    cv.width=W*dpr;cv.height=H*dpr;const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+    cDrawEmpty(ctx,W,H);
+  });
+});
+window.addEventListener('resize',()=>{
+  if(cCurves.length>0)cDraw(cP());
+  if(WS.ok&&WS.ch)wDraw();
+});
+
+// ── Tab 1 curve tooltip + overlay ────────────────────────────────────
+const cTT=(function(){const tt=document.createElement('div');
+  tt.style.cssText='position:fixed;pointer-events:none;display:none;background:rgba(20,40,15,0.92);color:#f0ede5;font:11px "IBM Plex Mono",monospace;padding:6px 10px;border-radius:6px;white-space:pre;line-height:1.6;z-index:9999;border:1px solid #3a6030;';
+  document.body.appendChild(tt);return tt;})();
+const cOV=(function(){const ov=document.createElement('canvas');
+  ov.style.cssText='position:fixed;pointer-events:none;display:none;z-index:9998;';
+  document.body.appendChild(ov);return ov;})();
+(function(){
+  const cv=document.getElementById('cPlot');
+  if(!cv)return;
+  function hide(){cTT.style.display='none';cOV.style.display='none';}
+  cv.addEventListener('mousemove',function(e){
+    if(!cCurves||!cCurves.length){hide();return;}
+    const p=cP(),T=p.nAcq+p.nRev;
+    const rect=cv.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    const W=cv.width/dpr,H=cv.height/dpr;
+    const ml=54,mt=20,pw=W-54-16,ph=H-20-52;
+    const mx=e.clientX-rect.left;
+    if(mx<ml||mx>ml+pw){hide();return;}
+    const t=Math.round((mx-ml)/pw*(T-1));
+    if(t<0||t>=T){hide();return;}
+    const tx=ml+(t/(T-1))*pw, tyf=v=>mt+ph*(1-v);
+    // overlay
+    cOV.width=cv.width;cOV.height=cv.height;
+    cOV.style.width=rect.width+'px';cOV.style.height=rect.height+'px';
+    cOV.style.left=rect.left+'px';cOV.style.top=rect.top+'px';
+    cOV.style.display='block';
+    const ctx=cOV.getContext('2d');
+    ctx.clearRect(0,0,cOV.width,cOV.height);
+    ctx.save();ctx.scale(dpr,dpr);
+    ctx.strokeStyle='rgba(80,80,80,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(tx,mt);ctx.lineTo(tx,mt+ph);ctx.stroke();
+    ctx.setLineDash([]);
+    cCurves.forEach((d,li)=>{
+      const v=d[t];if(v==null||isNaN(v))return;
+      ctx.beginPath();ctx.arc(tx,tyf(v),4.5,0,2*Math.PI);
+      ctx.fillStyle=COLS[li];ctx.fill();
+      ctx.strokeStyle='white';ctx.lineWidth=1.5;ctx.stroke();
+    });
+    ctx.restore();
+    // tooltip
+    const al=cActiveLabels||CLABS;
+    let s='Trial '+t+'  ('+(t<p.nAcq?'Acq':'Rev')+')\n';
+    cCurves.forEach((d,li)=>{const v=d[t];if(v==null||isNaN(v))return;s+=al[li]+': '+(v*100).toFixed(1)+'%\n';});
+    cTT.textContent=s.trimEnd();cTT.style.display='block';
+    const vx=e.clientX,vy=e.clientY,tw=cTT.offsetWidth||190;
+    cTT.style.left=(vx+18+tw>window.innerWidth?vx-tw-12:vx+18)+'px';
+    cTT.style.top=Math.max(4,vy-10)+'px';
+  });
+  cv.addEventListener('mouseleave',hide);
+})();
+</script>
+</body>
+</html>
