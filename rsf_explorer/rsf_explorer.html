@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSF Explorer — Subnest Destination Choice</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --cream:      #faf6f0;
+  --cream-dk:   #ede8df;
+  --green:      #2d5a27;
+  --green-lt:   #3d7a35;
+  --green-pale: #e8f0e6;
+  --orange:     #e07b30;
+  --blue:       #3a7abf;
+  --text:       #1c1c1c;
+  --muted:      #6e6860;
+  --border:     #cdc7bc;
+  --shadow:     rgba(0,0,0,0.08);
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Outfit', sans-serif;
+  --r: 8px; --pill: 20px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--cream);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.5}
+.app{display:flex;flex-direction:column;min-height:100vh}
+body.tab-explorer #explorer-content{display:flex !important}
+body.tab-explorer #ext-content{display:none !important}
+body.tab-explorer #ext2-content{display:none !important}
+body.tab-methods #explorer-content{display:none !important}
+body.tab-methods #ext-content{display:block !important}
+body.tab-methods #ext2-content{display:none !important}
+body.tab-extensions #explorer-content{display:none !important}
+body.tab-extensions #ext-content{display:none !important}
+body.tab-extensions #ext2-content{display:block !important}
+
+/* ── Tab bar ─────────────────────────────── */
+.tab-bar{display:flex;background:var(--cream-dk);border-bottom:3px solid var(--border);flex-shrink:0}
+.main-tab{padding:11px 24px;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;letter-spacing:.03em;border-bottom:3px solid transparent;margin-bottom:-3px;transition:all .15s;white-space:nowrap}
+.main-tab.on{color:var(--green);background:var(--cream);border-bottom-color:var(--green)}
+.tab-sel-mobile{display:none;margin:8px 12px;font-family:var(--mono);font-size:11px;padding:5px 8px;border-radius:var(--pill);border:1.5px solid var(--border);background:var(--cream);color:var(--text);cursor:pointer;outline:none;width:calc(100% - 24px)}
+@media(max-width:480px){.tab-bar{display:none}.tab-sel-mobile{display:block}}
+
+/* ── Explorer tab ────────────────────────── */
+#explorer-content{display:flex;flex-direction:column}
+
+/* ── Methods / Extensions tabs ───────────── */
+#ext-content,#ext2-content{padding:24px;max-width:820px;margin:0 auto;width:100%}
+
+/* ── Header ──────────────────────────────── */
+.hdr{background:var(--green);color:white;padding:9px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+.hdr-main{font-family:var(--mono);font-weight:600;font-size:14px;letter-spacing:.03em;white-space:nowrap}
+.hdr-sub{font-size:11px;opacity:.72;font-weight:300}
+
+/* ── How-it-works banner ─────────────────── */
+.hiw{background:var(--cream-dk);border-bottom:2px solid var(--border);padding:10px 14px;display:flex;gap:10px;flex-wrap:wrap;flex-shrink:0}
+.hiw-card{flex:1;min-width:180px;display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--cream);border:1px solid var(--border);border-radius:var(--r)}
+.hiw-num{font-family:var(--mono);font-weight:700;font-size:11px;color:white;background:var(--green);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.hiw-text{font-size:11px;color:var(--muted);line-height:1.45}.hiw-text b{color:var(--text)}
+
+/* ── Explorer body ───────────────────────── */
+.body{display:flex;flex:1}
+
+/* ── Left panel ──────────────────────────── */
+.panel{width:268px;min-width:268px;background:var(--cream-dk);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.panel-inner{padding:11px;display:flex;flex-direction:column;gap:9px}
+
+/* ── Right column: arena + results ──────── */
+.right-col{flex:1;display:flex;flex-direction:column;min-width:0}
+.arena-col{display:flex;flex-direction:column;align-items:center;padding:12px 12px 6px;gap:6px;flex-shrink:0}
+.arena-toolbar{width:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.atb-grp{display:flex;gap:3px;align-items:center}
+.atb-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-right:2px}
+.atog{padding:3px 10px;border-radius:var(--pill);border:1.5px solid var(--border);background:var(--cream);font-size:10px;font-family:var(--mono);cursor:pointer;color:var(--muted);transition:all .12s;white-space:nowrap}
+.atog.on{background:var(--green);color:white;border-color:var(--green)}
+.atog.kde-on{background:var(--blue);color:white;border-color:var(--blue)}
+.mode-lbl{font-family:var(--mono);font-size:10px;font-style:italic;color:var(--orange);margin-left:auto}
+.arena-box{position:relative;border:2px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 3px 14px var(--shadow)}
+canvas{display:block}
+.view-lbl{position:absolute;top:6px;left:8px;font-family:var(--mono);font-size:9px;font-weight:600;background:rgba(250,246,240,.92);border:1px solid var(--border);padding:2px 8px;border-radius:4px;color:var(--muted);pointer-events:none;letter-spacing:.03em}
+.legend{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;width:100%}
+.leg-item{display:flex;align-items:center;gap:4px;background:var(--cream-dk);border:1px solid var(--border);border-radius:var(--pill);padding:3px 9px 3px 6px;font-size:10px;font-family:var(--mono)}
+.leg-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid rgba(0,0,0,.18);flex-shrink:0}
+
+/* ── Picker ──────────────────────────────── */
+#obs-picker{position:absolute;z-index:20;background:white;border:2px solid var(--green);border-radius:var(--r);padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.18);min-width:135px;display:none}
+.pk-label{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;text-align:center}
+.pk-btns{display:flex;flex-direction:column;gap:3px}
+.pk-btn{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:5px;border:1.5px solid transparent;background:var(--cream-dk);cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:600;transition:all .1s;text-align:left;width:100%}
+.pk-btn:hover{border-color:currentColor;background:var(--cream)}
+.pk-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;border:1.5px solid rgba(0,0,0,.15)}
+.pk-cancel{margin-top:5px;width:100%;padding:4px;border-radius:5px;border:1px solid var(--border);background:none;font-family:var(--sans);font-size:10px;color:var(--muted);cursor:pointer}
+.pk-cancel:hover{color:var(--text)}
+
+/* ── Results panel (below arena) ─────────── */
+#results-panel{border-top:2px solid var(--border);background:var(--cream);padding:12px 16px;display:none;flex-direction:column;gap:12px}
+.res-hd{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--green);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.res-grid{display:flex;gap:16px;flex-direction:column;align-items:stretch}
+.res-block{flex:1;min-width:240px}
+.rtable{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10px}
+.rtable th{background:var(--green-pale);color:var(--green);padding:4px 8px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap}
+.rtable td{padding:4px 8px;border-bottom:1px solid var(--cream-dk);white-space:nowrap}
+.rtable tr:last-child td{border-bottom:none}
+.dg{color:var(--green);font-weight:600}.do{color:var(--orange);font-weight:600}.dr{color:#c0392b;font-weight:600}
+.na{color:var(--muted);font-style:italic}
+.ll-compare-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10px}
+.ll-compare-table th{background:var(--green-pale);color:var(--green);padding:4px 8px;text-align:left;font-weight:600;border-bottom:1px solid var(--border)}
+.ll-compare-table td{padding:4px 8px;border-bottom:1px solid var(--cream-dk)}
+.ll-compare-table tr:last-child td{border-bottom:none}
+.ll-note{font-size:10px;color:var(--muted);font-style:italic;margin-top:4px;line-height:1.4}
+.ll-cvs-wrap{margin-top:6px}
+
+/* ── Sections ────────────────────────────── */
+.sec{background:var(--cream);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.sec-hd{background:var(--green-pale);padding:5px 10px;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--green);letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.sec-bd{padding:8px 10px;display:flex;flex-direction:column;gap:7px}
+.sec-sub{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;padding:5px 0 3px;border-top:1px solid var(--cream-dk);margin-top:2px}
+.sec-sub:first-child{border-top:none;margin-top:0;padding-top:0}
+
+/* Formula */
+.formula-box{background:var(--green-pale);border:1px solid #b8d4b3;border-radius:6px;padding:8px 10px;font-family:var(--mono);font-size:11px;line-height:2}
+.frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 2px}
+.fnum{border-bottom:1.5px solid var(--text);padding:0 2px 1px;text-align:center;font-size:10px;white-space:nowrap}
+.fden{padding:1px 2px 0;text-align:center;font-size:10px;white-space:nowrap}
+.f-defs{font-size:9px;color:var(--muted);line-height:1.6;margin-top:2px}
+
+/* Controls */
+.sl-row{display:flex;flex-direction:column;gap:3px}
+.sl-lbl{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted)}
+.sl-val{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text);background:var(--cream-dk);padding:1px 5px;border-radius:4px;border:1px solid var(--border)}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--green);cursor:pointer;border:2px solid white;box-shadow:0 1px 3px var(--shadow)}
+
+.nest-item{display:flex;align-items:center;gap:5px;padding:5px 7px;background:var(--cream-dk);border-radius:6px;border:1px solid var(--border)}
+.ndot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:2px solid rgba(0,0,0,.15)}
+.nname{font-family:var(--mono);font-size:10px;font-weight:600;flex-shrink:0;min-width:22px}
+.naw{display:flex;flex-direction:column;flex:1;gap:2px;min-width:0}
+.nal{font-family:var(--mono);font-size:9px;color:var(--muted);display:flex;justify-content:space-between}
+.a-sl{-webkit-appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;outline:none}
+.a-sl::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--orange);cursor:pointer}
+.nref{font-family:var(--mono);font-size:9px;color:var(--muted);font-style:italic;padding:1px 0}
+.nrm{background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:2px;opacity:.45;transition:opacity .1s;flex-shrink:0;line-height:1}
+.nrm:hover{opacity:1;color:#c0392b}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 13px;border-radius:var(--pill);border:none;font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;transition:all .14s;letter-spacing:.01em}
+.btn-g{background:var(--green);color:white}.btn-g:hover{background:var(--green-lt)}
+.btn-o{background:var(--orange);color:white}.btn-o:hover{background:#d06920}
+.btn-b{background:var(--blue);color:white}.btn-b:hover{filter:brightness(1.1)}
+.btn-gh{background:transparent;color:var(--green);border:1.5px solid var(--green)}.btn-gh:hover{background:var(--green-pale)}
+.btn-full{width:100%}.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-sm{padding:4px 10px;font-size:11px}.btn-xs{padding:3px 8px;font-size:10px}
+
+.obs-tabs{display:flex;border-bottom:2px solid var(--border);margin:0 -10px;background:var(--cream-dk)}
+.obs-tab{flex:1;padding:7px 10px;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .12s}
+.obs-tab.on{color:var(--green);background:var(--cream);border-bottom-color:var(--green)}
+
+.tog-row{display:flex;gap:4px}
+.tog{flex:1;padding:4px 6px;border-radius:5px;border:1.5px solid var(--border);background:var(--cream);font-size:10px;font-family:var(--mono);cursor:pointer;color:var(--muted);transition:all .12s}
+.tog.on{background:var(--green);color:white;border-color:var(--green)}
+.hint{font-size:10px;color:var(--muted);font-style:italic;line-height:1.45}
+.warning{font-size:11px;color:#7a4500;line-height:1.5;padding:6px 8px;background:#fff8f0;border-radius:5px;border-left:3px solid var(--orange)}
+.prog-wrap{background:var(--cream-dk);border-radius:4px;height:5px;overflow:hidden}
+.prog-bar{height:100%;background:var(--orange);border-radius:4px;transition:width .1s;width:0}
+.prog-bar-b{height:100%;background:var(--blue);border-radius:4px;transition:width .1s;width:0}
+
+/* ── Extensions content ──────────────────── */
+.ext-sec{margin-bottom:28px}
+.ext-h1{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--green);letter-spacing:.05em;text-transform:uppercase;border-bottom:2px solid var(--green-pale);padding-bottom:5px;margin-bottom:10px}
+.ext-h2{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin:12px 0 5px}
+.ext-p{font-size:12px;color:var(--text);line-height:1.65;margin-bottom:8px}
+.ext-p b{color:var(--green)}
+.ext-formula{background:var(--green-pale);border:1px solid #b8d4b3;border-radius:6px;padding:10px 14px;font-family:var(--mono);font-size:11px;line-height:2;margin:8px 0}
+.ext-note{font-size:11px;color:var(--muted);font-style:italic;line-height:1.5;padding:6px 10px;background:var(--cream-dk);border-radius:5px;border-left:3px solid var(--border);margin:6px 0}
+
+/* ── Footer ──────────────────────────────── */
+footer{background:var(--cream-dk);border-top:1px solid var(--border);padding:6px 16px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);flex-shrink:0;line-height:1.7}
+footer a{color:var(--green);text-decoration:underline;text-underline-offset:2px}
+
+/* ── Responsive ──────────────────────────── */
+@media(max-width:760px){
+  .body{flex-direction:column}
+  .panel{width:100%;min-width:unset;border-right:none;border-top:1px solid var(--border);order:2}
+  .panel-inner{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:10px}
+  .right-col{order:1}
+  .arena-col{padding:8px 8px 4px}
+  .hiw{padding:8px 10px}.hiw-card{min-width:140px}
+  .mode-lbl{display:none}
+  .res-grid{flex-direction:column}
+}
+@media(max-width:500px){
+  .panel-inner{grid-template-columns:1fr}
+  .hiw{flex-direction:column}
+  .hdr-sub{display:none}.hdr-main{font-size:12px}
+  .arena-col{padding:6px 4px 4px}
+}
+</style>
+</head>
+<body class="tab-explorer">
+<div class="app">
+
+<header class="hdr">
+  <div>
+    <div class="hdr-main">RSF Explorer</div>
+    <div class="hdr-sub">Resource Selection Function · Subnest Destination Choice</div>
+  </div>
+</header>
+
+<div class="tab-bar" id="tab-bar">
+  <button class="main-tab on" data-tab="explorer">Explorer</button>
+  <button class="main-tab" data-tab="methods">Methods</button>
+  <button class="main-tab" data-tab="extensions">Extensions</button>
+</div>
+<select class="tab-sel-mobile" id="tab-sel-mobile">
+  <option value="explorer" selected>Explorer</option>
+  <option value="methods">Methods</option>
+  <option value="extensions">Extensions</option>
+</select>
+
+<!-- ═══ EXPLORER TAB ══════════════════════════════════════════════ -->
+<div id="explorer-content">
+
+<div class="hiw">
+  <div class="hiw-card">
+    <div class="hiw-num">1</div>
+    <div class="hiw-text"><b>Configure.</b> Place subnests on the arena (drag to move). Set attractiveness α and decay β. The heatmap shows predicted destination probabilities.</div>
+  </div>
+  <div class="hiw-card">
+    <div class="hiw-num">2</div>
+    <div class="hiw-text"><b>Observe.</b> In <em>Field</em> mode, click any arena location to record where food was dropped, then choose which subnest it was carried to — an origin–destination (O–D) observation. Or <em>Simulate</em> from the configured model.</div>
+  </div>
+  <div class="hiw-card">
+    <div class="hiw-num">3</div>
+    <div class="hiw-text"><b>Fit &amp; compare.</b> Fit a parametric RSF (MLE) and/or a non-parametric KDE classifier to the same O–D data. Compare the two estimated landscapes — and their fit quality — against your configured model.</div>
+  </div>
+</div>
+
+<div class="body">
+
+<!-- ── Left panel ─────────────────────────── -->
+<div class="panel"><div class="panel-inner">
+
+  <!-- RSF Model -->
+  <div class="sec">
+    <div class="sec-hd">RSF Model</div>
+    <div class="sec-bd">
+      <div class="formula-box">P(j | <b>x</b>) =
+        <span class="frac">
+          <span class="fnum">exp(α<sub>j</sub> − β·d<sub>j</sub>(<b>x</b>))</span>
+          <span class="fden">∑<sub>k</sub> exp(α<sub>k</sub> − β·d<sub>k</sub>(<b>x</b>))</span>
+        </span>
+        <div class="f-defs">
+          j = subnest number &nbsp;·&nbsp; <b>x</b> = origin position in arena<br>
+          α<sub>j</sub> = attractiveness of subnest j<br>
+          d<sub>j</sub>(<b>x</b>) = distance from <b>x</b> to subnest j<br>
+          α<sub>1</sub> ≡ 0 (reference); other α relative to N1
+        </div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-lbl"><span>Distance decay <b>β</b></span><span class="sl-val" id="beta-val">4.0</span></div>
+        <input type="range" id="beta-sl" min="0.5" max="14" step="0.1" value="4.0">
+      </div>
+      <p class="hint">High β = sharp boundaries · Low β = diffuse, overlapping basins</p>
+      <div class="warning"><b>Model assumption:</b> the RSF assumes destination choices follow a proximity + attractiveness rule and estimates catchment boundaries under that assumption. If behavior doesn't follow this locality pattern, the RSF will fit poorly — the KDE (below) makes no such assumption and may then be more informative. See the Extensions tab for further options.</div>
+    </div>
+  </div>
+
+  <!-- Configured Subnests -->
+  <div class="sec">
+    <div class="sec-hd">Configured Subnest Properties</div>
+    <div class="sec-bd">
+      <div id="nest-list"></div>
+      <button class="btn btn-gh btn-sm btn-full" id="btn-add">＋ Add Subnest</button>
+      <p class="hint">Drag subnests on the arena to reposition. Max 6.</p>
+    </div>
+  </div>
+
+  <!-- Observations -->
+  <div class="sec">
+    <div class="sec-hd">Observations <span id="obs-count-hd" style="font-weight:400;font-family:var(--sans);letter-spacing:0;text-transform:none;font-size:10px;opacity:.65">(0)</span></div>
+    <div class="sec-bd" style="padding-top:0">
+      <div class="obs-tabs">
+        <button class="obs-tab on" id="tab-field">Field</button>
+        <button class="obs-tab" id="tab-sim">Simulate</button>
+      </div>
+      <div id="field-panel">
+        <p class="hint">Click any arena location to set the origin, then select which subnest the food was carried to — recording an origin–destination (O–D) observation.</p>
+      </div>
+      <div id="sim-panel" style="display:none">
+        <p class="hint">Samples O–D pairs from the configured RSF model. <em>Replaces</em> existing observations.</p>
+        <div class="sl-row" style="margin-top:3px;margin-bottom:10px">
+          <div class="sl-lbl"><span>Density</span><span class="sl-val" id="den-val">8×8</span></div>
+          <input type="range" id="den-sl" min="4" max="20" step="1" value="8">
+        </div>
+        <div class="tog-row" style="margin-bottom:6px">
+          <button class="tog on" id="sim-grid">Grid</button>
+          <button class="tog" id="sim-rand">Random</button>
+        </div>
+        <button class="btn btn-o btn-full btn-sm" id="btn-gen">Generate O–D pairs</button>
+        <p class="hint" id="gen-hint"></p>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+        <span id="obs-count" style="font-family:var(--mono);font-size:10px;color:var(--muted)">0 observations</span>
+        <button class="btn btn-gh btn-xs" id="btn-clear">Clear all</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fit Models -->
+  <div class="sec">
+    <div class="sec-hd">Fit Models to Data</div>
+    <div class="sec-bd">
+      <p class="hint">Both RSF and KDE models fit automatically as observations are added. RSF uses MLE; KDE uses kernel density estimation with bandwidth <b>h</b>.</p>
+      <div class="sl-row">
+        <div class="sl-lbl"><span>KDE bandwidth <b>h</b></span><span class="sl-val" id="kde-bw-val">0.12</span></div>
+        <input type="range" id="kde-bw-sl" min="0.03" max="0.45" step="0.01" value="0.12">
+      </div>
+      <p class="hint">Gaussian kernel: K<sub>h</sub>(<b>x</b>, <b>x</b><sub>i</sub>) = exp(−‖<b>x</b>−<b>x</b><sub>i</sub>‖²/2h²). Larger h = smoother territories.</p>
+      <p class="hint" id="fit-hint" style="font-style:normal;color:var(--muted)"></p>
+    </div>
+  </div>
+
+</div></div><!-- /panel -->
+
+<!-- ── Right column ──────────────────────── -->
+<div class="right-col" id="right-col">
+
+  <div class="arena-col" id="arena-col">
+    <div class="arena-toolbar">
+      <div class="atb-grp">
+        <span class="atb-lbl">View</span>
+        <select id="view-sel" style="font-family:var(--mono);font-size:10px;padding:3px 6px;border-radius:var(--pill);border:1.5px solid var(--border);background:var(--cream);color:var(--text);cursor:pointer;outline:none">
+          <option value="maxp" selected>Nest Prediction</option>
+          <option value="entropy">Perplexity</option>
+        </select>
+      </div>
+      <div class="atb-grp" id="layer-grp">
+        <span class="atb-lbl">Layer</span>
+        <select id="layer-sel" style="font-family:var(--mono);font-size:10px;padding:3px 6px;border-radius:var(--pill);border:1.5px solid var(--border);background:var(--cream);color:var(--text);cursor:pointer;outline:none">
+          <option value="configured">Configured RSF</option>
+          <option value="rsffit" selected>RSF Fit</option>
+          <option value="kdefit">KDE Fit</option>
+          <option value="voronoi">Voronoi</option>
+        </select>
+      </div>
+      <span class="mode-lbl" id="mode-lbl">Field mode — click arena to record</span>
+    </div>
+
+    <div class="arena-box" id="arena-box">
+      <canvas id="arena"></canvas>
+      <div class="view-lbl" id="view-lbl">CONFIGURED RSF — ID OF MAX PROB.</div>
+      <div id="obs-picker">
+        <div class="pk-label">Carried to →</div>
+        <div class="pk-btns" id="pk-btns"></div>
+        <button class="pk-cancel" id="pk-cancel">cancel</button>
+      </div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <canvas id="colorbar" style="display:none;height:38px;border-radius:5px;border:1px solid var(--border)" width="400" height="38"></canvas>
+  </div>
+
+  <!-- Results panel below arena -->
+  <div id="results-panel">
+    <div class="res-grid">
+
+      <div class="res-block" id="rsf-res-block" style="display:none">
+        <div class="res-hd">Fitted RSF Parameters</div>
+        <table class="rtable">
+          <thead><tr><th>Param</th><th>Configured</th><th>Fitted</th><th>SE</th><th>95% CI</th></tr></thead>
+          <tbody id="rsf-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="res-block" id="fit-compare-block" style="display:none">
+        <div class="res-hd">Model Fit Comparison</div>
+        <table class="ll-compare-table">
+          <thead><tr><th>Model</th><th>LL/N (in-sample)</th><th>LL/N (5-fold CV)</th><th>AICc</th><th>Parameters</th></tr></thead>
+          <tbody id="ll-tbody"></tbody>
+        </table>
+      </div>
+
+    </div>
+    <p class="ll-note" id="results-footnote" style="display:none"></p>
+
+  </div>
+
+</div><!-- /right-col -->
+</div><!-- /body -->
+</div><!-- /explorer-content -->
+
+<!-- ═══ METHODS TAB ═══════════════════════════════════════════════ -->
+<div id="ext-content">
+
+  <div class="ext-sec">
+    <div class="ext-h1">Framework: Utility Functions and the Softmax</div>
+    <p class="ext-p">The Voronoi and RSF models share a common probabilistic framework. For each potential destination subnest j, a <em>utility</em> V<sub>j</sub>(<b>x</b>) summarizes how attractive that subnest is as a destination for a food item dropped at origin <b>x</b> — higher utility means a stronger pull. Destination probability is then given by the <em>softmax</em> (multinomial logistic) over all utilities:</p>
+    <div class="ext-formula">P(j | <b>x</b>) =
+      <span class="frac" style="vertical-align:middle">
+        <span class="fnum">exp(V<sub>j</sub>(<b>x</b>))</span>
+        <span class="fden">∑<sub>k</sub> exp(V<sub>k</sub>(<b>x</b>))</span>
+      </span>
+    </div>
+    <p class="ext-p">The softmax converts utilities into probabilities that sum to one. A subnest with much higher utility than the others gets nearly all the probability; when utilities are equal, probability is split evenly. The two parametric models differ only in how V<sub>j</sub>(<b>x</b>) is specified — the softmax and the estimation framework are the same throughout.</p>
+    <p class="ext-p">The KDE classifier does not use this framework at all — it estimates destination probability directly from the data without any utility function — which is precisely why it can detect spatial structure the parametric models cannot.</p>
+    <div class="ext-formula" style="font-size:10px;line-height:1.9">
+      Voronoi (k=1) &nbsp;⊂&nbsp; RSF (k=K) &nbsp;⊂&nbsp; KDE (non-parametric)<br>
+      <span style="opacity:.6;font-size:9px">V<sub>j</sub> = −β·d<sub>j</sub> &nbsp;·&nbsp; V<sub>j</sub> = α<sub>j</sub>−β·d<sub>j</sub> &nbsp;·&nbsp; no V assumed</span>
+    </div>
+    <p class="ext-p">The Model Fit Comparison table reports in-sample LL/N, 5-fold cross-validated LL/N, and AICc for each model. AICc is only defined for the parametric models (Voronoi and RSF); the KDE comparison relies on cross-validated LL/N.</p>
+  </div>
+
+  <div class="ext-sec">
+    <div class="ext-h1">Voronoi Model (Null Hypothesis)</div>
+    <p class="ext-p">The Voronoi model is the most constrained specification of the utility function. It assumes destination choice depends <em>only</em> on distance — all subnests are equally attractive, so the utility is simply the negative distance cost:</p>
+    <div class="ext-formula">V<sub>j</sub>(<b>x</b>) = −β · d<sub>j</sub>(<b>x</b>) &nbsp;&nbsp; (all α<sub>j</sub> = 0)</div>
+    <p class="ext-p">With this V, the softmax assigns the highest probability to the nearest subnest at every origin point — producing the familiar Voronoi tessellation as the maximum-probability map. The probabilistic version (with fitted β) softens the boundaries: points near a catchment boundary have probability spread across adjacent subnests rather than assigned entirely to the closest one. There is one free parameter: the distance decay β.</p>
+    <div class="ext-h2">As a null hypothesis</div>
+    <p class="ext-p">The Voronoi model is the natural null for testing whether differential attractiveness is needed. A likelihood ratio test between the Voronoi model (k=1) and the full RSF (k=K) has K−1 degrees of freedom:</p>
+    <div class="ext-formula">LRT = 2·(LL<sub>RSF</sub> − LL<sub>Voronoi</sub>) ~ χ²<sub>K−1</sub></div>
+    <p class="ext-p">Rejection means equal attractiveness is not consistent with the data — at least one subnest has significantly higher or lower attractiveness than the reference. The AICc comparison gives a penalized version of the same test without requiring a fixed significance threshold.</p>
+    <p class="ext-note">In practice, comparing AICc values is often preferable to the LRT because it accounts for model complexity without requiring a distributional assumption about the test statistic.</p>
+  </div>
+
+  <div class="ext-sec">
+    <div class="ext-h1">RSF Model</div>
+    <p class="ext-p">The RSF extends the Voronoi model by freeing the attractiveness parameters — each subnest gets its own α<sub>j</sub>, estimated from the data rather than fixed at zero. The utility function becomes:</p>
+    <div class="ext-formula">V<sub>j</sub>(<b>x</b>) = α<sub>j</sub> − β · d<sub>j</sub>(<b>x</b>)</div>
+    <p class="ext-p">Plugging this into the softmax gives the destination probability P(j | <b>x</b>). The Voronoi model is the special case α<sub>j</sub> = 0 for all j. Because only differences in α matter, α<sub>1</sub> ≡ 0 is fixed as the reference and K−1 free attractiveness parameters are estimated, giving k = K total parameters (K−1 free α plus β).</p>
+    <p class="ext-p">Parameters are estimated by MLE using Adam gradient ascent on the conditional logit log-likelihood. Standard errors are derived from the observed Fisher information matrix (negative Hessian at the MLE), and 95% confidence intervals are Wald-type: α̂<sub>j</sub> ± 1.96·SE(α̂<sub>j</sub>).</p>
+    <div class="ext-h2">Connection to Resource Selection Functions in ecology</div>
+    <p class="ext-p">RSFs are widely used in habitat selection studies (Manly et al.; Thurfjell et al. 2014) where an animal selects among habitat patches. The mathematical structure is identical to the conditional logit model from econometrics (McFadden 1974). Here the resource being selected is a subnest destination rather than a habitat patch, making this a direct application of an established ecological framework to cooperative transport.</p>
+  </div>
+
+  <div class="ext-sec">
+    <div class="ext-h1">KDE Classifier (Non-Parametric Baseline)</div>
+    <p class="ext-p">The KDE classifier makes no assumption about locality — it learns the territory shapes directly from the origin–destination data without reference to subnest positions. A separate Gaussian kernel density estimate is fit to the origin locations for each destination subnest, and destination probability at a new origin is proportional to the kernel density of each class:</p>
+    <div class="ext-formula">
+      P<sub>KDE</sub>(j | <b>x</b>) =
+      <span class="frac" style="vertical-align:middle">
+        <span class="fnum">∑<sub>{i : dest<sub>i</sub>=j}</sub> K<sub>h</sub>(<b>x</b>, <b>x</b><sub>i</sub>)</span>
+        <span class="fden">∑<sub>all i</sub> K<sub>h</sub>(<b>x</b>, <b>x</b><sub>i</sub>)</span>
+      </span>
+    </div>
+    <p class="ext-p">where K<sub>h</sub>(<b>x</b>, <b>x</b><sub>i</sub>) = exp(−‖<b>x</b> − <b>x</b><sub>i</sub>‖² / 2h²) is a Gaussian kernel. Bandwidth h controls smoothing: small h produces sharp, possibly disconnected territories; large h produces smooth territories approaching a proximity-based structure.</p>
+    <div class="ext-h2">Scientific interpretation</div>
+    <p class="ext-p">Comparing RSF vs KDE cross-validated LL/N is a formal test of the RSF's locality assumption. If RSF CV LL/N ≈ KDE CV LL/N, proximity plus differential attractiveness is a sufficient explanation of the data. If KDE fits substantially better, there is spatial structure the RSF cannot capture — non-convex territories, discontinuous allegiance zones, or trail effects — and that discrepancy is itself a biological finding worth reporting.</p>
+    <p class="ext-note">In-sample LL/N always favors the KDE because it is more flexible. Cross-validated LL/N is the appropriate comparison because it penalizes overfitting implicitly through holdout scoring.</p>
+  </div>
+
+</div><!-- /ext-content (Methods) -->
+
+<!-- ═══ EXTENSIONS TAB ════════════════════════════════════════════ -->
+<div id="ext2-content">
+
+  <div class="ext-sec" style="border:none;margin-bottom:20px">
+    <p class="ext-p">The models implemented in the Explorer — Voronoi, RSF, and KDE — treat each observation as a single food item of unspecified weight, carried by an anonymous group. The sections below describe extensions that relax those assumptions. They are not implemented in the Explorer but are natural next steps for a full analysis, particularly when load weight and transport mode are experimentally varied or when worker identity can be established through behavioral assays.</p>
+  </div>
+
+  <div class="ext-sec">
+    <div class="ext-h1">Weight as a Covariate</div>
+    <p class="ext-p">In the base RSF each observation carries no weight attribute — all observations at a given origin are treated identically. But experimentally, load weight can be varied across trials to test whether heavier loads are more strongly pulled toward the nearest subnest. Fitting separate RSF models per weight class and comparing parameter estimates across classes is a natural first step before committing to a joint model.</p>
+    <p class="ext-p">Load weight <em>w</em> cannot enter the model as a standalone term because it is constant across all destination alternatives for any single observation — it would cancel out of the softmax. It enters meaningfully only through interactions with terms that vary across alternatives (i.e., distance d<sub>j</sub>).</p>
+    <div class="ext-h2">Weight-modulated distance decay</div>
+    <div class="ext-formula">V<sub>j</sub>(<b>x</b>, w) = α<sub>j</sub> − (β<sub>0</sub> + β<sub>1</sub>·w) · d<sub>j</sub>(<b>x</b>)</div>
+    <p class="ext-p">β<sub>1</sub> tests whether heavier loads increase distance sensitivity — i.e., do heavy loads go more strongly toward the nearest subnest? A positive β<sub>1</sub> connects directly to central place foraging theory: transport cost increases with weight, raising the benefit of proximity.</p>
+    <div class="ext-h2">Weight-modulated attractiveness</div>
+    <div class="ext-formula">V<sub>j</sub>(<b>x</b>, w) = (α<sub>j</sub> + γ<sub>j</sub>·w) − β · d<sub>j</sub>(<b>x</b>)</div>
+    <p class="ext-p">γ<sub>j</sub> tests whether a subnest's relative attractiveness changes with load weight — for instance, a larger subnest with more available helpers might become disproportionately preferred for heavy cooperative loads. This adds K−1 additional parameters.</p>
+    <div class="ext-h2">Full model</div>
+    <div class="ext-formula">V<sub>j</sub>(<b>x</b>, w) = (α<sub>j</sub> + γ<sub>j</sub>·w) − (β<sub>0</sub> + β<sub>1</sub>·w) · d<sub>j</sub>(<b>x</b>)</div>
+    <p class="ext-note">Center w by subtracting its mean before fitting, so β<sub>0</sub> is interpretable as distance sensitivity at the average load weight rather than at w = 0.</p>
+  </div>
+
+  <div class="ext-sec">
+    <div class="ext-h1">Home-Subnest Identity (Mixed Logit)</div>
+    <p class="ext-p">The base RSF assumes destination choice depends only on the current spatial relationship between origin and subnest — the model has no memory of which subnest the transporting workers came from. In a polydomous colony, workers may carry food preferentially to a particular subnest regardless of proximity, creating a pattern the basic RSF cannot capture. The KDE vs RSF fit comparison (Methods tab) will detect this as a KDE advantage, but cannot identify the mechanism.</p>
+    <div class="ext-h2">Latent-class extension</div>
+    <div class="ext-formula">V<sub>j</sub>(<b>x</b>, z<sub>i</sub>) = α<sub>j</sub> + λ<sub>z<sub>i</sub>, j</sub> − β · d<sub>j</sub>(<b>x</b>)</div>
+    <p class="ext-p">Here z<sub>i</sub> ∈ {1, …, K} is the home-subnest identity of the transporting group for observation i, and λ<sub>z,j</sub> is the additional preference for subnest j among workers from subnest z. When λ<sub>z,z</sub> ≫ 0 and λ<sub>z,j≠z</sub> ≈ 0, workers strongly prefer their home subnest regardless of proximity.</p>
+    <div class="ext-h2">Estimation — if individual identity is known</div>
+    <p class="ext-p">The mixed logit does not require knowing which subnest an ant <em>came from</em> — it requires knowing that the same ant was observed on multiple transports. If individual identity z<sub>i</sub> is observed (via paint-marking, RFID, or laboratory colonies where ants can be tracked), each ant contributes several O-D observations, and per-ant random effects λ<sub>z,j</sub> on subnest attractiveness can be estimated via maximum simulated likelihood or the EM algorithm. These random effects capture systematic individual variation in destination preference regardless of its cause — home-subnest fidelity, body size, foraging specialization, or any other unmeasured individual attribute.</p>
+    <p class="ext-p">If individual identity is <em>not</em> observed — which is the typical field situation — z<sub>i</sub> must be treated as a latent variable. The model then becomes a finite mixture: each observation is assigned a probabilistic weight over the K possible "types," and parameters are estimated by integrating over the mixing distribution. This is the mixed logit in the sense of Revelt and Train (1998). Identification requires enough repeat observations per condition to resolve the mixture components, which in practice means a controlled experimental design rather than opportunistic field sampling.</p>
+    <p class="ext-note">In field colonies of <em>Novomessor</em>, individual tracking at scale is not currently feasible, and aggression assays establish colony complex membership only — not individual subnest affiliation. Laboratory experiments with marked ants are the more tractable path to testing individual-level destination fidelity.</p>
+  </div>
+
+</div><!-- /ext2-content (Extensions) -->
+
+<footer>
+  <span>Copyright 2026 Theodore&nbsp;P.&nbsp;Pavlic</span><span style="margin:0 .4em"> · </span><span><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT&nbsp;License</a></span>
+</footer>
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// RSF EXPLORER v7  ·  © 2026 Theodore P. Pavlic · MIT License
+// ═══════════════════════════════════════════════════════════════════
+const DPR = Math.min(window.devicePixelRatio||1, 2);
+const HM  = 260;
+
+const PAL = [
+  {hex:'#2d5a27', rgb:[45,90,39]   },
+  {hex:'#e07b30', rgb:[224,123,48] },
+  {hex:'#3a7abf', rgb:[58,122,191] },
+  {hex:'#9b59b6', rgb:[155,89,182] },
+  {hex:'#c0392b', rgb:[192,57,43]  },
+  {hex:'#16875e', rgb:[22,135,94]  },
+];
+
+const S = {
+  nests:[
+    {x:.50,y:.22,alpha:0.0,name:'N1',ci:0},
+    {x:.25,y:.72,alpha:1.0,name:'N2',ci:1},
+    {x:.75,y:.72,alpha:0.5,name:'N3',ci:2},
+  ],
+  beta:4.0, obs:[], obsMode:'field', simMode:'grid', density:8,
+  view:'maxp',          // 'maxp' | 'entropy'
+  layer:'rsffit',       // 'configured' | 'rsffit' | 'kdefit'
+  rsfFitted:null, kdeFitted:null, voronoiFitted:null, cvResults:null,
+  kdeBandwidth:0.12,
+  pending:null, dragging:null, arenaSize:460,
+};
+
+// ── Canvas ──────────────────────────────────────────────────────────
+const cvs=document.getElementById('arena'), ctx=cvs.getContext('2d');
+const hmCvs=document.createElement('canvas');
+hmCvs.width=HM; hmCvs.height=HM;
+const hmCtx=hmCvs.getContext('2d');
+
+function computeSize(){
+  if(window.innerWidth<=760) return Math.max(200,Math.min(500,window.innerWidth-16));
+  const col=document.getElementById('arena-col');
+  return Math.max(200,Math.min(700,Math.min(col.clientWidth-24,window.innerHeight-240)));
+}
+function resizeArena(){
+  S.arenaSize=computeSize();
+  cvs.width=S.arenaSize*DPR; cvs.height=S.arenaSize*DPR;
+  cvs.style.width=S.arenaSize+'px'; cvs.style.height=S.arenaSize+'px';
+  ctx.setTransform(1,0,0,1,0,0); ctx.scale(DPR,DPR);
+  requestRender();
+}
+
+// ── Math ────────────────────────────────────────────────────────────
+function softmax(us){const m=Math.max(...us),e=us.map(u=>Math.exp(u-m));return e.map(v=>v/e.reduce((a,b)=>a+b,0));}
+function rsf(ox,oy,nests,beta){return softmax(nests.map(n=>n.alpha-beta*Math.hypot(ox-n.x,oy-n.y)));}
+function sampleDest(ps){let r=Math.random(),c=0;for(let i=0;i<ps.length;i++){c+=ps[i];if(r<=c)return i;}return ps.length-1;}
+function entropy(ps){return -ps.reduce((s,p)=>s+(p>1e-10?p*Math.log2(p):0),0);}
+function perplexity(ps){return Math.pow(2,entropy(ps));}
+
+// ── KDE ──────────────────────────────────────────────────────────────
+function kdePredict(ox,oy,obs,bandwidth,K){
+  const scores=new Array(K).fill(0);
+  const h2=bandwidth*bandwidth;
+  for(const{ox:px,oy:py,dest}of obs){
+    if(dest>=K)continue;
+    const dx=ox-px,dy=oy-py;
+    scores[dest]+=Math.exp(-0.5*(dx*dx+dy*dy)/h2);
+  }
+  const tot=scores.reduce((a,b)=>a+b,0);
+  if(tot<1e-12)return new Array(K).fill(1/K);
+  return scores.map(s=>s/tot);
+}
+function kdeLogLik(obs,bandwidth,K){
+  let ll=0;
+  for(const{ox,oy,dest}of obs){
+    const ps=kdePredict(ox,oy,obs,bandwidth,K);
+    ll+=Math.log(Math.max(ps[dest],1e-10));
+  }
+  return ll/obs.length;
+}
+
+// ── Fisher Information & SE ─────────────────────────────────────────
+function computeInfoMatrix(obs,nestPos,alphas,beta){
+  const K=nestPos.length, P=K; // K-1 free alphas + beta
+  const I=Array.from({length:P},()=>new Array(P).fill(0));
+  for(const{ox,oy}of obs){
+    const ps=softmax(nestPos.map((p,j)=>alphas[j]-beta*Math.hypot(ox-p.x,oy-p.y)));
+    const ds=nestPos.map(p=>Math.hypot(ox-p.x,oy-p.y));
+    const Ed=ds.reduce((s,d,j)=>s+ps[j]*d,0);
+    const Ed2=ds.reduce((s,d,j)=>s+ps[j]*d*d,0);
+    const Vd=Ed2-Ed*Ed;
+    // alpha-alpha block (indices 0..K-2 → nests 1..K-1 in 0-indexed)
+    for(let i=0;i<K-1;i++)for(let j=0;j<K-1;j++){
+      I[i][j]+=(i===j?ps[i+1]:0)-ps[i+1]*ps[j+1];
+    }
+    // beta-beta
+    I[K-1][K-1]+=Vd;
+    // alpha-beta cross (Fisher info sign: positive for well-behaved model)
+    for(let i=0;i<K-1;i++){
+      const cross=ps[i+1]*(Ed-ds[i+1]);
+      I[i][K-1]+=cross; I[K-1][i]+=cross;
+    }
+  }
+  return I;
+}
+function invertMatrix(M){
+  const n=M.length;
+  const A=M.map((row,i)=>[...row,...Array.from({length:n},(_,j)=>i===j?1:0)]);
+  for(let col=0;col<n;col++){
+    let mx=col;
+    for(let r=col+1;r<n;r++)if(Math.abs(A[r][col])>Math.abs(A[mx][col]))mx=r;
+    [A[col],A[mx]]=[A[mx],A[col]];
+    if(Math.abs(A[col][col])<1e-12)return null;
+    const piv=A[col][col];
+    for(let j=0;j<2*n;j++)A[col][j]/=piv;
+    for(let r=0;r<n;r++){if(r===col)continue;const f=A[r][col];for(let j=0;j<2*n;j++)A[r][j]-=f*A[col][j];}
+  }
+  return A.map(r=>r.slice(n));
+}
+function computeSE(obs,nestPos,alphas,beta){
+  const K=nestPos.length;
+  const I=computeInfoMatrix(obs,nestPos,alphas,beta);
+  const cov=invertMatrix(I);
+  if(!cov)return null;
+  const ses=[0]; // alpha_1 fixed
+  for(let i=0;i<K-1;i++)ses.push(Math.sqrt(Math.max(0,cov[i][i])));
+  const seBeta=Math.sqrt(Math.max(0,cov[K-1][K-1]));
+  return{ses,seBeta};
+}
+
+// ── Heatmap ─────────────────────────────────────────────────────────
+function buildHM(predictFn,view){
+  const img=hmCtx.createImageData(HM,HM);
+  const K=S.nests.length;
+  const N=HM*HM;
+  const vals=new Float32Array(N);
+  const diCache=new Int8Array(N);
+  for(let py=0;py<HM;py++)for(let px=0;px<HM;px++){
+    const idx=py*HM+px;
+    const ps=predictFn((px+.5)/HM,(py+.5)/HM);
+    if(view==='maxp'){
+      let mi=0,mv=ps[0];
+      for(let j=1;j<ps.length;j++){if(ps[j]>mv){mv=ps[j];mi=j;}}
+      diCache[idx]=mi;
+      vals[idx]=mv;
+    }else{
+      vals[idx]=perplexity(ps);
+    }
+  }
+  const mn=view==='entropy'?1.0:1.0;
+  const mx=view==='entropy'?S.nests.length:S.nests.length;
+  // For perplexity use absolute [1,K] scale; compute actual range only for colorbar label
+  let dataMn=Infinity,dataMx=-Infinity;
+  for(let i=0;i<N;i++){if(vals[i]<dataMn)dataMn=vals[i];if(vals[i]>dataMx)dataMx=vals[i];}
+  const rng=mx-mn||1;
+  if(view==='entropy') S._lastPerplexityRange=[dataMn,dataMx];
+  for(let py=0;py<HM;py++)for(let px=0;px<HM;px++){
+    const idx=py*HM+px;
+    const t=Math.max(0,Math.min(1,(vals[idx]-mn)/rng));
+    const i=idx*4;
+    if(view==='maxp'){
+      const di=Math.min(diCache[idx],K-1);
+      if(di<0)continue;
+      const[r,g,b]=PAL[S.nests[di].ci].rgb;
+      img.data[i]=r;img.data[i+1]=g;img.data[i+2]=b;
+      img.data[i+3]=68+Math.round(152*t);
+    }else{
+      // Cool (teal, low perplexity=certain) → warm (orange, high perplexity=contested)
+      img.data[i]  =Math.round(140+t*84);   // 140→224
+      img.data[i+1]=Math.round(195-t*72);   // 195→123
+      img.data[i+2]=Math.round(185-t*137);  // 185→48
+      img.data[i+3]=220;
+    }
+  }
+  hmCtx.putImageData(img,0,0);
+}
+
+// ── Perplexity colorbar ───────────────────────────────────────────────
+function drawColorbar(dataMn, dataMx){
+  const cb=document.getElementById('colorbar');
+  const K=S.nests.length;
+  const W=cb.parentElement.clientWidth||400, H=38;
+  cb.width=W*DPR; cb.height=H*DPR;
+  cb.style.width=W+'px'; cb.style.height=H+'px';
+  cb.style.display='block';
+  const cx=cb.getContext('2d');
+  cx.scale(DPR,DPR);
+  cx.clearRect(0,0,W,H);
+  // Label
+  cx.fillStyle='#6e6860';
+  cx.font='italic 9px Outfit,sans-serif';
+  cx.textAlign='left';
+  cx.fillText(`Perplexity (effective # of destinations) — observed range: ${dataMn.toFixed(1)}–${dataMx.toFixed(1)}`,0,9);
+  // Gradient bar
+  const grad=cx.createLinearGradient(0,0,W,0);
+  for(let s=0;s<=40;s++){
+    const t=s/40;
+    grad.addColorStop(t,`rgb(${Math.round(140+t*84)},${Math.round(195-t*72)},${Math.round(185-t*137)})`);
+  }
+  cx.fillStyle=grad;
+  cx.fillRect(0,12,W,12);
+  // Fixed tick marks at 1, and integer values up to K
+  cx.font='9px IBM Plex Mono,monospace';
+  cx.textAlign='center';
+  for(let v=1;v<=K;v++){
+    const x=(v-1)/(K-1||1)*W;
+    cx.fillStyle='rgba(0,0,0,0.3)';
+    cx.fillRect(x-.5,12,1,14);
+    cx.fillStyle='#6e6860';
+    cx.fillText(v.toFixed(0),Math.max(8,Math.min(W-8,x)),36);
+  }
+}
+function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.arcTo(x+w,y,x+w,y+r,r);c.lineTo(x+w,y+h-r);c.arcTo(x+w,y+h,x+w-r,y+h,r);c.lineTo(x+r,y+h);c.arcTo(x,y+h,x,y+h-r,r);c.lineTo(x,y+r);c.arcTo(x,y,x+r,y,r);c.closePath();}
+
+// ── Render ───────────────────────────────────────────────────────────
+function getPredictFn(){
+  const K=S.nests.length;
+  if(S.layer==='kdefit'&&S.kdeFitted) return S.kdeFitted.predictFn;
+  if(S.layer==='rsffit'&&S.rsfFitted&&S.rsfFitted.alphas.length===K){
+    const dN=S.nests.map((n,i)=>({...n,alpha:S.rsfFitted.alphas[i]}));
+    const dB=S.rsfFitted.beta;
+    return(ox,oy)=>rsf(ox,oy,dN,dB);
+  }
+  if(S.layer==='voronoi'){
+    // Hard nearest-neighbour — returns probability 1 for closest subnest
+    return(ox,oy)=>{
+      let mi=0,md=Infinity;
+      S.nests.forEach((n,j)=>{const d=Math.hypot(ox-n.x,oy-n.y);if(d<md){md=d;mi=j;}});
+      const ps=new Array(K).fill(0); ps[mi]=1; return ps;
+    };
+  }
+  return(ox,oy)=>rsf(ox,oy,S.nests,S.beta);
+}
+
+function needsOverlay(){
+  return (S.layer==='rsffit'&&!S.rsfFitted)
+      ||(S.layer==='kdefit'&&!S.kdeFitted)
+      ||(S.layer==='voronoi'&&!S.voronoiFitted);
+}
+function render(){
+  const A=S.arenaSize;
+  ctx.clearRect(0,0,A,A); ctx.fillStyle='#faf6f0'; ctx.fillRect(0,0,A,A);
+  const pFn=getPredictFn();
+  buildHM(pFn,S.view); ctx.drawImage(hmCvs,0,0,A,A);
+  // Grid
+  ctx.strokeStyle='rgba(0,0,0,.04)';ctx.lineWidth=.5;
+  for(let i=1;i<10;i++){const p=i*A/10;ctx.beginPath();ctx.moveTo(p,0);ctx.lineTo(p,A);ctx.stroke();ctx.beginPath();ctx.moveTo(0,p);ctx.lineTo(A,p);ctx.stroke();}
+  // Boundary (only for RSF-type layers)
+  if(S.layer!=='kdefit'){
+    const R=90;ctx.fillStyle='rgba(255,255,255,.6)';
+    for(let py=0;py<R-1;py++)for(let px=0;px<R-1;px++){
+      const q1=pFn((px+.5)/R,(py+.5)/R),q2=pFn((px+1.5)/R,(py+.5)/R),q3=pFn((px+.5)/R,(py+1.5)/R);
+      const d1=q1.indexOf(Math.max(...q1));
+      if(d1!==q2.indexOf(Math.max(...q2))||d1!==q3.indexOf(Math.max(...q3))){ctx.beginPath();ctx.arc((px+1)*A/R,(py+1)*A/R,1.1,0,Math.PI*2);ctx.fill();}
+    }
+  }
+  // Observations
+  const K=S.nests.length;
+  for(const{ox,oy,dest}of S.obs){
+    if(dest>=K)continue;
+    const px=ox*A,py=oy*A;
+    const[r,g,b]=PAL[S.nests[dest].ci].rgb;
+    const dx=S.nests[dest].x*A,dy=S.nests[dest].y*A;
+    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(dx,dy);
+    ctx.strokeStyle=`rgba(${r},${g},${b},.12)`;ctx.lineWidth=.8;ctx.stroke();
+    ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);
+    ctx.fillStyle=`rgba(${r},${g},${b},.9)`;ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=1;ctx.stroke();
+  }
+  // Pending
+  if(S.pending){
+    const px=S.pending.ox*A,py=S.pending.oy*A;
+    ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.95)';ctx.fill();
+    ctx.strokeStyle='#e07b30';ctx.lineWidth=2;ctx.stroke();
+    ctx.beginPath();ctx.arc(px,py,9,0,Math.PI*2);ctx.strokeStyle='rgba(224,123,48,.35)';ctx.lineWidth=1.5;ctx.stroke();
+  }
+  // Subnests
+  const mR=Math.max(9,Math.min(13,A/36));
+  S.nests.forEach(n=>{
+    const px=n.x*A,py=n.y*A,[r,g,b]=PAL[n.ci].rgb;
+    ctx.beginPath();ctx.arc(px,py,mR+2,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.12)';ctx.fill();
+    ctx.beginPath();ctx.arc(px,py,mR,0,Math.PI*2);ctx.fillStyle=`rgb(${r},${g},${b})`;ctx.fill();
+    ctx.strokeStyle='white';ctx.lineWidth=2.5;ctx.stroke();
+    ctx.fillStyle='white';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.font=`bold ${Math.max(8,Math.round(mR*.82))}px IBM Plex Mono,monospace`;ctx.fillText(n.name,px,py);
+    const aStr='α='+n.alpha.toFixed(1);ctx.font='600 9px IBM Plex Mono,monospace';
+    const bw=ctx.measureText(aStr).width+8,bx=px+mR+2,by=py-mR-2;
+    ctx.fillStyle='rgba(255,255,255,.92)';rr(ctx,bx-bw/2,by-6,bw,12,3);ctx.fill();
+    ctx.fillStyle=`rgb(${r},${g},${b})`;ctx.fillText(aStr,bx,by);
+  });
+  updateLegend(); updateViewLabel();
+  // Colorbar for perplexity view
+  if(S.view==='entropy'&&S._lastPerplexityRange){
+    drawColorbar(S._lastPerplexityRange[0],S._lastPerplexityRange[1]);
+  } else {
+    document.getElementById('colorbar').style.display='none';
+  }
+
+  // Overlay when a fitted layer is selected but no fit exists yet
+  if(needsOverlay()){
+    const K=S.nests.length,n=S.obs.length,needed=K-n;
+    const layerLabel={'kdefit':'KDE','voronoi':'Voronoi'}[S.layer]||'RSF';
+    const line1=needed>0?`Add ${needed} more observation${needed===1?'':'s'}`:'Fitting…';
+    const line2=needed>0?`to generate the first ${layerLabel} fit`:'';
+    ctx.fillStyle='rgba(250,246,240,0.72)';ctx.fillRect(0,0,A,A);
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#6e6860';
+    ctx.font=`500 ${Math.round(A/28)}px Outfit,sans-serif`;
+    ctx.fillText(line1,A/2,A/2-(line2?10:0));
+    if(line2){ctx.font=`400 ${Math.round(A/32)}px Outfit,sans-serif`;ctx.fillText(line2,A/2,A/2+14);}
+  }
+}
+
+// ── View label ───────────────────────────────────────────────────────
+function updateViewLabel(){
+  const lmap={
+    'configured':'CONFIGURED RSF',
+    'rsffit':S.rsfFitted?'FITTED RSF':'CONFIGURED RSF (no fit yet)',
+    'kdefit':S.kdeFitted?'KDE FIT':'CONFIGURED RSF (no fit yet)',
+    'voronoi':S.voronoiFitted?'VORONOI (distance-only)':'CONFIGURED RSF (no fit yet)',
+  };
+  const vmap={'maxp':'NEST PREDICTION','entropy':'PERPLEXITY'};
+  document.getElementById('view-lbl').textContent=`${lmap[S.layer]} — ${vmap[S.view]}`;
+}
+
+// ── Legend ───────────────────────────────────────────────────────────
+function updateLegend(){
+  document.getElementById('legend').innerHTML=S.nests.map(n=>`
+    <div class="leg-item"><div class="leg-dot" style="background:${PAL[n.ci].hex}"></div>
+    <span>${n.name}</span><span style="color:var(--muted);margin-left:2px">α=${n.alpha.toFixed(1)}</span></div>`).join('');
+}
+
+// ── Picker ───────────────────────────────────────────────────────────
+function showPicker(ox,oy,cx,cy){
+  S.pending={ox,oy};
+  const btns=document.getElementById('pk-btns');btns.innerHTML='';
+  S.nests.forEach((n,i)=>{
+    const b=document.createElement('button');b.className='pk-btn';b.style.color=PAL[n.ci].hex;
+    b.innerHTML=`<div class="pk-dot" style="background:${PAL[n.ci].hex}"></div>${n.name} (α=${n.alpha.toFixed(1)})`;
+    b.onclick=()=>{addObs(ox,oy,i);hidePicker();};btns.appendChild(b);
+  });
+  const box=document.getElementById('arena-box').getBoundingClientRect();
+  const pk=document.getElementById('obs-picker');pk.style.display='block';
+  let lx=cx-box.left+12,ly=cy-box.top-14;
+  const pw=pk.offsetWidth||140,ph=pk.offsetHeight||110;
+  lx=Math.max(4,Math.min(lx,S.arenaSize-pw-4));ly=Math.max(4,Math.min(ly,S.arenaSize-ph-4));
+  pk.style.left=lx+'px';pk.style.top=ly+'px';requestRender();
+}
+function hidePicker(){S.pending=null;document.getElementById('obs-picker').style.display='none';requestRender();}
+
+// ── Observations ─────────────────────────────────────────────────────
+function addObs(ox,oy,dest){S.obs.push({ox,oy,dest});refreshObsUI();scheduleAutoFit();requestRender();}
+function clearObs(){
+  S.obs=[];S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.cvResults=null;
+  clearTimeout(_autoFitTimer);
+  document.getElementById('results-panel').style.display='none';
+  document.getElementById('rsf-res-block').style.display='none';
+  document.getElementById('fit-compare-block').style.display='none';
+  setLayer('rsffit');
+  refreshObsUI();requestRender();
+}
+function refreshObsUI(){
+  const n=S.obs.length,K=S.nests.length;
+  document.getElementById('obs-count').textContent=n===0?'0 observations':`${n} observation${n===1?'':'s'}`;
+  document.getElementById('obs-count-hd').textContent=`(${n})`;
+  if(!S.rsfFitted){
+    const needed=K-n;
+    document.getElementById('fit-hint').textContent=
+      needed>0?`Add ${needed} more observation${needed===1?'':'s'} to generate the first fit.`:'';
+  }
+}
+
+// ── Layer UI ─────────────────────────────────────────────────────────
+function setLayer(layer){
+  S.layer=layer;
+  const sel=document.getElementById('layer-sel');
+  if(sel) sel.value=layer;
+  requestRender();
+}
+
+// ── RSF Results table ─────────────────────────────────────────────────
+function updateRSFTable(){
+  if(!S.rsfFitted)return;
+  const{alphas,beta,ses,seBeta}=S.rsfFitted;
+  const ref=S.nests[0].alpha;
+  const hasSE=ses!=null;
+  let rows=S.nests.map((n,i)=>{
+    const cfg=n.alpha-ref, fit=alphas!=null?alphas[i]:undefined;
+    const se=hasSE&&ses[i]!=null?ses[i]:null;
+    const ciStr=hasSE&&i>0&&se!=null?`[${fmt(fit-1.96*se,2)}, ${fmt(fit+1.96*se,2)}]`:(i===0?'<span class="na">ref.</span>':'<span class="na">n/a</span>');
+    const seStr=hasSE&&i>0?fmt(se,3):'<span class="na">'+(i===0?'ref.':'n/a')+'</span>';
+    return`<tr><td style="color:${PAL[n.ci].hex};font-weight:600">α${i+1}</td>
+      <td>${fmt(cfg,2)}</td><td>${fmt(fit,2)}</td>
+      <td>${seStr}</td><td>${ciStr}</td></tr>`;
+  }).join('');
+  const bSE=hasSE&&seBeta!=null?fmt(seBeta,3):'<span class="na">n/a</span>';
+  const bCI=hasSE&&seBeta!=null?`[${fmt(beta-1.96*seBeta,2)}, ${fmt(beta+1.96*seBeta,2)}]`:'<span class="na">n/a</span>';
+  rows+=`<tr><td style="font-weight:600">β</td><td>${fmt(S.beta,2)}</td><td>${fmt(beta,2)}</td><td>${bSE}</td><td>${bCI}</td></tr>`;
+  document.getElementById('rsf-tbody').innerHTML=rows;
+  updateResultsFootnote();
+}
+
+// ── Combined results footnote ─────────────────────────────────────────
+function updateResultsFootnote(){
+  const fn=document.getElementById('results-footnote');
+  const hasSE=S.rsfFitted&&S.rsfFitted.ses!==null;
+  const parts=[];
+  if(S.rsfFitted){
+    parts.push(hasSE
+      ?"95% CIs are Wald-type (Fitted ± 1.96·SE). SE is derived from the observed Fisher information matrix at the MLE."
+      :"SE computation failed (singular information matrix — likely too few observations).");
+    parts.push('"Configured" values reflect the parameters you set — interpretable as ground truth only in Simulate mode.');
+    parts.push('AICc = corrected Akaike Information Criterion (penalizes model complexity; lower = better). KDE has no well-defined AIC since it is non-parametric.');
+  }
+  if(S.kdeFitted||S.rsfFitted){
+    parts.push('LL/N = mean log-likelihood per observation. In-sample LL/N favors KDE because it is more flexible; 5-fold CV LL/N is a fairer comparison — if RSF CV LL/N ≈ KDE CV LL/N, the locality assumption holds.');
+  }
+  fn.textContent=parts.join(' ');
+  fn.style.display=parts.length?'':'none';
+}
+
+// ── Safe number formatter ─────────────────────────────────────────────
+function fmt(v, d){
+  return (v!=null && isFinite(v)) ? v.toFixed(d) : '<span class="na">n/a</span>';
+}
+
+// ── LL comparison table ───────────────────────────────────────────────
+function updateLLTable(){
+  const K=S.nests.length,N=S.obs.filter(o=>o.dest<K).length;
+  const cv=S.cvResults;
+  const pend='<span class="na">…</span>';
+  let html='';
+  if(S.voronoiFitted){
+    const ll=S.voronoiFitted.llPerObs;
+    const aic=fmt(aicc(ll*N,1,N),1);
+    const cvStr=cv?(cv.voronoiCV!=null?fmt(cv.voronoiCV,3):'<span class="na">n/a</span>'):pend;
+    html+=`<tr><td>Voronoi (α=0)<br><em style="font-weight:400;opacity:.7">[distance only]</em></td><td>${fmt(ll,3)}</td><td>${cvStr}</td><td>${aic}</td><td>1 (β only)</td></tr>`;
+  }
+  if(S.rsfFitted){
+    const ll=S.rsfFitted.hist[S.rsfFitted.hist.length-1];
+    const aic=fmt(aicc(ll*N,K,N),1);
+    const cvStr=cv?(cv.rsfCV!=null?fmt(cv.rsfCV,3):'<span class="na">n/a</span>'):pend;
+    html+=`<tr><td>RSF (MLE)</td><td>${fmt(ll,3)}</td><td>${cvStr}</td><td>${aic}</td><td>${K} (${K-1} α + β)</td></tr>`;
+  }
+  if(S.kdeFitted){
+    const ll=S.kdeFitted.llPerObs;
+    const cvStr=cv?(cv.kdeCV!=null?fmt(cv.kdeCV,3):'<span class="na">n/a</span>'):pend;
+    html+=`<tr><td>KDE (h=${fmt(S.kdeFitted.bandwidth,2)})</td><td>${fmt(ll,3)}</td><td>${cvStr}</td><td><span class="na">—</span></td><td>flexible (h)</td></tr>`;
+  }
+  document.getElementById('ll-tbody').innerHTML=html;
+  updateResultsFootnote();
+}
+
+// ── Nest list ─────────────────────────────────────────────────────────
+function updateNestList(){
+  const el=document.getElementById('nest-list');el.innerHTML='';
+  S.nests.forEach((n,i)=>{
+    const c=PAL[n.ci].hex,d=document.createElement('div');d.className='nest-item';
+    if(i===0){d.innerHTML=`<div class="ndot" style="background:${c}"></div><span class="nname">${n.name}</span><div class="naw"><div class="nal"><span>α</span><span>0.0</span></div><div class="nref">reference (fixed at 0)</div></div><div style="width:16px"></div>`;}
+    else{d.innerHTML=`<div class="ndot" style="background:${c}"></div><span class="nname">${n.name}</span><div class="naw"><div class="nal"><span>α vs N1</span><span id="av${i}">${n.alpha.toFixed(1)}</span></div><input type="range" class="a-sl" min="-2" max="4" step="0.1" value="${n.alpha}" data-i="${i}"></div><button class="nrm" data-i="${i}">✕</button>`;}
+    el.appendChild(d);
+  });
+  el.querySelectorAll('.a-sl').forEach(sl=>sl.addEventListener('input',e=>{
+    const i=+e.target.dataset.i;S.nests[i].alpha=parseFloat(e.target.value);
+    document.getElementById('av'+i).textContent=S.nests[i].alpha.toFixed(1);requestRender();
+  }));
+  el.querySelectorAll('.nrm').forEach(b=>b.addEventListener('click',e=>{
+    const idx=+e.currentTarget.dataset.i;
+    S.obs=S.obs.filter(o=>o.dest!==idx).map(o=>({...o,dest:o.dest>idx?o.dest-1:o.dest}));
+    S.nests.splice(idx,1);S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.cvResults=null;
+    document.getElementById('results-panel').style.display='none';
+    document.getElementById('rsf-res-block').style.display='none';
+    document.getElementById('fit-compare-block').style.display='none';
+    setLayer('configured');updateNestList();refreshObsUI();requestRender();
+  }));
+}
+
+// ── Render debounce ───────────────────────────────────────────────────
+let _rq=false;
+function requestRender(){if(!_rq){_rq=true;requestAnimationFrame(()=>{_rq=false;render();});}}
+
+// ── Canvas pointer ────────────────────────────────────────────────────
+function cxy(e){const r=cvs.getBoundingClientRect(),s=e.touches?e.touches[0]:e;return[(s.clientX-r.left)/S.arenaSize,(s.clientY-r.top)/S.arenaSize];}
+cvs.addEventListener('mousedown',e=>{
+  if(document.getElementById('obs-picker').style.display==='block'){hidePicker();return;}
+  const[mx,my]=cxy(e);
+  for(let i=0;i<S.nests.length;i++)if(Math.hypot(mx-S.nests[i].x,my-S.nests[i].y)<20/S.arenaSize){S.dragging=i;return;}
+  if(S.obsMode==='field')showPicker(mx,my,e.clientX,e.clientY);
+});
+cvs.addEventListener('mousemove',e=>{if(S.dragging===null)return;const[mx,my]=cxy(e);S.nests[S.dragging].x=Math.max(.02,Math.min(.98,mx));S.nests[S.dragging].y=Math.max(.02,Math.min(.98,my));requestRender();});
+cvs.addEventListener('mouseup',()=>{S.dragging=null;});cvs.addEventListener('mouseleave',()=>{S.dragging=null;});
+cvs.addEventListener('touchstart',e=>{e.preventDefault();
+  if(document.getElementById('obs-picker').style.display==='block'){hidePicker();return;}
+  const[mx,my]=cxy(e);
+  for(let i=0;i<S.nests.length;i++)if(Math.hypot(mx-S.nests[i].x,my-S.nests[i].y)<26/S.arenaSize){S.dragging=i;return;}
+  if(S.obsMode==='field')showPicker(mx,my,e.touches[0].clientX,e.touches[0].clientY);
+},{passive:false});
+cvs.addEventListener('touchmove',e=>{e.preventDefault();if(S.dragging===null)return;const[mx,my]=cxy(e);S.nests[S.dragging].x=Math.max(.02,Math.min(.98,mx));S.nests[S.dragging].y=Math.max(.02,Math.min(.98,my));requestRender();},{passive:false});
+cvs.addEventListener('touchend',()=>{S.dragging=null;});
+
+// ── Controls wiring ───────────────────────────────────────────────────
+document.getElementById('beta-sl').addEventListener('input',e=>{
+  S.beta=parseFloat(e.target.value);document.getElementById('beta-val').textContent=S.beta.toFixed(1);requestRender();
+});
+document.getElementById('btn-add').addEventListener('click',()=>{
+  if(S.nests.length>=6)return;
+  S.nests.push({x:.15+Math.random()*.7,y:.15+Math.random()*.7,alpha:.5,name:'N'+(S.nests.length+1),ci:S.nests.length%PAL.length});
+  S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.cvResults=null;
+  document.getElementById('results-panel').style.display='none';
+  document.getElementById('rsf-res-block').style.display='none';
+  document.getElementById('fit-compare-block').style.display='none';
+  updateNestList();refreshObsUI();requestRender();
+});
+document.getElementById('tab-field').addEventListener('click',()=>{
+  S.obsMode='field';document.getElementById('tab-field').classList.add('on');document.getElementById('tab-sim').classList.remove('on');
+  document.getElementById('field-panel').style.display='';document.getElementById('sim-panel').style.display='none';
+  document.getElementById('mode-lbl').style.color='var(--orange)';document.getElementById('mode-lbl').textContent='Field mode — click arena to record';
+});
+document.getElementById('tab-sim').addEventListener('click',()=>{
+  S.obsMode='sim';document.getElementById('tab-sim').classList.add('on');document.getElementById('tab-field').classList.remove('on');
+  document.getElementById('sim-panel').style.display='';document.getElementById('field-panel').style.display='none';
+  document.getElementById('mode-lbl').style.color='var(--muted)';document.getElementById('mode-lbl').textContent='Simulate mode — click Generate';
+});
+document.getElementById('den-sl').addEventListener('input',e=>{S.density=parseInt(e.target.value);document.getElementById('den-val').textContent=`${S.density}×${S.density}`;});
+document.getElementById('sim-grid').addEventListener('click',()=>{S.simMode='grid';document.getElementById('sim-grid').classList.add('on');document.getElementById('sim-rand').classList.remove('on');});
+document.getElementById('sim-rand').addEventListener('click',()=>{S.simMode='random';document.getElementById('sim-rand').classList.add('on');document.getElementById('sim-grid').classList.remove('on');});
+document.getElementById('btn-gen').addEventListener('click',()=>{
+  const pairs=[];
+  if(S.simMode==='grid'){for(let i=0;i<S.density;i++)for(let j=0;j<S.density;j++){const ox=(i+.5)/S.density,oy=(j+.5)/S.density;pairs.push({ox,oy,dest:sampleDest(rsf(ox,oy,S.nests,S.beta))});}}
+  else{const n=S.density*S.density;for(let i=0;i<n;i++){const ox=.04+Math.random()*.92,oy=.04+Math.random()*.92;pairs.push({ox,oy,dest:sampleDest(rsf(ox,oy,S.nests,S.beta))});}}
+  S.obs=pairs;S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.cvResults=null;
+  clearTimeout(_autoFitTimer);
+  document.getElementById('results-panel').style.display='none';
+  document.getElementById('rsf-res-block').style.display='none';
+  document.getElementById('fit-compare-block').style.display='none';
+  document.getElementById('gen-hint').textContent=`${pairs.length} O–D pairs generated (${S.simMode}).`;
+  refreshObsUI();requestRender();
+  scheduleAutoFit();
+});
+document.getElementById('btn-clear').addEventListener('click',clearObs);
+document.getElementById('pk-cancel').addEventListener('click',hidePicker);
+
+// ── View toggles ──────────────────────────────────────────────────────
+function setView(v){
+  S.view=v;
+  const sel=document.getElementById('view-sel');
+  if(sel) sel.value=v;
+  requestRender();
+}
+document.getElementById('view-sel').addEventListener('change',e=>setView(e.target.value));
+
+// ── Layer toggles ─────────────────────────────────────────────────────
+document.getElementById('layer-sel').addEventListener('change',e=>setLayer(e.target.value));
+
+// ── KDE bandwidth ─────────────────────────────────────────────────────
+document.getElementById('kde-bw-sl').addEventListener('input',e=>{
+  S.kdeBandwidth=parseFloat(e.target.value);
+  document.getElementById('kde-bw-val').textContent=S.kdeBandwidth.toFixed(2);
+  if(S.kdeFitted&&S.obs.length>0){
+    const K=S.nests.length,bw=S.kdeBandwidth,obs=S.obs.filter(o=>o.dest<K);
+    S.kdeFitted={predictFn:(ox,oy)=>kdePredict(ox,oy,obs,bw,K),llPerObs:kdeLogLik(obs,bw,K),bandwidth:bw};
+    updateLLTable();updateResultsFootnote();if(S.layer==='kdefit')requestRender();
+  }
+});
+
+// ── Pure RSF Adam fitter (no UI side-effects, configurable iterations) ─
+async function adamRSF(obs, nestPos, maxIter=700, yieldEvery=999){
+  const K=nestPos.length;
+  let alphas=new Array(K).fill(0),beta=2.0;
+  const lr=.05,b1=.9,b2=.999,eps=1e-8;
+  const mA=new Array(K).fill(0),vA=new Array(K).fill(0);
+  let mB=0,vB=0;
+  for(let it=0;it<maxIter;it++){
+    const gA=new Array(K).fill(0);let gB=0;
+    for(const{ox,oy,dest}of obs){
+      const us=nestPos.map((p,j)=>alphas[j]-beta*Math.hypot(ox-p.x,oy-p.y));
+      const ps=softmax(us),maxU=Math.max(...us);
+      const ds=nestPos.map(p=>Math.hypot(ox-p.x,oy-p.y));
+      const eD=ds.reduce((s,d,j)=>s+ps[j]*d,0);
+      for(let j=1;j<K;j++)gA[j]+=(j===dest?1:0)-ps[j];
+      gB+=-(ds[dest]-eD);
+    }
+    const t=it+1;
+    for(let j=1;j<K;j++){
+      mA[j]=b1*mA[j]+(1-b1)*gA[j];vA[j]=b2*vA[j]+(1-b2)*gA[j]**2;
+      alphas[j]+=lr*(mA[j]/(1-b1**t))/(Math.sqrt(vA[j]/(1-b2**t))+eps);
+    }
+    mB=b1*mB+(1-b1)*gB;vB=b2*vB+(1-b2)*gB**2;
+    beta=Math.max(.05,beta+lr*(mB/(1-b1**t))/(Math.sqrt(vB/(1-b2**t))+eps));
+    if(it%yieldEvery===0)await new Promise(r=>setTimeout(r,0));
+  }
+  return{alphas,beta};
+}
+
+// ── AICc ─────────────────────────────────────────────────────────────
+function aicc(llTotal, k, N){
+  const aic=2*k - 2*llTotal;
+  // Small-sample correction — degrades gracefully when N >> k
+  const corr=(N-k-1)>0 ? 2*k*(k+1)/(N-k-1) : 0;
+  return aic+corr;
+}
+
+// ── RSF log-likelihood (given fitted params) ──────────────────────────
+function rsfLL(obs, nestPos, alphas, beta){
+  let ll=0;
+  for(const{ox,oy,dest}of obs){
+    const us=nestPos.map((p,j)=>alphas[j]-beta*Math.hypot(ox-p.x,oy-p.y));
+    const ps=softmax(us);
+    ll+=Math.log(Math.max(ps[dest],1e-10));
+  }
+  return ll;
+}
+
+// ── 5-fold cross-validation ───────────────────────────────────────────
+async function crossValidate(obs, nestPos, bandwidth, K, nFolds=5){
+  const N=obs.length;
+  if(N<nFolds*2)return{rsfCV:null,kdeCV:null};
+  // Shuffle
+  const idx=[...Array(N).keys()];
+  for(let i=N-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+  let rsfLL_cv=0,kdeLL_cv=0,voronoiLL_cv=0,nTest=0;
+  for(let f=0;f<nFolds;f++){
+    const test=idx.filter((_,i)=>i%nFolds===f).map(i=>obs[i]);
+    const train=idx.filter((_,i)=>i%nFolds!==f).map(i=>obs[i]);
+    if(train.length<K||test.length===0)continue;
+    // RSF fold
+    const{alphas,beta}=await adamRSF(train,nestPos,350);
+    rsfLL_cv+=rsfLL(test,nestPos,alphas,beta);
+    // Distance-only fold (α=0, fit β)
+    const{beta:betaD}=await adamRSF(train,nestPos.map(p=>({...p})),200);
+    const zeroAlphas=new Array(K).fill(0);
+    // re-score with zero alphas but fitted beta from distance-only
+    let dLL=0;
+    for(const{ox,oy,dest}of test){
+      const us=nestPos.map(p=>-betaD*Math.hypot(ox-p.x,oy-p.y));
+      const ps=softmax(us);
+      dLL+=Math.log(Math.max(ps[dest],1e-10));
+    }
+    voronoiLL_cv+=dLL;
+    // KDE fold
+    for(const{ox,oy,dest}of test){
+      const ps=kdePredict(ox,oy,train,bandwidth,K);
+      kdeLL_cv+=Math.log(Math.max(ps[dest],1e-10));
+    }
+    nTest+=test.length;
+  }
+  return{
+    rsfCV:nTest>0?rsfLL_cv/nTest:null,
+    kdeCV:nTest>0?kdeLL_cv/nTest:null,
+    voronoiCV:nTest>0?voronoiLL_cv/nTest:null,
+  };
+}
+
+// ── Fit RSF (MLE via Adam) ─────────────────────────────────────────────
+async function runRSFFit(){
+  const K=S.nests.length,nestPos=S.nests.map(n=>({x:n.x,y:n.y}));
+  const validObs=S.obs.filter(o=>o.dest<K);
+  let alphas=new Array(K).fill(0),beta=2.0;
+  const lr=.05,b1=.9,b2=.999,eps=1e-8;
+  const mA=new Array(K).fill(0),vA=new Array(K).fill(0);
+  let mB=0,vB=0;const hist=[];const ITER=700;
+  for(let it=0;it<ITER;it++){
+    const gA=new Array(K).fill(0);let gB=0,ll=0;
+    for(const{ox,oy,dest}of validObs){
+      const us=nestPos.map((p,j)=>alphas[j]-beta*Math.hypot(ox-p.x,oy-p.y));
+      const ps=softmax(us),maxU=Math.max(...us);
+      const ds=nestPos.map(p=>Math.hypot(ox-p.x,oy-p.y));
+      const eD=ds.reduce((s,d,j)=>s+ps[j]*d,0);
+      ll+=(us[dest]-maxU)-Math.log(ps.reduce((s,_,j)=>s+Math.exp(us[j]-maxU),0));
+      for(let j=1;j<K;j++)gA[j]+=(j===dest?1:0)-ps[j];
+      gB+=-(ds[dest]-eD);
+    }
+    hist.push(ll/validObs.length);const t=it+1;
+    for(let j=1;j<K;j++){mA[j]=b1*mA[j]+(1-b1)*gA[j];vA[j]=b2*vA[j]+(1-b2)*gA[j]**2;alphas[j]+=lr*(mA[j]/(1-b1**t))/(Math.sqrt(vA[j]/(1-b2**t))+eps);}
+    mB=b1*mB+(1-b1)*gB;vB=b2*vB+(1-b2)*gB**2;
+    beta=Math.max(.05,beta+lr*(mB/(1-b1**t))/(Math.sqrt(vB/(1-b2**t))+eps));
+    if(it%40===0){await new Promise(r=>setTimeout(r,0));}
+  }
+  const seResult=computeSE(validObs,nestPos,alphas,beta);
+  return{alphas,beta,hist,ses:seResult?seResult.ses:null,seBeta:seResult?seResult.seBeta:null};
+}
+
+// ── Distance-only RSF (all α=0, fit only β) ───────────────────────────
+async function fitDistanceOnly(obs, nestPos){
+  const K=nestPos.length;
+  let beta=2.0;
+  const lr=.05,b1=.9,b2=.999,eps=1e-8;
+  let mB=0,vB=0;
+  for(let it=0;it<700;it++){
+    let gB=0,ll=0;
+    for(const{ox,oy,dest}of obs){
+      const us=nestPos.map((p)=>-beta*Math.hypot(ox-p.x,oy-p.y));
+      const ps=softmax(us);
+      const ds=nestPos.map(p=>Math.hypot(ox-p.x,oy-p.y));
+      const eD=ds.reduce((s,d,j)=>s+ps[j]*d,0);
+      gB+=-(ds[dest]-eD);
+    }
+    const t=it+1;
+    mB=b1*mB+(1-b1)*gB; vB=b2*vB+(1-b2)*gB**2;
+    beta=Math.max(.05,beta+lr*(mB/(1-b1**t))/(Math.sqrt(vB/(1-b2**t))+eps));
+    if(it%80===0)await new Promise(r=>setTimeout(r,0));
+  }
+  // Compute LL
+  let ll=0;
+  for(const{ox,oy,dest}of obs){
+    const us=nestPos.map(p=>-beta*Math.hypot(ox-p.x,oy-p.y));
+    const ps=softmax(us);
+    ll+=Math.log(Math.max(ps[dest],1e-10));
+  }
+  return{beta,llPerObs:ll/obs.length};
+}
+
+
+async function fitBoth(){
+  const K=S.nests.length;
+  const validObs=S.obs.filter(o=>o.dest<K);
+  if(validObs.length<K)return;
+  document.getElementById('fit-hint').textContent='Fitting…';
+  try{
+    const nestPos=S.nests.map(n=>({x:n.x,y:n.y}));
+    S.rsfFitted=await runRSFFit();
+    const bw=S.kdeBandwidth;
+    S.kdeFitted={predictFn:(ox,oy)=>kdePredict(ox,oy,validObs,bw,K),llPerObs:kdeLogLik(validObs,bw,K),bandwidth:bw};
+    S.voronoiFitted=await fitDistanceOnly(validObs,nestPos);
+    S.cvResults=null;
+    document.getElementById('results-panel').style.setProperty('display','flex','important');
+    document.getElementById('rsf-res-block').style.setProperty('display','','important');
+    document.getElementById('fit-compare-block').style.setProperty('display','','important');
+    updateRSFTable(); updateLLTable();
+    document.getElementById('fit-hint').textContent=`${validObs.length} observations · RSF + KDE fitted · computing CV…`;
+    refreshObsUI(); requestRender();
+    S.cvResults=await crossValidate(validObs,nestPos,bw,K);
+    updateLLTable();
+    document.getElementById('fit-hint').textContent=`${validObs.length} observations · RSF + KDE fitted`;
+    requestRender();
+  }catch(err){
+    console.error('fitBoth error:',err);
+    document.getElementById('fit-hint').textContent='Fit error — see console.';
+  }
+}
+
+// Auto-refit — fires 400ms after any observation change
+let _autoFitTimer=null;
+function scheduleAutoFit(){
+  clearTimeout(_autoFitTimer);
+  _autoFitTimer=setTimeout(()=>fitBoth(),400);
+}
+
+// Remove old btn-fit listener — no button anymore
+
+// ── Main tabs ─────────────────────────────────────────────────────────
+// ── Tab switching (3 tabs + mobile select) ───────────────────────────
+let _explorerNode=null, _extNode=null, _ext2Node=null;
+
+function switchTab(tab){
+  // Body class drives CSS !important rules
+  document.body.className=document.body.className
+    .replace(/\btab-\S+/g,'').trim()+' tab-'+tab;
+  // Belt-and-suspenders inline styles
+  _explorerNode.style.setProperty('display',tab==='explorer'?'flex':'none','important');
+  _extNode.style.setProperty('display',tab==='methods'?'block':'none','important');
+  _ext2Node.style.setProperty('display',tab==='extensions'?'block':'none','important');
+  // Sync button active states
+  document.querySelectorAll('.main-tab').forEach(b=>
+    b.classList.toggle('on',b.dataset.tab===tab));
+  // Sync mobile select
+  const sel=document.getElementById('tab-sel-mobile');
+  if(sel) sel.value=tab;
+  // Scroll to top
+  window.scrollTo(0,0);
+  document.documentElement.scrollTop=0;
+  document.body.scrollTop=0;
+  if(tab==='explorer') requestAnimationFrame(resizeArena);
+}
+
+document.querySelectorAll('[data-tab]').forEach(btn=>
+  btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
+
+document.getElementById('tab-sel-mobile').addEventListener('change',e=>
+  switchTab(e.target.value));
+
+// ── Resize ────────────────────────────────────────────────────────────
+let _rz=false;
+window.addEventListener('resize',()=>{if(!_rz){_rz=true;requestAnimationFrame(()=>{_rz=false;resizeArena();});}});
+
+// ── Init ──────────────────────────────────────────────────────────────
+updateNestList();refreshObsUI();
+_explorerNode=document.getElementById('explorer-content');
+_extNode=document.getElementById('ext-content');
+_ext2Node=document.getElementById('ext2-content');
+switchTab('explorer');
+requestAnimationFrame(()=>resizeArena());
+</script>
+</body>
+</html>
