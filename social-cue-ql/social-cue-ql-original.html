@@ -207,7 +207,7 @@ canvas{display:block;border-radius:6px;border:1px solid var(--border);}
   <button class="btn-p" id="c-run" onclick="cRunAll()">▶ Run Simulation</button>
 </div>
 <div class="plot-col">
-  <div id="c-prompt" style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);padding:6px 4px 2px;text-align:center;">Configure parameters, then press <strong style="color:var(--green)">▶ Run Simulation</strong> to generate curves for each counting limit (limit) value.</div>
+  <div id="c-prompt" style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);padding:6px 4px 2px;text-align:center;">Configure parameters, then press <strong style="color:var(--green)">▶ Run Simulation</strong> to generate curves for each counting limit value.</div>
 <canvas id="cPlot" style="width:100%;height:360px;"></canvas>
   <div class="legend" id="cLeg"><span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted)">Press ▶ Run Simulation — shows one curve per counting limit value.</span></div>
   <div class="foot"><div class="pw"><div class="pb" id="cPb"></div></div><div class="st" id="cSt">—</div></div>
@@ -762,20 +762,13 @@ function pairSlider(key, rawVal, fmt) {
   const text = fmt ? fmt(rawVal) : String(rawVal);
   ['cv-','wv-'].forEach(p => { const el=document.getElementById(p+key); if(el) el.textContent=text; });
   ['cs-','ws-'].forEach(p => { const el=document.getElementById(p+key); if(el) el.value=rawVal; });
-  cClearIfDone();wClearIfDone();
 }
 
 // ═══ CURVES TAB ═══
 let cCurves=[],cRef=null,cRunning=false,cRelMode='perfect',cDumMode='none',cActiveLabels=CLABS;
-function cV(k,v,f){document.getElementById('cv-'+k).textContent=f(v);cClearIfDone();}
-function cClearIfDone(){if(!cRunning&&cCurves.length){cCurves=[];cRef=null;
-  const cv=document.getElementById('cPlot'),dpr=window.devicePixelRatio||1;
-  const W=cv.offsetWidth||600,H=360;cv.width=W*dpr;cv.height=H*dpr;
-  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);cDrawEmpty(ctx,W,H);
-  document.getElementById('cSt').textContent='';
-  document.getElementById('cLeg').innerHTML='';}}
+function cV(k,v,f){document.getElementById('cv-'+k).textContent=f(v);}
 let cPlaceMode='equal', wPlaceMode='equal';
-function cPlace(m){cClearIfDone();
+function cPlace(m){
   cPlaceMode=m; wPlaceMode=m;
   // update all placement buttons in both tabs
   ['equal','correct','wrong'].forEach(v=>{
@@ -785,13 +778,13 @@ function cPlace(m){cClearIfDone();
     });
   });
 }
-function wPlace(m){wClearIfDone();cPlace(m);}
+function wPlace(m){cPlace(m);}
 let cIVMode = 'nb';  // 'nb' = sweep counting limits, 'rho' = sweep social rewards
 
 const RHO_SWEEP = [0, 0.1, 0.25, 0.5, 1.0];
 const RHO_CLABS = ['ρ=0.00 (none)','ρ=0.10','ρ=0.25','ρ=0.50','ρ=1.00'];
 
-function cSetIV(mode) {cClearIfDone();
+function cSetIV(mode) {
   cIVMode = mode;
   document.getElementById('civ-nb').classList.toggle('active', mode==='nb');
   document.getElementById('civ-rho').classList.toggle('active', mode==='rho');
@@ -800,16 +793,16 @@ function cSetIV(mode) {cClearIfDone();
   // update prompt
   const prompt = document.getElementById('c-prompt');
   if(prompt) prompt.innerHTML = mode==='nb'
-    ? 'Configure parameters, then press <strong style="color:var(--green)">▶ Run Simulation</strong> to generate curves for each counting limit (limit) value.'
+    ? 'Configure parameters, then press <strong style="color:var(--green)">▶ Run Simulation</strong> to generate curves for each counting limit value.'
     : 'Configure parameters, then press <strong style="color:var(--green)">▶ Run Simulation</strong> to generate curves for each social reward (ρ) value.';
 }
 
-function cRel(m){cClearIfDone();cRelMode=m;wRelMode=m;
+function cRel(m){cRelMode=m;wRelMode=m;
   ['cr-perf','cr-noisy','wr-perf','wr-noisy'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.classList.toggle('active', id.includes(m==='perfect'?'perf':'noisy'));
   });
 }
-function cDummy(m){cClearIfDone();
+function cDummy(m){
   cDumMode=m; wDumMode=m;
   if(m!=='none') pairSlider('n','1',String);
   ['cd-none','cd-fixed','cd-random','wd-none','wd-fixed','wd-random'].forEach(id=>{
@@ -921,23 +914,15 @@ function cBuildLeg(p,labelsOverride){
 
 // ═══ WATCH TAB ═══
 let wRelMode='perfect',wPlaying=false,wRafId=null,wLastTs=0,wDumMode='none';
-function wClearIfDone(){
-  if(wPlaying)return;  // don't interrupt running animation
-  if(wRafId){cancelAnimationFrame(wRafId);wRafId=null;}
-  WS.ok=false;
-  document.getElementById('w-play').textContent='▶ Play';
-  document.getElementById('wSt').textContent='';
-  wDrawBlank(wP());
-}
 const WS={t:0,wE:null,wS:null,wD:null,pf:[.5,.5],ch:null,rw:null,qV:null,sf:null,hist:[],p:null,ok:false};
 
 function wV(k,v,f){document.getElementById('wv-'+k).textContent=f(v);}
-function wRel(m){wClearIfDone();wRelMode=m;cRelMode=m;
+function wRel(m){wRelMode=m;cRelMode=m;
   ['cr-perf','cr-noisy','wr-perf','wr-noisy'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.classList.toggle('active', id.includes(m==='perfect'?'perf':'noisy'));
   });
 }
-function wDummy(m){wClearIfDone();
+function wDummy(m){
   wDumMode=m; cDumMode=m;
   if(m!=='none') pairSlider('n','1',String);
   ['cd-none','cd-fixed','cd-random','wd-none','wd-fixed','wd-random'].forEach(id=>{
