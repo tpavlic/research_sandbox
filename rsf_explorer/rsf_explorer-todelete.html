@@ -41,10 +41,8 @@ body.tab-extensions #ext2-content{display:block !important}
 .tab-bar-inner{max-width:1020px;margin:0 auto;display:flex;padding:0}
 .main-tab{padding:11px 24px;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;letter-spacing:.03em;border-bottom:3px solid transparent;margin-bottom:-3px;transition:all .15s;white-space:nowrap}
 .main-tab.on{color:var(--green);background:var(--cream);border-bottom-color:var(--green)}
-.footer-br{display:none}.footer-sep{margin:0 .3em}
 .tab-sel-mobile{display:none;margin:8px 12px;font-family:var(--mono);font-size:11px;padding:5px 8px;border-radius:var(--pill);border:1.5px solid var(--border);background:var(--cream);color:var(--text);cursor:pointer;outline:none;width:calc(100% - 24px)}
 @media(max-width:480px){.tab-bar{display:none}.tab-sel-mobile{display:block}}
-@media(max-width:360px){.footer-br{display:block}.footer-sep{display:none}}
 
 /* ── Explorer tab ────────────────────────── */
 #explorer-content{display:flex;flex-direction:column}
@@ -180,7 +178,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 
 /* ── Footer ──────────────────────────────── */
 footer{background:var(--cream-dk);border-top:1px solid var(--border);padding:6px 16px;font-family:var(--mono);font-size:10px;color:var(--muted);flex-shrink:0;line-height:1.7}
-footer div{max-width:1020px;margin:0 auto;text-align:center}
+footer div{max-width:1020px;margin:0 auto;text-align:right}
 footer a{color:var(--green);text-decoration:underline;text-underline-offset:2px}
 
 /* ── Responsive ──────────────────────────── */
@@ -550,7 +548,7 @@ footer a{color:var(--green);text-decoration:underline;text-underline-offset:2px}
 
 <footer>
   <div>
-    <span style="white-space:nowrap">© 2026 Theodore&nbsp;P.&nbsp;Pavlic</span><span class="footer-sep"> · </span><br class="footer-br"><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener" style="color:var(--green);text-decoration:underline;text-underline-offset:2px;white-space:nowrap">MIT&nbsp;License</a>
+    <span>Copyright 2026 Theodore&nbsp;P.&nbsp;Pavlic</span><span style="margin:0 .4em"> · </span><span><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT&nbsp;License</a></span>
   </div>
 </footer>
 </div><!-- /app -->
