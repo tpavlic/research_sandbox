@@ -341,7 +341,6 @@ footer a{color:var(--green);text-decoration:underline;text-underline-offset:2px}
         <select id="layer-sel" style="font-family:var(--mono);font-size:10px;padding:3px 6px;border-radius:var(--pill);border:1.5px solid var(--border);background:var(--cream);color:var(--text);cursor:pointer;outline:none">
           <option value="configured">Configured RSF</option>
           <option value="rsffit" selected>RSF Fit</option>
-          <option value="attract">Attractiveness-only</option>
           <option value="kdefit">KDE Fit</option>
           <option value="voronoi">Voronoi</option>
         </select>
@@ -366,32 +365,20 @@ footer a{color:var(--green);text-decoration:underline;text-underline-offset:2px}
   <div id="results-panel">
     <div class="res-grid">
 
+      <div class="res-block" id="rsf-res-block" style="display:none">
+        <div class="res-hd">Fitted RSF Parameters</div>
+        <table class="rtable">
+          <thead><tr><th>Param</th><th>Configured</th><th>Fitted</th><th>SE</th><th>95% CI</th></tr></thead>
+          <tbody id="rsf-tbody"></tbody>
+        </table>
+      </div>
+
       <div class="res-block" id="fit-compare-block" style="display:none">
         <div class="res-hd">Model Fit Comparison</div>
         <table class="ll-compare-table">
           <thead><tr><th>Model</th><th>LL/N (in-sample)</th><th>LL/N (5-fold CV)</th><th>AICc</th><th>Parameters</th></tr></thead>
           <tbody id="ll-tbody"></tbody>
         </table>
-      </div>
-
-      <div class="res-block" id="rsf-res-block" style="display:none">
-        <div class="res-hd" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-          <span>Fitted Parameters</span>
-          <label style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400;letter-spacing:.03em">
-            Model:
-            <select id="param-model-sel" style="font-family:var(--mono);font-size:10px;padding:3px 6px;border-radius:var(--pill);border:1.5px solid var(--border);background:var(--cream);color:var(--text);cursor:pointer;outline:none">
-              <option value="rsf">RSF</option>
-              <option value="attract">Attractiveness-only (β=0)</option>
-              <option value="voronoi">Voronoi (α=0)</option>
-            </select>
-          </label>
-        </div>
-        <div id="param-table-wrap" style="overflow-y:auto">
-          <table class="rtable" style="width:100%">
-            <thead id="param-thead"></thead>
-            <tbody id="rsf-tbody"></tbody>
-          </table>
-        </div>
       </div>
 
     </div>
@@ -405,10 +392,6 @@ footer a{color:var(--green);text-decoration:underline;text-underline-offset:2px}
 
 <!-- ═══ METHODS TAB ═══════════════════════════════════════════════ -->
 <div id="ext-content">
-
-  <div class="ext-sec" style="border:none;margin-bottom:4px">
-    <p class="ext-p">This tab documents the statistical models underlying the Explorer. The first three sections introduce the models in the spatial ecology framing that motivated their application to polydomous nest transport — beginning with the utility-function framework shared by the parametric models and working through the hierarchy from most to least constrained. The final section translates the same models into the language of generalized linear models and conditional logit, which may be more familiar to readers with a behavioral ecology or statistical background, and points toward how these models would be fit in R for formal inference.</p>
-  </div>
 
   <div class="ext-sec">
     <div class="ext-h1">Framework: Utility Functions and the Softmax</div>
@@ -464,39 +447,6 @@ footer a{color:var(--green);text-decoration:underline;text-underline-offset:2px}
     <div class="ext-h2">Scientific interpretation</div>
     <p class="ext-p">Comparing RSF vs KDE cross-validated LL/N is a formal test of the RSF's locality assumption. If RSF CV LL/N ≈ KDE CV LL/N, proximity plus differential attractiveness is a sufficient explanation of the data. If KDE fits substantially better, there is spatial structure the RSF cannot capture — non-convex territories, discontinuous allegiance zones, or trail effects — and that discrepancy is itself a biological finding worth reporting.</p>
     <p class="ext-note">In-sample LL/N always favors the KDE because it is more flexible. Cross-validated LL/N is the appropriate comparison because it penalizes overfitting implicitly through holdout scoring.</p>
-  </div>
-
-  <div class="ext-sec">
-    <div class="ext-h1">Connection to Generalized Linear Models</div>
-    <p class="ext-p">The RSF framework was developed in spatial ecology but is mathematically identical to a class of models that will be familiar from statistics and behavioral ecology: the <em>conditional logit</em> (McFadden 1974), fit in R via the <code>mlogit</code> package. Making this connection explicit is useful both for understanding the model and for fitting it to real data.</p>
-
-    <div class="ext-h2">The softmax as a link function</div>
-    <p class="ext-p">In GLM notation, a model has a <em>linear predictor</em> η and a <em>link function</em> g such that g(μ) = η. In the RSF, the utility V<sub>j</sub>(<b>x</b>) plays the role of the linear predictor — it is linear in the parameters α<sub>j</sub> and β. The softmax is the inverse link function: it maps the K linear predictors to K probabilities that sum to 1. This is exactly the multinomial logistic link, the generalization of the logistic link to K &gt; 2 categories.</p>
-
-    <div class="ext-h2">Data structure: long format</div>
-    <p class="ext-p">Fitting the conditional logit requires data in <em>long format</em> — one row per (observation, alternative) pair. For N food drops and K subnests, this gives N×K rows. Each triplet of rows for a single observation looks like:</p>
-    <div class="ext-formula" style="font-size:10px;line-height:2">
-      obs_id=1, subnest=N1, distance=2.6, chosen=0<br>
-      obs_id=1, subnest=N2, distance=1.6, chosen=1<br>
-      obs_id=1, subnest=N3, distance=7.2, chosen=0
-    </div>
-    <p class="ext-p">The <code>obs_id</code> groups rows into choice occasions — the K rows sharing an <code>obs_id</code> form the denominator of one softmax. The <code>chosen</code> column is 1 for the observed destination and 0 for all others. The single <code>distance</code> column carries the alternative-varying predictor; a single coefficient on this column is by construction shared across all subnests, which is what enforces the shared-β assumption of the RSF.</p>
-
-    <div class="ext-h2">R formula equivalents</div>
-    <p class="ext-p">The four models in the Explorer correspond directly to <code>mlogit</code> formulas:</p>
-    <div class="ext-formula" style="font-size:10px;line-height:2.2">
-      <span style="opacity:.6"># Full RSF: shared β, per-subnest α</span><br>
-      mlogit(chosen ~ distance | subnest, data=od_long, idx=c("obs_id","subnest"))<br><br>
-      <span style="opacity:.6"># Voronoi / distance-only: shared β, no α</span><br>
-      mlogit(chosen ~ distance - 1, data=od_long, idx=c("obs_id","subnest"))<br><br>
-      <span style="opacity:.6"># Attractiveness-only: per-subnest α, no distance</span><br>
-      mlogit(chosen ~ 0 | subnest, data=od_long, idx=c("obs_id","subnest"))
-    </div>
-    <p class="ext-p">In each formula, terms to the left of <code>|</code> are alternative-varying predictors (get a shared coefficient); terms to the right are observation-varying predictors that receive per-alternative coefficients (the α<sub>j</sub> intercepts). The second element of <code>idx</code> defines what "alternative" means — here, the subnest column — and <code>mlogit</code> automatically uses it to construct the softmax denominator and the per-alternative intercepts.</p>
-
-    <div class="ext-h2">Why not glm or multinom?</div>
-    <p class="ext-p">A plain <code>glm(..., family=binomial)</code> on the long-format data would treat each row as an independent Bernoulli trial, ignoring the constraint that exactly one <code>chosen=1</code> must occur per <code>obs_id</code> group. It would produce incorrect standard errors and biased estimates. The <code>multinom</code> function from <code>nnet</code> enforces the sum-to-1 constraint correctly, but requires wide-format data with separate distance columns per subnest (<code>dist_N1</code>, <code>dist_N2</code>, …), which forces a separate β per subnest — losing the shared distance-sensitivity assumption that is the RSF's key structural claim. The <code>mlogit</code> long format is the natural representation for the shared-β model and enforces the softmax likelihood correctly.</p>
-    <p class="ext-note">The RSF is sometimes described as distinct from multinomial logistic regression in the ecology literature, but this reflects the parallel development of the same model in different fields rather than any mathematical difference. McFadden's conditional logit (econometrics, 1974) and Manly et al.'s RSF (spatial ecology, 1993) are the same model.</p>
   </div>
 
 </div><!-- /ext-content (Methods) -->
@@ -567,7 +517,7 @@ const S = {
   beta:4.0, obs:[], obsMode:'field', simMode:'grid', density:8,
   view:'maxp',          // 'maxp' | 'entropy'
   layer:'rsffit',       // 'configured' | 'rsffit' | 'kdefit'
-  rsfFitted:null, kdeFitted:null, voronoiFitted:null, attractFitted:null, cvResults:null,
+  rsfFitted:null, kdeFitted:null, voronoiFitted:null, cvResults:null,
   kdeBandwidth:0.12,
   pending:null, dragging:null, arenaSize:460,
 };
@@ -762,11 +712,8 @@ function getPredictFn(){
     const dB=S.rsfFitted.beta;
     return(ox,oy)=>rsf(ox,oy,dN,dB);
   }
-  if(S.layer==='attract'&&S.attractFitted&&S.attractFitted.alphas.length===K){
-    const ps=softmax(S.attractFitted.alphas);
-    return()=>ps; // constant over space — β=0
-  }
   if(S.layer==='voronoi'){
+    // Hard nearest-neighbour — returns probability 1 for closest subnest
     return(ox,oy)=>{
       let mi=0,md=Infinity;
       S.nests.forEach((n,j)=>{const d=Math.hypot(ox-n.x,oy-n.y);if(d<md){md=d;mi=j;}});
@@ -779,8 +726,7 @@ function getPredictFn(){
 function needsOverlay(){
   return (S.layer==='rsffit'&&!S.rsfFitted)
       ||(S.layer==='kdefit'&&!S.kdeFitted)
-      ||(S.layer==='voronoi'&&!S.voronoiFitted)
-      ||(S.layer==='attract'&&!S.attractFitted);
+      ||(S.layer==='voronoi'&&!S.voronoiFitted);
 }
 function render(){
   const A=S.arenaSize;
@@ -844,7 +790,7 @@ function render(){
   // Overlay when a fitted layer is selected but no fit exists yet
   if(needsOverlay()){
     const K=S.nests.length,n=S.obs.length,needed=K-n;
-    const layerLabel={'kdefit':'KDE','voronoi':'Voronoi','attract':'Attractiveness-only'}[S.layer]||'RSF';
+    const layerLabel={'kdefit':'KDE','voronoi':'Voronoi'}[S.layer]||'RSF';
     const line1=needed>0?`Add ${needed} more observation${needed===1?'':'s'}`:'Fitting…';
     const line2=needed>0?`to generate the first ${layerLabel} fit`:'';
     ctx.fillStyle='rgba(250,246,240,0.72)';ctx.fillRect(0,0,A,A);
@@ -863,7 +809,6 @@ function updateViewLabel(){
     'rsffit':S.rsfFitted?'FITTED RSF':'CONFIGURED RSF (no fit yet)',
     'kdefit':S.kdeFitted?'KDE FIT':'CONFIGURED RSF (no fit yet)',
     'voronoi':S.voronoiFitted?'VORONOI (distance-only)':'CONFIGURED RSF (no fit yet)',
-    'attract':S.attractFitted?'ATTRACTIVENESS-ONLY (β=0)':'CONFIGURED RSF (no fit yet)',
   };
   const vmap={'maxp':'NEST PREDICTION','entropy':'PERPLEXITY'};
   document.getElementById('view-lbl').textContent=`${lmap[S.layer]} — ${vmap[S.view]}`;
@@ -897,7 +842,7 @@ function hidePicker(){S.pending=null;document.getElementById('obs-picker').style
 // ── Observations ─────────────────────────────────────────────────────
 function addObs(ox,oy,dest){S.obs.push({ox,oy,dest});refreshObsUI();scheduleAutoFit();requestRender();}
 function clearObs(){
-  S.obs=[];S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.attractFitted=null;S.cvResults=null;
+  S.obs=[];S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.cvResults=null;
   clearTimeout(_autoFitTimer);
   document.getElementById('results-panel').style.display='none';
   document.getElementById('rsf-res-block').style.display='none';
@@ -925,63 +870,26 @@ function setLayer(layer){
 }
 
 // ── RSF Results table ─────────────────────────────────────────────────
-// ── Fitted parameters table ───────────────────────────────────────────
-function updateParamTable(){
-  const sel=document.getElementById('param-model-sel');
-  const model=sel?sel.value:'rsf';
-  const thead=document.getElementById('param-thead');
-  const tbody=document.getElementById('rsf-tbody');
-  const K=S.nests.length;
-  // Fix height to RSF row count (K+1: K alphas + beta) so footer doesn't move when switching models
-  const rowH=30; // px per row at current font/padding
-  const wrap=document.getElementById('param-table-wrap');
-  if(wrap) wrap.style.minHeight=((K+1)*rowH)+'px';
-
-  if(model==='rsf'&&S.rsfFitted){
-    const{alphas,beta,ses,seBeta}=S.rsfFitted;
-    const hasSE=ses!=null;
-    thead.innerHTML='<tr><th>Param</th><th>Configured</th><th>Fitted</th><th>SE</th><th>95% CI</th></tr>';
-    const ref=S.nests[0].alpha;
-    let rows=S.nests.map((n,i)=>{
-      const cfg=n.alpha-ref,fit=alphas!=null?alphas[i]:undefined;
-      const se=hasSE&&ses[i]!=null?ses[i]:null;
-      const ciStr=hasSE&&i>0&&se!=null?`[${fmt(fit-1.96*se,2)}, ${fmt(fit+1.96*se,2)}]`:(i===0?'<span class="na">ref.</span>':'<span class="na">n/a</span>');
-      const seStr=hasSE&&i>0?fmt(se,3):'<span class="na">'+(i===0?'ref.':'n/a')+'</span>';
-      return`<tr><td style="color:${PAL[n.ci].hex};font-weight:600">α${i+1}</td>
-        <td>${fmt(cfg,2)}</td><td>${fmt(fit,2)}</td><td>${seStr}</td><td>${ciStr}</td></tr>`;
-    }).join('');
-    const bSE=hasSE&&seBeta!=null?fmt(seBeta,3):'<span class="na">n/a</span>';
-    const bCI=hasSE&&seBeta!=null?`[${fmt(beta-1.96*seBeta,2)}, ${fmt(beta+1.96*seBeta,2)}]`:'<span class="na">n/a</span>';
-    rows+=`<tr><td style="font-weight:600">β</td><td>${fmt(S.beta,2)}</td><td>${fmt(beta,2)}</td><td>${bSE}</td><td>${bCI}</td></tr>`;
-    tbody.innerHTML=rows;
-
-  } else if(model==='attract'&&S.attractFitted){
-    const{alphas}=S.attractFitted;
-    const ref=S.nests[0].alpha;
-    thead.innerHTML='<tr><th>Param</th><th>Configured</th><th>Fitted</th><th colspan="2" style="color:var(--muted);font-style:italic;font-weight:400">β fixed at 0</th></tr>';
-    let rows=S.nests.map((n,i)=>{
-      const cfg=n.alpha-ref,fit=alphas!=null?alphas[i]:undefined;
-      return`<tr><td style="color:${PAL[n.ci].hex};font-weight:600">α${i+1}</td>
-        <td>${i===0?'<span class="na">ref.</span>':fmt(cfg,2)}</td>
-        <td>${i===0?'<span class="na">ref.</span>':fmt(fit,2)}</td>
-        <td colspan="2" class="na" style="font-style:italic">${i===0?'reference':'closed-form MLE'}</td></tr>`;
-    }).join('');
-    tbody.innerHTML=rows;
-
-  } else if(model==='voronoi'&&S.voronoiFitted){
-    const{beta}=S.voronoiFitted;
-    thead.innerHTML='<tr><th>Param</th><th>Configured</th><th>Fitted</th><th colspan="2" style="color:var(--muted);font-style:italic;font-weight:400">all α fixed at 0</th></tr>';
-    tbody.innerHTML=`<tr><td style="font-weight:600">β</td><td>${fmt(S.beta,2)}</td><td>${fmt(beta,2)}</td><td colspan="2" class="na" style="font-style:italic">distance decay only</td></tr>`;
-
-  } else {
-    thead.innerHTML='';
-    tbody.innerHTML=`<tr><td colspan="5" class="na" style="font-style:italic;text-align:center;padding:8px">No fit yet</td></tr>`;
-  }
+function updateRSFTable(){
+  if(!S.rsfFitted)return;
+  const{alphas,beta,ses,seBeta}=S.rsfFitted;
+  const ref=S.nests[0].alpha;
+  const hasSE=ses!=null;
+  let rows=S.nests.map((n,i)=>{
+    const cfg=n.alpha-ref, fit=alphas!=null?alphas[i]:undefined;
+    const se=hasSE&&ses[i]!=null?ses[i]:null;
+    const ciStr=hasSE&&i>0&&se!=null?`[${fmt(fit-1.96*se,2)}, ${fmt(fit+1.96*se,2)}]`:(i===0?'<span class="na">ref.</span>':'<span class="na">n/a</span>');
+    const seStr=hasSE&&i>0?fmt(se,3):'<span class="na">'+(i===0?'ref.':'n/a')+'</span>';
+    return`<tr><td style="color:${PAL[n.ci].hex};font-weight:600">α${i+1}</td>
+      <td>${fmt(cfg,2)}</td><td>${fmt(fit,2)}</td>
+      <td>${seStr}</td><td>${ciStr}</td></tr>`;
+  }).join('');
+  const bSE=hasSE&&seBeta!=null?fmt(seBeta,3):'<span class="na">n/a</span>';
+  const bCI=hasSE&&seBeta!=null?`[${fmt(beta-1.96*seBeta,2)}, ${fmt(beta+1.96*seBeta,2)}]`:'<span class="na">n/a</span>';
+  rows+=`<tr><td style="font-weight:600">β</td><td>${fmt(S.beta,2)}</td><td>${fmt(beta,2)}</td><td>${bSE}</td><td>${bCI}</td></tr>`;
+  document.getElementById('rsf-tbody').innerHTML=rows;
   updateResultsFootnote();
 }
-
-// Keep old name as alias so nothing else breaks
-function updateRSFTable(){ updateParamTable(); }
 
 // ── Combined results footnote ─────────────────────────────────────────
 function updateResultsFootnote(){
@@ -1019,12 +927,6 @@ function updateLLTable(){
     const cvStr=cv?(cv.voronoiCV!=null?fmt(cv.voronoiCV,3):'<span class="na">n/a</span>'):pend;
     html+=`<tr><td>Voronoi (α=0)<br><em style="font-weight:400;opacity:.7">[distance only]</em></td><td>${fmt(ll,3)}</td><td>${cvStr}</td><td>${aic}</td><td>1 (β only)</td></tr>`;
   }
-  if(S.attractFitted){
-    const ll=S.attractFitted.llPerObs;
-    const aic=fmt(aicc(ll*N,K-1,N),1);
-    const cvStr=cv?(cv.attractCV!=null?fmt(cv.attractCV,3):'<span class="na">n/a</span>'):pend;
-    html+=`<tr><td>Attractiveness-only (β=0)<br><em style="font-weight:400;opacity:.7">[no distance]</em></td><td>${fmt(ll,3)}</td><td>${cvStr}</td><td>${aic}</td><td>${K-1} (α only)</td></tr>`;
-  }
   if(S.rsfFitted){
     const ll=S.rsfFitted.hist[S.rsfFitted.hist.length-1];
     const aic=fmt(aicc(ll*N,K,N),1);
@@ -1056,7 +958,7 @@ function updateNestList(){
   el.querySelectorAll('.nrm').forEach(b=>b.addEventListener('click',e=>{
     const idx=+e.currentTarget.dataset.i;
     S.obs=S.obs.filter(o=>o.dest!==idx).map(o=>({...o,dest:o.dest>idx?o.dest-1:o.dest}));
-    S.nests.splice(idx,1);S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.attractFitted=null;S.cvResults=null;
+    S.nests.splice(idx,1);S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.cvResults=null;
     document.getElementById('results-panel').style.display='none';
     document.getElementById('rsf-res-block').style.display='none';
     document.getElementById('fit-compare-block').style.display='none';
@@ -1094,7 +996,7 @@ document.getElementById('beta-sl').addEventListener('input',e=>{
 document.getElementById('btn-add').addEventListener('click',()=>{
   if(S.nests.length>=6)return;
   S.nests.push({x:.15+Math.random()*.7,y:.15+Math.random()*.7,alpha:.5,name:'N'+(S.nests.length+1),ci:S.nests.length%PAL.length});
-  S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.attractFitted=null;S.cvResults=null;
+  S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.cvResults=null;
   document.getElementById('results-panel').style.display='none';
   document.getElementById('rsf-res-block').style.display='none';
   document.getElementById('fit-compare-block').style.display='none';
@@ -1117,7 +1019,7 @@ document.getElementById('btn-gen').addEventListener('click',()=>{
   const pairs=[];
   if(S.simMode==='grid'){for(let i=0;i<S.density;i++)for(let j=0;j<S.density;j++){const ox=(i+.5)/S.density,oy=(j+.5)/S.density;pairs.push({ox,oy,dest:sampleDest(rsf(ox,oy,S.nests,S.beta))});}}
   else{const n=S.density*S.density;for(let i=0;i<n;i++){const ox=.04+Math.random()*.92,oy=.04+Math.random()*.92;pairs.push({ox,oy,dest:sampleDest(rsf(ox,oy,S.nests,S.beta))});}}
-  S.obs=pairs;S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.attractFitted=null;S.cvResults=null;
+  S.obs=pairs;S.rsfFitted=null;S.kdeFitted=null;S.voronoiFitted=null;S.cvResults=null;
   clearTimeout(_autoFitTimer);
   document.getElementById('results-panel').style.display='none';
   document.getElementById('rsf-res-block').style.display='none';
@@ -1140,7 +1042,6 @@ document.getElementById('view-sel').addEventListener('change',e=>setView(e.targe
 
 // ── Layer toggles ─────────────────────────────────────────────────────
 document.getElementById('layer-sel').addEventListener('change',e=>setLayer(e.target.value));
-document.getElementById('param-model-sel').addEventListener('change',()=>updateParamTable());
 
 // ── KDE bandwidth ─────────────────────────────────────────────────────
 document.getElementById('kde-bw-sl').addEventListener('input',e=>{
@@ -1204,11 +1105,11 @@ function rsfLL(obs, nestPos, alphas, beta){
 // ── 5-fold cross-validation ───────────────────────────────────────────
 async function crossValidate(obs, nestPos, bandwidth, K, nFolds=5){
   const N=obs.length;
-  if(N<nFolds*2)return{rsfCV:null,kdeCV:null,voronoiCV:null,attractCV:null};
+  if(N<nFolds*2)return{rsfCV:null,kdeCV:null};
   // Shuffle
   const idx=[...Array(N).keys()];
   for(let i=N-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
-  let rsfLL_cv=0,kdeLL_cv=0,voronoiLL_cv=0,attractLL_cv=0,nTest=0;
+  let rsfLL_cv=0,kdeLL_cv=0,voronoiLL_cv=0,nTest=0;
   for(let f=0;f<nFolds;f++){
     const test=idx.filter((_,i)=>i%nFolds===f).map(i=>obs[i]);
     const train=idx.filter((_,i)=>i%nFolds!==f).map(i=>obs[i]);
@@ -1232,17 +1133,12 @@ async function crossValidate(obs, nestPos, bandwidth, K, nFolds=5){
       const ps=kdePredict(ox,oy,train,bandwidth,K);
       kdeLL_cv+=Math.log(Math.max(ps[dest],1e-10));
     }
-    // Attractiveness-only fold (closed-form, no async needed)
-    const{alphas:aAlphas}=await fitAttractOnly(train,K);
-    const aPs=softmax(aAlphas);
-    for(const{dest}of test) if(dest<K) attractLL_cv+=Math.log(Math.max(aPs[dest],1e-10));
     nTest+=test.length;
   }
   return{
     rsfCV:nTest>0?rsfLL_cv/nTest:null,
     kdeCV:nTest>0?kdeLL_cv/nTest:null,
     voronoiCV:nTest>0?voronoiLL_cv/nTest:null,
-    attractCV:nTest>0?attractLL_cv/nTest:null,
   };
 }
 
@@ -1306,20 +1202,6 @@ async function fitDistanceOnly(obs, nestPos){
 }
 
 
-// ── Attractiveness-only fitter (β=0, closed-form MLE) ────────────────
-async function fitAttractOnly(obs, K){
-  const counts=new Array(K).fill(0);
-  for(const{dest}of obs) if(dest<K) counts[dest]++;
-  // Closed-form: α_j = log(n_j) − log(n_1), reference α_1=0
-  const ref=Math.max(counts[0],0.5);
-  const alphas=counts.map((c,j)=>j===0?0:Math.log(Math.max(c,0.5)/ref));
-  const ps=softmax(alphas);
-  let ll=0;
-  const valid=obs.filter(o=>o.dest<K);
-  for(const{dest}of valid) ll+=Math.log(Math.max(ps[dest],1e-10));
-  return{alphas,llPerObs:ll/valid.length};
-}
-
 async function fitBoth(){
   const K=S.nests.length;
   const validObs=S.obs.filter(o=>o.dest<K);
@@ -1331,7 +1213,6 @@ async function fitBoth(){
     const bw=S.kdeBandwidth;
     S.kdeFitted={predictFn:(ox,oy)=>kdePredict(ox,oy,validObs,bw,K),llPerObs:kdeLogLik(validObs,bw,K),bandwidth:bw};
     S.voronoiFitted=await fitDistanceOnly(validObs,nestPos);
-    S.attractFitted=await fitAttractOnly(validObs,K);
     S.cvResults=null;
     document.getElementById('results-panel').style.setProperty('display','flex','important');
     document.getElementById('rsf-res-block').style.setProperty('display','','important');
