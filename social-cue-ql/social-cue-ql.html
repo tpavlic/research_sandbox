@@ -53,8 +53,6 @@ canvas{display:block;border-radius:6px;border:1px solid var(--border);}
 .lsw{width:20px;height:3px;border-radius:2px;flex-shrink:0;}
 .lsw-dash{width:20px;height:0;border-top:2.5px dashed;flex-shrink:0;}
 .foot{display:flex;align-items:center;gap:10px;}
-.pw{width:120px;flex-shrink:0;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
-.pb{height:100%;background:var(--green);border-radius:2px;width:0%;transition:width .15s;}
 .st{font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);white-space:nowrap;}
 /* model tab */
 .mpane{display:none;padding:26px 34px;flex-direction:column;gap:22px;max-width:1020px;margin:0 auto;}
@@ -209,8 +207,8 @@ canvas{display:block;border-radius:6px;border:1px solid var(--border);}
 <div class="plot-col">
   <div id="c-prompt" style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);padding:6px 4px 2px;text-align:center;">Configure parameters, then press <strong style="color:var(--green)">▶ Run Simulation</strong> to generate curves for each counting limit (limit) value.</div>
 <canvas id="cPlot" style="width:100%;height:360px;"></canvas>
-  <div class="legend" id="cLeg"><span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted)">Press ▶ Run Simulation — shows one curve per counting limit value.</span></div>
-  <div class="foot"><div class="pw"><div class="pb" id="cPb"></div></div><div class="st" id="cSt">—</div></div>
+  <div class="legend" id="cLeg"></div>
+  <div class="foot"><div class="st" id="cSt"></div></div>
 </div>
 </div>
 
@@ -767,13 +765,17 @@ function pairSlider(key, rawVal, fmt) {
 
 // ═══ CURVES TAB ═══
 let cCurves=[],cRef=null,cRunning=false,cRelMode='perfect',cDumMode='none',cActiveLabels=CLABS;
+function cLegPrompt(){
+  const lbl=cIVMode==='nb'?'counting\u00a0limit\u00a0(limit)':'social\u00a0reward\u00a0(\u03c1)';
+  document.getElementById('cLeg').innerHTML='<span style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--muted)">Press \u25b6 Run Simulation \u2014 shows one curve per '+lbl+' value.</span>';
+}
 function cV(k,v,f){document.getElementById('cv-'+k).textContent=f(v);cClearIfDone();}
 function cClearIfDone(){if(!cRunning&&cCurves.length){cCurves=[];cRef=null;
   const cv=document.getElementById('cPlot'),dpr=window.devicePixelRatio||1;
   const W=cv.offsetWidth||600,H=360;cv.width=W*dpr;cv.height=H*dpr;
   const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);cDrawEmpty(ctx,W,H);
   document.getElementById('cSt').textContent='';
-  document.getElementById('cLeg').innerHTML='';}}
+  cLegPrompt();}}
 let cPlaceMode='equal', wPlaceMode='equal';
 function cPlace(m){cClearIfDone();
   cPlaceMode=m; wPlaceMode=m;
@@ -831,13 +833,13 @@ function cP(){
 async function cRunAll(){
   if(cRunning)return;cRunning=true;cCurves=[];cRef=null;
   document.getElementById('c-run').disabled=true;
-  document.getElementById('cLeg').innerHTML='<span style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--muted)">Computing…</span>';
+  cLegPrompt();  // show prompt until first curve lands
 
   const p=cP();
-  // If dummies active, also compute a λ=0 no-dummy reference curve
+  // If dummies active, compute a no-dummy reference curve first
   if(p.dT!=='none'){
     await new Promise(r=>setTimeout(r,0));
-    document.getElementById('cSt').textContent=`λ=0.00 (no dummies, reference)…`;
+    document.getElementById('cSt').textContent='Computing reference (no dummies)…';
     const p0={...p,dT:'none'};
     cRef=runEnsemble(0,p0);
     cDraw(p);
@@ -847,19 +849,20 @@ async function cRunAll(){
   cActiveLabels = ivLabels;
   for(let li=0;li<ivVals.length;li++){
     await new Promise(r=>setTimeout(r,0));
-    document.getElementById('cPb').style.width=`${(li+(p.dT!=='none'?1:0))/(ivVals.length+(p.dT!=='none'?1:0))*100}%`;
     const tag = cIVMode==='nb' ? `limit=${ivVals[li]===20?'∞':ivVals[li]}` : `ρ=${ivVals[li].toFixed(2)}`;
-    document.getElementById('cSt').textContent=`${tag}, ${p.nRuns} runs…`;
+    document.getElementById('cSt').textContent=`Computing ${tag} (${p.nRuns} runs)…`;
     const pRun = cIVMode==='nb'
       ? {...p, rho: p.rho}
       : {...p, nb: p.nb, rho: ivVals[li]};
     const limitRun = cIVMode==='nb' ? ivVals[li] : p.nb;
-    cCurves.push(runEnsemble(limitRun, pRun));cDraw(p,ivLabels);
+    cCurves.push(runEnsemble(limitRun, pRun));
+    cDraw(p,ivLabels);
+    // Add this curve's legend entry immediately
+    cBuildLeg(p,ivLabels);
   }
-  document.getElementById('cPb').style.width='100%';
   const doneTag = cIVMode==='nb' ? `${ivVals.length} counting limits` : `${ivVals.length} ρ values`;
   document.getElementById('cSt').textContent=`Done — ${p.nRuns} runs × ${doneTag} × ${p.nA} agents`;
-  cBuildLeg(p);cRunning=false;document.getElementById('c-run').disabled=false;
+  cRunning=false;document.getElementById('c-run').disabled=false;
 }
 
 function cDraw(p, labelsOverride){  const activeLabels = labelsOverride || cActiveLabels;
@@ -922,12 +925,8 @@ function cBuildLeg(p,labelsOverride){
 // ═══ WATCH TAB ═══
 let wRelMode='perfect',wPlaying=false,wRafId=null,wLastTs=0,wDumMode='none';
 function wClearIfDone(){
-  if(wPlaying)return;  // don't interrupt running animation
-  if(wRafId){cancelAnimationFrame(wRafId);wRafId=null;}
-  WS.ok=false;
-  document.getElementById('w-play').textContent='▶ Play';
-  document.getElementById('wSt').textContent='';
-  wDrawBlank(wP());
+  if(wPlaying)return;
+  wReset();
 }
 const WS={t:0,wE:null,wS:null,wD:null,pf:[.5,.5],ch:null,rw:null,qV:null,sf:null,hist:[],p:null,ok:false};
 
@@ -1464,6 +1463,7 @@ function showTab(name){
 
 window.addEventListener('load',()=>{
   cSetIV('nb');  // initialize IV mode display
+  cLegPrompt();
 
   document.getElementById('tab-watch').style.display='none';
   const mp=document.querySelector('.mpane');if(mp)mp.style.display='none';
