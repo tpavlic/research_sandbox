@@ -94,10 +94,19 @@ canvas{display:block;border-radius:6px;border:1px solid var(--border);}
 .eq-where{font-size:11.5px;line-height:1.8;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
 .eq-where code{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--green);background:var(--green-lt);padding:1px 5px;border-radius:4px;}
 .pt{width:100%;border-collapse:collapse;font-size:12px;}
+.pt{width:100%;border-collapse:collapse;}
 .pt th{text-align:left;padding:5px 10px;background:var(--green);color:white;font-weight:600;font-size:11px;letter-spacing:.03em;}
-.pt td{padding:5px 9px;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;vertical-align:top;font-size:11.5px;}
-.pt td:first-child{color:var(--green);font-weight:500;white-space:nowrap;}
-.pt tr:last-child td{border-bottom:none;}
+.pt th:first-child{width:44%;}
+.pt th:nth-child(2){width:56%;}
+.pt td{padding:5px 9px;border-bottom:none;font-family:'IBM Plex Mono',monospace;vertical-align:top;font-size:11.5px;}
+.pt td:first-child{color:var(--green);font-weight:500;width:44%;white-space:normal;}
+.pt td:nth-child(2){width:56%;white-space:normal;}
+.pt tr.pt-note td{padding:4px 14px 7px 18px;
+  border-bottom:1px solid var(--border);
+  background:#edeae2;
+  color:var(--muted);font-family:'Outfit',sans-serif;font-size:11px;white-space:normal;}
+.pt tr.pt-note:last-child td{border-bottom:none;}
+
 .diff{background:#fff8f0;border:1px solid #e0c090;border-radius:8px;padding:11px 15px;font-size:12.5px;line-height:1.65;}
 .dummy-note{background:#f0f8ff;border:1px solid #a0c0e0;border-radius:8px;padding:11px 15px;font-size:12.5px;line-height:1.65;}
 
@@ -121,6 +130,7 @@ canvas{display:block;border-radius:6px;border:1px solid var(--border);}
 #cTooltip{position:fixed;pointer-events:none;display:none;background:rgba(20,40,15,0.92);
   color:#f0ede5;font:11px "IBM Plex Mono",monospace;padding:6px 10px;border-radius:6px;
   white-space:pre;line-height:1.6;z-index:100;border:1px solid #3a6030;}
+
 </style>
 </head>
 <body>
@@ -361,14 +371,21 @@ depends on their consistency, not merely their presence.</p>
 <div>
 <div class="mh">Correspondence to CCM  (Gildea et al. 2025, <em>R. Soc. Open Sci.</em>)</div>
 <table class="pt">
-<tr><th>Q-learning (this widget)</th><th>CCM</th><th>Notes</th></tr>
-<tr><td>Q(s<sub>a</sub>, a)</td><td>ΣV at option a</td><td>Expected reward / total associative strength</td></tr>
-<tr><td>Q(0, a)  (s=0 bucket)</td><td>V(N<sub>i</sub>)</td><td>Value at zero social context ≈ env-only strength</td></tr>
-<tr><td>Q(s, a) for s&gt;0</td><td>V(N<sub>i</sub>)+V(S<sub>i</sub>)</td><td>Value at non-zero social context; interaction effects captured automatically</td></tr>
-<tr><td>count<sub>a</sub></td><td>count of conspecifics</td><td>CCM notionally assigns a separate weight per individual; in practice all are interchangeable</td></tr>
-<tr><td>limit</td><td>β<sub>soc</sub>/β<sub>non</sub> (approx.)</td><td>Both govern social influence; here a perceptual ceiling, not a learning rate ratio</td></tr>
-<tr><td>α·δ (tabular update)</td><td>β[λ−ΣV] (R–W)</td><td>Identical prediction-error logic at γ=0; no separate weights or gradient</td></tr>
-<tr><td>Softmax (τ)</td><td>Horse-race timing</td><td>Both convert learned values to probabilistic choice</td></tr>
+<tr><th>Q-learning (this widget)</th><th>CCM</th></tr>
+<tr><td>Q(s<sub>a</sub>, a)</td><td>ΣV at option a</td></tr>
+<tr class="pt-note"><td colspan="2">Expected reward / total associative strength</td></tr>
+<tr><td>Q(0, a)  (s=0 bucket)</td><td>V(N<sub>i</sub>)</td></tr>
+<tr class="pt-note"><td colspan="2">Value at zero social context ≈ env-only strength</td></tr>
+<tr><td>Q(s, a) for s&gt;0</td><td>V(N<sub>i</sub>)+V(S<sub>i</sub>)</td></tr>
+<tr class="pt-note"><td colspan="2">Value at non-zero social context; interaction effects captured automatically</td></tr>
+<tr><td>count<sub>a</sub></td><td>count of conspecifics</td></tr>
+<tr class="pt-note"><td colspan="2">CCM notionally assigns a separate weight per individual; in practice all are interchangeable</td></tr>
+<tr><td>limit</td><td>β<sub>soc</sub>/β<sub>non</sub> (approx.)</td></tr>
+<tr class="pt-note"><td colspan="2">Both govern social influence; here a perceptual ceiling, not a learning rate ratio</td></tr>
+<tr><td>α·δ (tabular update)</td><td>β[λ−ΣV] (R–W)</td></tr>
+<tr class="pt-note"><td colspan="2">Identical prediction-error logic at γ=0; no separate weights or gradient</td></tr>
+<tr><td>Softmax (τ)</td><td>Horse-race timing</td></tr>
+<tr class="pt-note"><td colspan="2">Both convert learned values to probabilistic choice</td></tr>
 </table>
 <br>
 <div class="diff">
@@ -456,16 +473,25 @@ whenever reality deviates from expectation.</p>
 <div>
 <div class="mh">Term-by-term correspondence</div>
 <table class="pt">
-<tr><th>CCM (Gildea et al. 2025)</th><th>Linear FA / RL</th><th>Notes</th></tr>
-<tr><td>N<sub>i</sub></td><td>env cue at option i</td><td>Always 1 in both models (cue is present or absent)</td></tr>
-<tr><td>S<sub>i</sub></td><td>social co-presence at option i</td><td>Count of conspecifics present; same quantity, same role</td></tr>
-<tr><td>V(N<sub>i</sub>) = w<sub>env</sub>·N<sub>i</sub></td><td>w<sub>env</sub>·N<sub>i</sub></td><td>Associative strength of the env cue — identical expressions</td></tr>
-<tr><td>V(S<sub>i</sub>) = w<sub>soc</sub>·S<sub>i</sub></td><td>w<sub>soc</sub>·S<sub>i</sub></td><td>Associative strength of social co-presence — identical expressions</td></tr>
-<tr><td>ΣV = V(N)+V(S)</td><td>Q(i) = w<sub>env</sub>·N<sub>i</sub> + w<sub>soc</sub>·S<sub>i</sub></td><td>Total predicted value — identical</td></tr>
-<tr><td>λ − ΣV</td><td>δ = r − Q(chosen)</td><td>Prediction error — identical; λ in R–W = reward magnitude r in RL</td></tr>
-<tr><td>β<sub>non</sub>·δ·N<sub>i</sub></td><td>β<sub>non</sub>·δ·N<sub>i</sub></td><td>Env weight update — identical; N<sub>i</sub>=1 so reduces to β<sub>non</sub>·δ</td></tr>
-<tr><td>β<sub>soc</sub>·δ·S<sub>i</sub></td><td>β<sub>soc</sub>·δ·S<sub>i</sub></td><td>Social weight update — identical; asymmetric rates are standard RL practice</td></tr>
-<tr><td>Horse-race timing rule</td><td>Softmax action selection</td><td>Both convert learned values into probabilistic choice</td></tr>
+<tr><th>CCM (Gildea et al. 2025)</th><th>Linear FA / RL</th></tr>
+<tr><td>N<sub>i</sub></td><td>env cue at option i</td></tr>
+<tr class="pt-note"><td colspan="2">Always 1 in both models (cue is present or absent)</td></tr>
+<tr><td>S<sub>i</sub></td><td>social co-presence at option i</td></tr>
+<tr class="pt-note"><td colspan="2">Count of conspecifics present; same quantity, same role</td></tr>
+<tr><td>V(N<sub>i</sub>) = w<sub>env</sub>·N<sub>i</sub></td><td>w<sub>env</sub>·N<sub>i</sub></td></tr>
+<tr class="pt-note"><td colspan="2">Associative strength of the env cue — identical expressions</td></tr>
+<tr><td>V(S<sub>i</sub>) = w<sub>soc</sub>·S<sub>i</sub></td><td>w<sub>soc</sub>·S<sub>i</sub></td></tr>
+<tr class="pt-note"><td colspan="2">Associative strength of social co-presence — identical expressions</td></tr>
+<tr><td>ΣV = V(N)+V(S)</td><td>Q(i) = w<sub>env</sub>·N<sub>i</sub> + w<sub>soc</sub>·S<sub>i</sub></td></tr>
+<tr class="pt-note"><td colspan="2">Total predicted value — identical</td></tr>
+<tr><td>λ − ΣV</td><td>δ = r − Q(chosen)</td></tr>
+<tr class="pt-note"><td colspan="2">Prediction error — identical; λ in R–W = reward magnitude r in RL</td></tr>
+<tr><td>β<sub>non</sub>·δ·N<sub>i</sub></td><td>β<sub>non</sub>·δ·N<sub>i</sub></td></tr>
+<tr class="pt-note"><td colspan="2">Env weight update — identical; N<sub>i</sub>=1 so reduces to β<sub>non</sub>·δ</td></tr>
+<tr><td>β<sub>soc</sub>·δ·S<sub>i</sub></td><td>β<sub>soc</sub>·δ·S<sub>i</sub></td></tr>
+<tr class="pt-note"><td colspan="2">Social weight update — identical; asymmetric rates are standard RL practice</td></tr>
+<tr><td>Horse-race timing rule</td><td>Softmax action selection</td></tr>
+<tr class="pt-note"><td colspan="2">Both convert learned values into probabilistic choice</td></tr>
 </table>
 
 <div class="mb" style="margin-top:10px">
@@ -583,6 +609,7 @@ over-specifying social states and building up rich history that must be overwrit
   .footer-sep{display:none;}
   .footer-lic{display:block;margin-top:2px;}
 }
+
 
 </style>
 
