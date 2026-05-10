@@ -271,7 +271,7 @@ footer a{color:var(--green);text-decoration:underline;text-underline-offset:2px}
       </div>
       <div class="sl-row">
         <div class="sl-lbl"><span>Distance decay <b>β</b></span><span class="sl-val" id="beta-val">4.0</span></div>
-        <input type="range" id="beta-sl" min="0.5" max="14" step="0.1" value="4.0">
+        <input type="range" id="beta-sl" min="0" max="14" step="0.1" value="4.0">
       </div>
       <p class="hint">High β = sharp boundaries · Low β = diffuse, overlapping basins</p>
       <div class="warning"><b>Model assumption:</b> the RSF assumes destination choices follow a proximity + attractiveness rule and estimates catchment boundaries under that assumption. If behavior doesn't follow this locality pattern, the RSF will fit poorly — the KDE (below) makes no such assumption and may then be more informative. See the Extensions tab for further options.</div>
@@ -284,6 +284,7 @@ footer a{color:var(--green);text-decoration:underline;text-underline-offset:2px}
     <div class="sec-bd">
       <div id="nest-list"></div>
       <button class="btn btn-gh btn-sm btn-full" id="btn-add">＋ Add Subnest</button>
+      <button class="btn btn-gh btn-sm btn-full" id="btn-zero-alpha" style="margin-top:3px">Zero all α</button>
       <p class="hint">Drag subnests on the arena to reposition. Max 6.</p>
     </div>
   </div>
@@ -688,15 +689,18 @@ function buildHM(predictFn,view){
   const K=S.nests.length;
   const N=HM*HM;
   const vals=new Float32Array(N);
+  const vals2=new Float32Array(N); // second-highest probability for tie detection
   const diCache=new Int8Array(N);
   for(let py=0;py<HM;py++)for(let px=0;px<HM;px++){
     const idx=py*HM+px;
     const ps=predictFn((px+.5)/HM,(py+.5)/HM);
     if(view==='maxp'){
-      let mi=0,mv=ps[0];
-      for(let j=1;j<ps.length;j++){if(ps[j]>mv){mv=ps[j];mi=j;}}
-      diCache[idx]=mi;
-      vals[idx]=mv;
+      let mi=0,mv=ps[0],mv2=0;
+      for(let j=1;j<ps.length;j++){
+        if(ps[j]>mv){mv2=mv;mv=ps[j];mi=j;}
+        else if(ps[j]>mv2){mv2=ps[j];}
+      }
+      diCache[idx]=mi; vals[idx]=mv; vals2[idx]=mv2;
     }else{
       vals[idx]=perplexity(ps);
     }
@@ -708,6 +712,8 @@ function buildHM(predictFn,view){
   for(let i=0;i<N;i++){if(vals[i]<dataMn)dataMn=vals[i];if(vals[i]>dataMx)dataMx=vals[i];}
   const rng=mx-mn||1;
   if(view==='entropy') S._lastPerplexityRange=[dataMn,dataMx];
+  const TIE_COLOR=[176,166,154]; // warm gray for ties
+  let hasTies=false;
   for(let py=0;py<HM;py++)for(let px=0;px<HM;px++){
     const idx=py*HM+px;
     const t=Math.max(0,Math.min(1,(vals[idx]-mn)/rng));
@@ -715,9 +721,16 @@ function buildHM(predictFn,view){
     if(view==='maxp'){
       const di=Math.min(diCache[idx],K-1);
       if(di<0)continue;
-      const[r,g,b]=PAL[S.nests[di].ci].rgb;
-      img.data[i]=r;img.data[i+1]=g;img.data[i+2]=b;
-      img.data[i+3]=68+Math.round(152*t);
+      const isTie=(vals[idx]-vals2[idx])<1e-4;
+      if(isTie){
+        hasTies=true;
+        img.data[i]=TIE_COLOR[0];img.data[i+1]=TIE_COLOR[1];img.data[i+2]=TIE_COLOR[2];
+        img.data[i+3]=180;
+      } else {
+        const[r,g,b]=PAL[S.nests[di].ci].rgb;
+        img.data[i]=r;img.data[i+1]=g;img.data[i+2]=b;
+        img.data[i+3]=68+Math.round(152*t);
+      }
     }else{
       // Cool (teal, low perplexity=certain) → warm (orange, high perplexity=contested)
       img.data[i]  =Math.round(140+t*84);   // 140→224
@@ -727,6 +740,7 @@ function buildHM(predictFn,view){
     }
   }
   hmCtx.putImageData(img,0,0);
+  S._hasTies=hasTies;
 }
 
 // ── Perplexity colorbar ───────────────────────────────────────────────
@@ -884,9 +898,13 @@ function updateViewLabel(){
 
 // ── Legend ───────────────────────────────────────────────────────────
 function updateLegend(){
-  document.getElementById('legend').innerHTML=S.nests.map(n=>`
+  let html=S.nests.map(n=>`
     <div class="leg-item"><div class="leg-dot" style="background:${PAL[n.ci].hex}"></div>
     <span>${n.name}</span><span style="color:var(--muted);margin-left:2px">α=${n.alpha.toFixed(1)}</span></div>`).join('');
+  if(S.view==='maxp'&&S._hasTies){
+    html+=`<div class="leg-item"><div class="leg-dot" style="background:#b0a69a"></div><span style="color:var(--muted);font-style:italic">Tie</span></div>`;
+  }
+  document.getElementById('legend').innerHTML=html;
 }
 
 // ── Picker ───────────────────────────────────────────────────────────
@@ -1103,6 +1121,10 @@ cvs.addEventListener('touchend',()=>{S.dragging=null;});
 // ── Controls wiring ───────────────────────────────────────────────────
 document.getElementById('beta-sl').addEventListener('input',e=>{
   S.beta=parseFloat(e.target.value);document.getElementById('beta-val').textContent=S.beta.toFixed(1);requestRender();
+});
+document.getElementById('btn-zero-alpha').addEventListener('click',()=>{
+  S.nests.forEach(n=>{ n.alpha=0; });
+  updateNestList();requestRender();
 });
 document.getElementById('btn-add').addEventListener('click',()=>{
   if(S.nests.length>=6)return;
