@@ -95,6 +95,18 @@ aside { grid-area: aside; }
 }
 #socPanel { display: flex; flex-direction: column; }
 #socHist  { flex: 1; height: auto; min-height: 86px; }
+.hist-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: #4a6b5d;
+}
+.hist-legend .hl-item { display: inline-flex; align-items: center; gap: 5px; }
+.hist-legend .hl-swatch { width: 9px; height: 9px; display: inline-block; box-sizing: border-box; }
+.hist-legend .hl-solid { background: #4a6b5d; }
+.hist-legend .hl-hollow { border: 1.25px solid #4a6b5d; background: transparent; }
 
 @media (max-width: 1020px) {
   /* On narrow, aside and extras-row become transparent for grid purposes
@@ -961,14 +973,15 @@ input[type="range"] {
       <div class="panel">
         <h3>Robots</h3>
         <div class="metrics-grid">
-          <div class="metric" title="Instantaneous: the farthest robot from depot expressed as a fraction of solo-reach. 1.0&times; means a robot is right at the solo-reach circle; &gt;1.0&times; means V2V has extended its range."><div class="label">Max reach</div><div class="value" id="mMax">0&times;</div></div>
-          <div class="metric" title="Instantaneous: percentage of robots currently positioned beyond solo-reach (i.e., they require V2V to be safe)."><div class="label">Past solo-reach</div><div class="value" id="mMean">0%</div></div>
+          <div class="metric" title="Instantaneous: the farthest foraging robot from depot expressed as a fraction of solo-reach. 1.0&times; means a robot is right at the solo-reach circle; &gt;1.0&times; means V2V has extended its range."><div class="label">Max reach</div><div class="value" id="mMax">0&times;</div></div>
+          <div class="metric" title="Instantaneous: percentage of foraging robots currently positioned beyond solo-reach (i.e., they require V2V to be safe). All refuelers are excluded — these stats describe the searching workers only."><div class="label">Past solo-reach</div><div class="value" id="mMean">0%</div></div>
           <div class="metric" title="Instantaneous: count of robots currently in the v2v role (chain-safe but not directly home-safe)."><div class="label">V2V-dependent</div><div class="value" id="mV2V">0</div></div>
-          <div class="metric" title="Instantaneous: arithmetic mean of all robot SoC values."><div class="label">Mean SoC</div><div class="value" id="mSoc">0%</div></div>
-          <div class="metric" title="Cumulative: the all-time maximum of (max_d / solo-reach) seen since last reset. Sub-1.0&times; means no robot has ever pushed past solo-reach; &gt;1.0&times; means V2V actually extended somebody&apos;s range."><div class="label">Peak reach</div><div class="value" id="mPeak">0&times;</div></div>
-          <div class="metric" title="Cumulative: time-averaged (max_d / solo-reach) over all sim time since reset. The envelope&apos;s running average &mdash; captures both how far AND how persistently the swarm pushes outward."><div class="label">Mean reach</div><div class="value" id="mMeanReach">&mdash;</div></div>
-          <div class="metric" title="Cumulative: fraction of robot-time spent at d &gt; 0.8 &times; solo-reach. The &apos;distal band&apos; metric &mdash; sensitive to robots loitering near the periphery even if peak reach does not exceed 1.0&times;. Captures the V2V field-stay benefit."><div class="label">Time at outer 80%</div><div class="value" id="mTimeOuter">0%</div></div>
-          <div class="metric" title="Cumulative: fraction of robot-time spent at d &gt; solo-reach (i.e., in V2V-required territory)."><div class="label">Time past solo</div><div class="value" id="mTimePastSolo">0%</div></div>
+          <div class="metric" title="Instantaneous: mean SoC of the searching workers. Refuelers are excluded when the refueler role is on; with it off, every robot is a searcher, so this is the whole-swarm mean."><div class="label">Mean SoC</div><div class="value" id="mSoc">0%</div></div>
+          <div class="metric" title="Cumulative: the all-time maximum of (max_d / solo-reach) seen since last reset, with max_d taken over foraging robots only. Sub-1.0&times; means no robot has ever pushed past solo-reach; &gt;1.0&times; means V2V actually extended somebody&apos;s range."><div class="label">Peak reach</div><div class="value" id="mPeak">0&times;</div></div>
+          <div class="metric" title="Cumulative: time-averaged (max_d / solo-reach) over all sim time since reset, with max_d over foraging robots only. The envelope&apos;s running average &mdash; captures both how far AND how persistently the swarm pushes outward."><div class="label">Mean reach</div><div class="value" id="mMeanReach">&mdash;</div></div>
+          <div class="metric" title="Cumulative: fraction of foraging-robot-time spent at d &gt; 0.8 &times; solo-reach. The &apos;distal band&apos; metric &mdash; sensitive to robots loitering near the periphery even if peak reach does not exceed 1.0&times;. Captures the V2V field-stay benefit."><div class="label">Time at outer 80%</div><div class="value" id="mTimeOuter">0%</div></div>
+          <div class="metric" title="Cumulative: fraction of foraging-robot-time spent at d &gt; solo-reach (i.e., in V2V-required territory)."><div class="label">Time past solo</div><div class="value" id="mTimePastSolo">0%</div></div>
+          <div class="metric" id="refSocTile" style="display:none; grid-column:1 / -1;" title="Mean SoC of the refuelers only (appears when the refueler role is active). Holding near full means the shell is healthy — refuelers recharge faster than they donate. A sustained sag means they are giving away charge faster than they can replenish it: the shell is saturated for the current demand."><div class="label">Refueler SoC</div><div class="value" id="mRefSoc">&mdash;</div></div>
         </div>
       </div>
     </div>
@@ -977,6 +990,10 @@ input[type="range"] {
       <div class="panel" id="socPanel">
         <h3>SoC distribution</h3>
         <canvas id="socHist" width="300" height="86" style="width: 100%; display: block;"></canvas>
+        <div class="hist-legend" id="histLegend" style="display:none;">
+          <span class="hl-item"><span class="hl-swatch hl-solid"></span>searchers</span>
+          <span class="hl-item"><span class="hl-swatch hl-hollow"></span>refuelers</span>
+        </div>
       </div>
       <div class="panel" id="refimplPanel">
         <h3>Reference implementations</h3>
@@ -2312,7 +2329,15 @@ function step() {
   let nPastSolo = 0;
   let nOuterBand = 0;
   let maxD = 0;
+  let nForagers = 0;
+  // Reach statistics describe the *foraging* population only. Refuelers are
+  // anchored to a shell radius — even in search mode they are leashed to within
+  // ~10% solo-reach of their station, so they can never represent free-search
+  // reach and would only pad the denominator with sub-solo agents. Exclude them
+  // entirely; their contribution shows up in the task counters instead.
   for (const r of state.robots) {
+    if (r.kind === 'refueler') continue;
+    nForagers++;
     const d = dist(r, DEPOT);
     if (d > maxD) maxD = d;
     if (d > soloR) nPastSolo++;
@@ -2323,7 +2348,7 @@ function step() {
   state.cumMaxReach += maxReachNow * dt;
   state.cumPastSoloTime += nPastSolo * dt;
   state.cumOuterBandTime += nOuterBand * dt;
-  state.cumTotalRobotTime += state.robots.length * dt;
+  state.cumTotalRobotTime += nForagers * dt;
   if (state.trailPersistence > 0) {
     // Snowplow trails: fade existing paint, then stamp a wide soft disk under
     // each robot. The persistence slider maps to a fade-alpha applied to the
@@ -2738,16 +2763,26 @@ function computeMetrics() {
   // and directly comparable to the dashed circle on screen.
   const soloR = 1 / (2 * state.alpha);
   let max = 0, socSum = 0, v2vCount = 0, stranded = 0, pinned = 0, pastSolo = 0;
+  let nForagers = 0, socSumSearch = 0, socSumRef = 0, nRef = 0;
+  // Reach stats (max, pastSolo) use the foraging population only — refuelers are
+  // anchored and excluded. Mean SoC is split: searchers vs refuelers, since a
+  // blended mean is dominated by whichever population is larger and conflates a
+  // depleting forager pool with topped-up infrastructure. Role tallies (v2v,
+  // stranded, pinned) stay over the whole swarm.
   for (const r of rs) {
-    const d = dist(r, DEPOT);
-    if (d > max) max = d;
-    if (d > soloR) pastSolo++;
     socSum += r.soc;
     if (r.role === 'v2v') v2vCount++;
     if (r.role === 'stranded') stranded++;
     if (r.pinnedBy !== null) pinned++;
+    if (r.kind === 'refueler') { socSumRef += r.soc; nRef++; continue; }
+    nForagers++;
+    socSumSearch += r.soc;
+    const d = dist(r, DEPOT);
+    if (d > max) max = d;
+    if (d > soloR) pastSolo++;
   }
   const n = Math.max(1, rs.length);
+  const nReach = Math.max(1, nForagers);
   const timePastSoloPct = state.cumTotalRobotTime > 0
     ? (state.cumPastSoloTime / state.cumTotalRobotTime) * 100
     : 0;
@@ -2758,7 +2793,7 @@ function computeMetrics() {
     maxReach: (max / soloR).toFixed(2) + '×',
     peakReach: state.peakReach.toFixed(2) + '×',
     meanReach: state.t > 0.05 ? (state.cumMaxReach / state.t).toFixed(2) + '×' : '—',
-    pastSolo: Math.round(pastSolo / n * 100) + '%',
+    pastSolo: Math.round(pastSolo / nReach * 100) + '%',
     timePastSolo: timePastSoloPct.toFixed(1) + '%',
     timeAtOuter: timeAtOuterPct.toFixed(1) + '%',
     tasksActive: state.tasks.length,
@@ -2767,7 +2802,9 @@ function computeMetrics() {
     stranded,
     pinned,
     helpEdges: state.helpEdges.length,
-    meanSoc: ((socSum / n) * 100).toFixed(0) + '%',
+    meanSoc: nForagers > 0 ? ((socSumSearch / nForagers) * 100).toFixed(0) + '%' : '—',
+    meanSocRef: nRef > 0 ? ((socSumRef / nRef) * 100).toFixed(0) + '%' : null,
+    refuelerN: nRef,
     live: rs.length,
   };
 }
@@ -2795,41 +2832,78 @@ function drawSocHistogram() {
   const W2 = cssW, H2 = cssH;
   x.clearRect(0, 0, W2, H2);
   const bins = 10;
-  const counts = new Array(bins).fill(0);
+  const searchCounts = new Array(bins).fill(0);
+  const refuelCounts = new Array(bins).fill(0);
+  let anyRefuelers = false;
   for (const r of state.robots) {
     const b = Math.min(bins - 1, Math.max(0, Math.floor(r.soc * bins)));
-    counts[b]++;
+    if (r.kind === 'refueler') { refuelCounts[b]++; anyRefuelers = true; }
+    else searchCounts[b]++;
   }
-  const maxC = Math.max(1, ...counts);
+  // Shared vertical scale across both populations so bar heights are comparable.
+  let maxC = 1;
+  for (let i = 0; i < bins; i++) {
+    if (searchCounts[i] > maxC) maxC = searchCounts[i];
+    if (refuelCounts[i] > maxC) maxC = refuelCounts[i];
+  }
   const pad = 4;
   const labelH = 14;
   const plotH = H2 - labelH - pad;
   const w = (W2 - 2 * pad) / bins;
+  const baseY = H2 - labelH;
   // Subtle baseline
   x.strokeStyle = 'rgba(31, 58, 46, 0.18)';
   x.lineWidth = 1;
   x.beginPath();
-  x.moveTo(pad, H2 - labelH);
-  x.lineTo(W2 - pad, H2 - labelH);
+  x.moveTo(pad, baseY);
+  x.lineTo(W2 - pad, baseY);
   x.stroke();
+  // Color encodes SoC zone (x-position already implies it, but the red→green
+  // gradient is a useful danger cue). Population is encoded by fill style:
+  // searchers solid, refuelers hollow (outlined).
+  const zoneColor = (i) => {
+    if (i < 2) return '#c44a3b';        // 0–20% red
+    if (i < 5) return '#d97e3b';        // 20–50% orange
+    if (i < 8) return '#5a7a96';        // 50–80% blue
+    return '#4a8060';                   // 80–100% green
+  };
+  x.font = '500 9px "IBM Plex Mono", monospace';
+  x.textAlign = 'center';
   for (let i = 0; i < bins; i++) {
-    const h = (counts[i] / maxC) * (plotH - 4);
+    const color = zoneColor(i);
     const x0 = pad + i * w + 1;
-    // Color by SoC zone
-    let color;
-    if (i < 2) color = '#c44a3b';        // 0–20% red
-    else if (i < 5) color = '#d97e3b';   // 20–50% orange
-    else if (i < 8) color = '#5a7a96';   // 50–80% blue
-    else color = '#4a8060';              // 80–100% green
-    x.fillStyle = color;
-    x.fillRect(x0, H2 - labelH - h, w - 2, h);
-    if (counts[i] > 0) {
+    const innerW = w - 2;
+    if (anyRefuelers) {
+      // Grouped: searcher (solid, left) + refueler (hollow, right).
+      const gap = 1;
+      const subW = Math.max(2, (innerW - gap) / 2);
+      const sH = (searchCounts[i] / maxC) * (plotH - 4);
+      const rH = (refuelCounts[i] / maxC) * (plotH - 4);
+      x.fillStyle = color;
+      if (searchCounts[i] > 0) x.fillRect(x0, baseY - sH, subW, sH);
+      if (refuelCounts[i] > 0) {
+        const h = Math.max(2, rH);
+        x.strokeStyle = color;
+        x.lineWidth = 1.25;
+        x.strokeRect(x0 + subW + gap + 0.5, baseY - h + 0.5, subW - 1, h - 1);
+      }
       x.fillStyle = '#1f3a2e';
-      x.font = '500 9px "IBM Plex Mono", monospace';
-      x.textAlign = 'center';
-      x.fillText(counts[i], x0 + (w - 2) / 2, H2 - labelH - h - 2);
+      if (searchCounts[i] > 0) x.fillText(searchCounts[i], x0 + subW / 2, baseY - sH - 2);
+      if (refuelCounts[i] > 0) x.fillText(refuelCounts[i], x0 + subW + gap + subW / 2, baseY - Math.max(2, rH) - 2);
+    } else {
+      // No refuelers in the swarm: single solid bar per bin (searchers = all).
+      const h = (searchCounts[i] / maxC) * (plotH - 4);
+      x.fillStyle = color;
+      if (searchCounts[i] > 0) x.fillRect(x0, baseY - h, innerW, h);
+      if (searchCounts[i] > 0) {
+        x.fillStyle = '#1f3a2e';
+        x.fillText(searchCounts[i], x0 + innerW / 2, baseY - h - 2);
+      }
     }
   }
+  // Show/hide the solid-vs-hollow legend depending on whether refuelers exist.
+  const legend = document.getElementById('histLegend');
+  if (legend) legend.style.display = anyRefuelers ? 'flex' : 'none';
   // Axis labels
   x.fillStyle = '#4a6b5d';
   x.font = '9px "IBM Plex Mono", monospace';
@@ -2866,6 +2940,15 @@ function loop() {
   document.getElementById('mReach').textContent = state.reachabilityEdges.length;
   document.getElementById('mV2V').textContent = m.v2vCount;
   document.getElementById('mSoc').textContent = m.meanSoc;
+  const refSocTile = document.getElementById('refSocTile');
+  if (refSocTile) {
+    if (m.refuelerN > 0) {
+      refSocTile.style.display = '';
+      document.getElementById('mRefSoc').textContent = m.meanSocRef;
+    } else {
+      refSocTile.style.display = 'none';
+    }
+  }
   document.getElementById('tval').textContent = state.t.toFixed(1) + ' s';
   document.getElementById('liveval').textContent = m.live;
   document.getElementById('pinnedval').textContent = m.pinned;
