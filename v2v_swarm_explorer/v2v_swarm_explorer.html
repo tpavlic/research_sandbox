@@ -1,0 +1,4433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V2V Energy-Safe Swarm Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5ede1;
+  --paper: #fbf6ec;
+  --paper-dark: #efe5d4;
+  --paper-darker: #e6d9c2;
+  --ink: #1f3a2e;
+  --ink-light: #4a6b5d;
+  --ink-faint: #8aa094;
+  --accent: #d97e3b;
+  --accent-dark: #b86426;
+  --accent-light: #f3d4b3;
+  --green: #4a8060;
+  --green-light: #b8d4c2;
+  --red: #c44a3b;
+  --red-light: #efc4be;
+  --blue: #5a7a96;
+  --gold: #c89441;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { background: var(--bg); }
+
+body {
+  color: var(--ink);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 18px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app { max-width: 1380px; margin: 0 auto; }
+
+header { margin-bottom: 14px; }
+
+h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+h1 .dot { color: var(--accent); }
+.subtitle {
+  color: var(--ink-light);
+  font-size: 13px;
+  max-width: 95ch;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 330px;
+  grid-template-areas:
+    "canvas    aside"
+    "metrics   aside"
+    "extras    aside"
+    "explainer aside";
+  gap: 14px;
+  align-items: start;
+}
+.canvas-wrap { grid-area: canvas; }
+.metrics-row { grid-area: metrics; }
+.extras-row { grid-area: extras; }
+.explainer { grid-area: explainer; }
+aside { grid-area: aside; }
+
+/* Tasks + Robots side-by-side on wide; stacked on narrow.
+   align-items: stretch lets the shorter card grow to match the taller one. */
+.metrics-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+/* SoC distribution + Reference implementations side-by-side on wide.
+   The SoC panel uses flex column so the histogram canvas can fill the
+   remaining height (instead of leaving empty space below it). */
+.extras-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+#socPanel { display: flex; flex-direction: column; }
+#socHist  { flex: 1; height: auto; min-height: 86px; }
+
+@media (max-width: 1020px) {
+  /* On narrow, aside and extras-row become transparent for grid purposes
+     so their children can be individually placed around the metrics row. */
+  aside { display: contents; }
+  .extras-row { display: contents; }
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "canvas"
+      "presetsArea"
+      "runArea"
+      "paramsArea"
+      "refuelerArea"
+      "socArea"
+      "metrics"
+      "legendArea"
+      "refimplArea"
+      "explainer";
+  }
+  #presetsPanel  { grid-area: presetsArea; }
+  #runPanel      { grid-area: runArea; }
+  #paramsPanel   { grid-area: paramsArea; }
+  #refuelerPanel { grid-area: refuelerArea; }
+  #socPanel      { grid-area: socArea; }
+  #legendPanel   { grid-area: legendArea; }
+  #refimplPanel  { grid-area: refimplArea; }
+  .metrics-row {
+    grid-template-columns: 1fr;
+  }
+  /* Restore SoC canvas to its original fixed height on narrow — without
+     this it would auto-scale to width using its 300:86 aspect ratio and
+     become enormous in single-column layout. */
+  #socHist { flex: none; height: 86px; }
+}
+
+.canvas-wrap {
+  background: var(--paper);
+  border: 1px solid var(--paper-darker);
+  border-radius: 8px;
+  padding: 10px;
+  position: relative;
+}
+canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+  background: var(--paper);
+}
+
+.overlay {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  background: rgba(251, 246, 236, 0.92);
+  border: 1px solid var(--paper-darker);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+}
+.overlay .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  line-height: 1.4;
+}
+.overlay .label { color: var(--ink-light); }
+.overlay .value { color: var(--ink); font-weight: 500; }
+.overlay .badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.overlay .badge.on { background: var(--accent); color: white; }
+.overlay .badge.off { background: var(--ink-faint); color: white; }
+
+.panel {
+  background: var(--paper);
+  border: 1px solid var(--paper-darker);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.panel h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-light);
+  margin-bottom: 10px;
+}
+
+.btn-row { display: flex; gap: 6px; margin-bottom: 10px; }
+
+/* ── Code view ──
+   Shown when the user clicks a "View source in another platform" button.
+   The .layout container is hidden simultaneously, so the code view occupies
+   the same content area as the simulator. Wider than aside-width so source
+   listings can breathe. */
+.code-view {
+  background: var(--paper);
+  border: 1px solid var(--paper-darker);
+  border-radius: 8px;
+  padding: 14px 16px 18px;
+  margin-top: 14px;
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--paper-darker);
+  padding-bottom: 10px;
+}
+.code-header h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+.back-btn {
+  background: var(--paper);
+  border: 1px solid var(--paper-darker);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.back-btn:hover {
+  background: var(--paper-dark);
+  border-color: var(--accent);
+}
+.lang-switch {
+  display: flex;
+  gap: 4px;
+}
+.lang-btn {
+  background: var(--paper);
+  border: 1px solid var(--paper-darker);
+  color: var(--ink-light);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.lang-btn:hover { background: var(--paper-dark); border-color: var(--accent); }
+.lang-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+}
+.action-buttons {
+  display: flex;
+  gap: 4px;
+}
+.action-btn {
+  background: var(--paper);
+  border: 1px solid var(--paper-darker);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.action-btn:hover {
+  background: var(--paper-dark);
+  border-color: var(--accent);
+}
+.action-btn:active {
+  background: var(--paper-darker);
+}
+.src-btn {
+  background: var(--paper);
+  border: 1px solid var(--paper-darker);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 7px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  flex: 1;
+}
+.src-btn:hover { background: var(--paper-dark); border-color: var(--accent); }
+.code-note {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin-bottom: 12px;
+  padding: 9px 11px;
+  background: rgba(217, 126, 59, 0.07);
+  border-left: 3px solid var(--accent);
+  border-radius: 2px;
+}
+.code-block {
+  background: #1f3a2e;
+  color: #f5ede1;
+  padding: 14px 16px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0;
+}
+.code-block code {
+  font-family: inherit;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+   Any element with [data-tooltip] gets a custom hover tooltip plus a subtle
+   dashed underline on its visible label as an affordance. We use data-tooltip
+   instead of native title so we can style the tooltip and avoid the long
+   browser delay. Page-load JS migrates title → data-tooltip in bulk. */
+[data-tooltip] {
+  position: relative;
+}
+label[data-tooltip],
+.metric[data-tooltip] .label,
+.metric-group-header[data-tooltip] {
+  text-decoration: underline dotted;
+  text-decoration-color: rgba(31, 58, 46, 0.30);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+label[data-tooltip]:hover,
+.metric[data-tooltip]:hover .label,
+.metric-group-header[data-tooltip]:hover {
+  text-decoration-color: var(--accent);
+}
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 8px 10px;
+  border-radius: 3px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
+  text-transform: none;
+  text-decoration: none;
+  line-height: 1.5;
+  white-space: normal;
+  width: 270px;
+  z-index: 1000;
+  pointer-events: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+}
+[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 1px);
+  right: 12px;
+  border: 5px solid transparent;
+  border-top-color: var(--ink);
+  z-index: 1000;
+  pointer-events: none;
+}
+.preset-desc {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin-top: 8px;
+  padding: 9px 10px;
+  background: var(--paper);
+  border: 1px solid var(--paper-darker);
+  border-radius: 3px;
+  min-height: 110px;
+}
+button {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.12s, transform 0.06s;
+}
+button:hover { background: var(--paper-dark); }
+button:active { transform: translateY(1px); }
+button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+button.primary:hover { background: var(--accent-dark); }
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 12px;
+  color: var(--ink);
+  transition: opacity 0.2s;
+}
+.toggle-row.inactive,
+.slider-row.inactive,
+.select-row.inactive {
+  opacity: 0.38;
+}
+.toggle-row.inactive label,
+.slider-row.inactive label,
+.select-row.inactive label {
+  font-style: italic;
+}
+.select-row {
+  margin-top: 8px;
+}
+.select-row label {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-light);
+  margin-bottom: 4px;
+}
+.select-row select {
+  width: 100%;
+  background: var(--paper);
+  border: 1px solid var(--paper-darker);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 5px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.select-row select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.checkbox {
+  appearance: none;
+  width: 34px;
+  height: 18px;
+  background: var(--paper-darker);
+  border-radius: 9px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: none;
+  flex-shrink: 0;
+}
+.checkbox:checked { background: var(--accent); }
+.checkbox::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.15s;
+}
+.checkbox:checked::after { transform: translateX(16px); }
+
+.slider-row { margin-bottom: 10px; }
+.slider-row label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--ink-light);
+  margin-bottom: 3px;
+}
+.slider-row label .val {
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--ink);
+  font-weight: 500;
+}
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.metric-group-header {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 6px 0 -2px 0;
+}
+.metric-group-header:first-child { margin-top: 0; }
+.metric {
+  padding: 7px 9px;
+  background: var(--paper-dark);
+  border-radius: 4px;
+}
+.metric .label {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  letter-spacing: 0.06em;
+}
+.metric .value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+.legend-item .swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border-width: 2px;
+  border-style: solid;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.legend-item .text { color: var(--ink-light); line-height: 1.4; }
+.legend-item .text strong { color: var(--ink); font-weight: 600; }
+
+.explainer {
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-light);
+}
+.explainer .card {
+  margin-bottom: 8px;
+  border: 1px solid var(--paper-darker);
+  border-radius: 6px;
+  background: var(--paper);
+}
+.explainer .card-title {
+  padding: 8px 12px;
+  font-weight: 500;
+  color: var(--ink);
+  font-size: 12px;
+  border-bottom: 1px solid var(--paper-darker);
+  background: var(--paper-dark);
+  border-radius: 6px 6px 0 0;
+}
+.explainer .body { padding: 10px 14px; }
+.explainer .body p { margin-bottom: 8px; }
+.explainer .body p:last-child { margin-bottom: 0; }
+.explainer .body ul { margin: 4px 0 8px 18px; padding: 0; }
+.explainer .body ul:last-child { margin-bottom: 0; }
+.explainer .body li { margin-bottom: 6px; }
+.explainer .body li:last-child { margin-bottom: 0; }
+.explainer code, .math {
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--paper-dark);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--ink);
+}
+.explainer code sub, .math sub {
+  font-size: 0.78em;
+  vertical-align: baseline;
+  position: relative;
+  bottom: -0.2em;
+}
+.explainer .math.block {
+  display: block;
+  padding: 8px 12px;
+  margin: 6px 0;
+  text-align: center;
+}
+.explainer .ref-section h4 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin: 14px 0 8px 0;
+}
+.explainer .ref-section h4:first-of-type { margin-top: 6px; }
+/* Top-level Related-Work section header (Biology / Engineering) — bigger,
+   forest-green, and underlined so it reads as a section break and not as
+   another sub-category alongside Battery-aware CBFs etc. */
+.explainer h4.rw-major-section {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  border-bottom: 1px solid var(--paper-darker);
+  padding-bottom: 6px;
+  margin: 28px 0 14px 0;
+}
+.explainer h4.rw-major-section:first-of-type { margin-top: 10px; }
+.explainer .ref {
+  margin-bottom: 12px;
+  padding-left: 12px;
+  border-left: 2px solid var(--paper-darker);
+}
+.explainer .ref .cite {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.explainer .ref .cite a {
+  color: var(--accent);
+  text-decoration: none;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.explainer .ref .cite a:hover {
+  text-decoration: underline;
+  color: var(--accent-dark);
+}
+.explainer .ref .annot {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-light);
+  margin-left: 16px;
+  margin-bottom: 2px;
+  /* Position-based layout for the tag: absolute-positioned tag + padded prose.
+     The earlier flex layout fragmented the prose into separate flex items at
+     every <em> boundary, stranding italicized phrases (species names etc.)
+     into their own oddly-placed columns. */
+  position: relative;
+  padding-left: 88px;
+}
+.explainer .ref .annot .tag {
+  position: absolute;
+  /* Right-justify the tag: anchor its left edge at the slot's right edge (80px
+     from .annot's left), then shift back by the tag's own width so the right
+     edge lands on the anchor. Result: WHAT, GAP, INSPIRATION all align on their
+     right edges, just before the prose starts at padding-left: 88px. */
+  left: 80px;
+  transform: translateX(-100%);
+  top: 2px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 2px;
+}
+.explainer .ref .annot .tag-what {
+  background: var(--paper-dark);
+  color: var(--ink-light);
+}
+.explainer .ref .annot .tag-gap {
+  background: rgba(196, 74, 59, 0.13);
+  color: var(--red);
+}
+.explainer .ref .annot .tag-bio {
+  background: rgba(74, 128, 96, 0.16);
+  color: #3a6b51;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>V2V Energy-Safe Swarm Explorer <span class="dot">·</span> network battery safety</h1>
+    <p class="subtitle">
+      Each robot is bound by an individual safety constraint: its current state of charge must leave enough budget
+      to return to a central depot. With vehicle-to-vehicle (V2V) energy exchange, the constraint relaxes from
+      <em>"depot is reachable"</em> to <em>"some peer with surplus is reachable, and they can ferry me home."</em>
+      Explore how the effective coverage, task throughput, and fragility shift as the safety property moves
+      from individual to network.
+    </p>
+    <p style="font-size: 11px; color: var(--ink-faint); margin: 6px 0 0 0;">
+      &copy; 2026 Theodore P. Pavlic &middot; <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; text-decoration-color: var(--ink-faint); text-underline-offset: 2px;">MIT License</a>
+    </p>
+  </header>
+
+  <div class="layout">
+    <div class="canvas-wrap">
+        <canvas id="sim" width="900" height="640"></canvas>
+        <div class="overlay" id="overlay">
+          <div class="badge on" id="modeBadge">Worker V2V on</div>
+          <div class="row"><span class="label">t</span><span class="value" id="tval">0.0 s</span></div>
+          <div class="row"><span class="label">live</span><span class="value" id="liveval">0</span></div>
+          <div class="row"><span class="label">pinned</span><span class="value" id="pinnedval">0</span></div>
+          <div class="row"><span class="label">stranded</span><span class="value" id="strandedval">0</span></div>
+        </div>
+      </div>
+
+
+    <aside>
+      <div class="panel" id="presetsPanel">
+        <h3>Presets</h3>
+        <div class="select-row">
+          <label for="presetSelect" title="Pick a preset to apply a coordinated parameter set and reinitialize the swarm. The description below summarizes the configuration and what to look for.">Apply preset</label>
+          <select id="presetSelect">
+            <option value="default" selected>Default (widget out-of-box)</option>
+            <option value="range-ext">Range extension (V2V vs. solo)</option>
+            <option value="field-stay">Field-stay (time at range)</option>
+            <option value="refueler">Refueler architecture (external repletes)</option>
+          </select>
+        </div>
+        <div class="preset-desc" id="presetDesc">Widget defaults: N=12, α=0.0024 (~5 s endurance), worker V2V on, refuelers off, refuel target 50%. A balanced baseline — not optimized to highlight V2V. Recommended workflow: run ~60 simulated seconds, note the cumulative metrics, then switch to a contrast preset (or toggle Worker-to-worker V2V off) and rerun to see what V2V buys you.</div>
+      </div>
+      <div class="panel" id="runPanel">
+        <h3>Run</h3>
+        <div class="btn-row">
+          <button id="btnPlay" class="primary">Pause</button>
+          <button id="btnStep">Step</button>
+          <button id="btnReset">Reset</button>
+        </div>
+        <div class="toggle-row">
+          <label for="coldStartToggle" title="On the next reset, all robots start at the depot with full SoC and radiate outward. Default is a warm-start ring with random SoC values consistent with already having walked out from the depot.">Cold-start from depot (on reset)</label>
+          <input type="checkbox" id="coldStartToggle" class="checkbox">
+        </div>
+        <div class="toggle-row">
+          <label for="showDisks" title="For each robot, draw the disk of all positions it could physically drive to on its current battery (radius = SoC / α).">Reachable disks</label>
+          <input type="checkbox" id="showDisks" class="checkbox" checked>
+        </div>
+        <div class="toggle-row">
+          <label for="showSafeSets" title="For each robot, draw the set of positions from which it can both reach the goal AND return safely. The 'direct-safe' set — used by the CBF safety filter when V2V is off.">Direct-safe ellipses</label>
+          <input type="checkbox" id="showSafeSets" class="checkbox">
+        </div>
+        <div class="toggle-row">
+          <label for="showSoloReach" title="Dashed reference ring around the depot at radius 1/(2α): the largest disk inside which a fully-charged robot can patrol solo and still return.">Solo-reach radius (1 / 2α)</label>
+          <input type="checkbox" id="showSoloReach" class="checkbox" checked>
+        </div>
+        <div class="toggle-row">
+          <label for="v2vToggle" title="When on, any worker robot (non-refueler) can serve as a V2V helper for another. Independent of the refueler role.">Worker-to-worker V2V</label>
+          <input type="checkbox" id="v2vToggle" class="checkbox" checked>
+        </div>
+        <div class="toggle-row" data-v2v="dependent">
+          <label for="ferryToggle" title="When a V2V transfer completes, the helper accompanies the receiver back to the depot rather than staying on station.">Helper ferries home with receiver</label>
+          <input type="checkbox" id="ferryToggle" class="checkbox">
+        </div>
+        <div class="toggle-row" data-v2v="dependent">
+          <label for="showReachability" title="Draw an edge from j to i whenever i could physically drive to j on current battery (ignoring whether j has surplus to donate).">Reachability edges (i can reach j)</label>
+          <input type="checkbox" id="showReachability" class="checkbox">
+        </div>
+        <div class="toggle-row" data-v2v="dependent">
+          <label for="showFeasibility" title="Draw an edge from j to i when j is a viable chain-aware V2V helper for i — j must have surplus, be eligible (worker/refueler toggle), and be safe at some depth itself.">Help-feasibility edges (j can save i)</label>
+          <input type="checkbox" id="showFeasibility" class="checkbox">
+        </div>
+        <div class="toggle-row" data-v2v="dependent">
+          <label for="showEdges" title="In-progress V2V relationships: a receiver heading toward its pinned helper, with arrowhead indicating direction of help.">Active V2V edges (committed)</label>
+          <input type="checkbox" id="showEdges" class="checkbox" checked>
+        </div>
+        <div class="toggle-row">
+          <label for="showTasks" title="Display task locations as orange diamonds. The orange ring around each diamond is its remaining TTL — when it shrinks to zero the task expires unreached.">Show task sites</label>
+          <input type="checkbox" id="showTasks" class="checkbox" checked>
+        </div>
+      </div>
+
+      <div class="panel" id="paramsPanel">
+        <h3>Parameters</h3>
+        <div class="slider-row">
+          <label title="Number of robots in the swarm. Changes take effect immediately and reinitialize the swarm.">Robots <span class="val" id="nVal">12</span></label>
+          <input type="range" id="nSlider" min="3" max="28" value="12" step="1">
+        </div>
+        <div class="slider-row">
+          <label title="Energy consumption rate per unit distance. Solo-reach radius = 1 / (2α). Higher α → smaller individual range. Endurance shown is the time a fully-charged robot can travel at base speed before depleting.">Battery cost α &nbsp;·&nbsp; endurance <span class="val" id="aVal">0.0024 · ~5.0 s</span></label>
+          <input type="range" id="aSlider" min="5" max="80" value="24" step="1">
+        </div>
+        <div class="slider-row">
+          <label title="Bernoulli probability per frame of a new task spawning uniformly in an annulus around the depot (radii 70 to ~275 px).">Task spawn rate <span class="val" id="rVal">0.06</span></label>
+          <input type="range" id="rSlider" min="0" max="20" value="6" step="1">
+        </div>
+        <div class="slider-row">
+          <label title="SoC deducted from a robot when it engages a task. The safety filter rejects engagement if the post-task state would be unsafe; rejections show up as Safety vetoes.">Task energy cost <span class="val" id="tmVal">0.18</span></label>
+          <input type="range" id="tmSlider" min="2" max="40" value="18" step="1">
+        </div>
+        <div class="slider-row">
+          <label title="Target SoC for a V2V receiver after donation. If above the low-SoC re-trigger threshold (0.25), the receiver resumes wandering after the transfer; otherwise it heads home. At the minimum, the chain-safety floor still applies.">V2V refuel target SoC <span class="val" id="rtsVal">50%</span></label>
+          <input type="range" id="rtsSlider" min="10" max="90" value="50" step="5">
+        </div>
+        <div class="slider-row">
+          <label title="Multiplier on simulation step rate. 1.0× is real-time at 60 fps. Higher values do more sim steps per frame; visualization rate is unchanged.">Sim speed <span class="val" id="sVal">1.0×</span></label>
+          <input type="range" id="sSlider" min="2" max="40" value="10" step="1">
+        </div>
+        <div class="slider-row">
+          <label title="How long the swept coverage paint each robot leaves behind lingers. 0% = no trails. 100% = trails never fade (permanent coverage map).">Trail persistence <span class="val" id="tpVal">0%</span></label>
+          <input type="range" id="tpSlider" min="0" max="100" value="0" step="1">
+        </div>
+      </div>
+
+      <div class="panel" id="refuelerPanel">
+        <h3>Refueler role</h3>
+        <div class="toggle-row">
+          <label for="refuelerToggle" title="When on, a fraction of the swarm is designated as 'refuelers' — robots that hold station at intermediate shell radii and provide V2V to others. Changes the swarm composition on next reset.">Enable refueler role (on reset)</label>
+          <input type="checkbox" id="refuelerToggle" class="checkbox">
+        </div>
+        <div class="slider-row" data-ref="dependent">
+          <label title="Fraction of swarm assigned as refuelers. Too few: gaps in the chain. Too many: too few workers left to do tasks.">Refueler fraction <span class="val" id="refFracVal">30%</span></label>
+          <input type="range" id="refFracSlider" min="0" max="60" value="30" step="5">
+        </div>
+        <div class="select-row" data-ref="dependent">
+          <label for="shellModeSelect" title="Radii at which refuelers hold station, measured as fractions of solo-reach. Single shell = one ring of refuelers. Double = inner ring (closer to depot) plus outer ring; refuelers split evenly.">Shell positions</label>
+          <select id="shellModeSelect">
+            <option value="single">Single shell at 0.50× solo-reach</option>
+            <option value="double33">Double shells at 0.33× and 0.67×</option>
+          </select>
+        </div>
+        <div class="select-row" data-ref="dependent">
+          <label for="refuelerMotionSelect" title="How refuelers behave at station. Static: hold position exactly. Orbit: tangential drift around the shell at constant angular rate, no task engagement. Search on leash: roam within ~10% solo-reach of station and engage tasks within that leash.">Refueler motion</label>
+          <select id="refuelerMotionSelect">
+            <option value="static">Static (hold station)</option>
+            <option value="orbit">Orbit (tangential drift, no tasks)</option>
+            <option value="search">Search on leash (engage tasks within leash)</option>
+          </select>
+        </div>
+        <div class="toggle-row" data-ref="dependent">
+          <label for="showShellsToggle" title="Draw dashed orange rings at the shell radii. Persistent even when refuelers are temporarily home charging, so the structural intent of the architecture stays visible.">Show shell positions</label>
+          <input type="checkbox" id="showShellsToggle" class="checkbox" checked>
+        </div>
+      </div>
+
+
+      <div class="panel" id="legendPanel">
+        <h3>Legend</h3>
+
+        <div style="font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; margin: 2px 0 6px 0;">Nodes</div>
+        <div class="legend-item">
+          <div class="swatch" style="background: var(--green-light); border-color: var(--green);"></div>
+          <div class="text"><strong>Self-safe.</strong> Depot lies inside this robot's reachable disk.</div>
+        </div>
+        <div class="legend-item">
+          <div class="swatch" style="background: var(--accent-light); border-color: var(--accent);"></div>
+          <div class="text"><strong>V2V-safe.</strong> Depot out of reach, but some peer could ferry it home.</div>
+        </div>
+        <div class="legend-item">
+          <div class="swatch" style="background: var(--red-light); border-color: var(--red);"></div>
+          <div class="text"><strong>Stranded.</strong> No feasible path back — safety filter has failed.</div>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <circle cx="10" cy="8" r="5" fill="#b8d4c2" stroke="#4a8060" stroke-width="1.3"/>
+            <circle cx="10" cy="8" r="2.7" fill="none" stroke="rgba(217,126,59,0.85)" stroke-width="1.2"/>
+            <circle cx="10" cy="8" r="1.1" fill="rgba(217,126,59,0.95)"/>
+          </svg>
+          <div class="text"><strong>Refueler.</strong> Stationary (or near-stationary) agent assigned to an intermediate shell around the depot. Holds station so that workers further out can dock with it for energy transfer. Enable in the Refueler role panel.</div>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <circle cx="10" cy="8" r="3" fill="#b8d4c2" stroke="#4a8060" stroke-width="1.2"/>
+            <circle cx="10" cy="8" r="6.5" fill="none" stroke="#d97e3b" stroke-width="1.2" stroke-dasharray="2 2"/>
+          </svg>
+          <div class="text"><strong>Pinned.</strong> Currently committed to a specific receiver; frozen in place until the rendezvous completes.</div>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <circle cx="10" cy="8" r="6" fill="none" stroke="#1f3a2e" stroke-width="1.5" stroke-dasharray="2 3" opacity="0.7"/>
+            <path d="M 10 2 A 6 6 0 0 1 16 8" fill="none" stroke="#1f3a2e" stroke-width="1.8"/>
+          </svg>
+          <div class="text"><strong>SoC ring.</strong> Filled arc around each robot indicates its current state of charge.</div>
+        </div>
+
+        <div style="font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; margin: 10px 0 6px 0;">Edges (j → i)</div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <line x1="2" y1="8" x2="14" y2="8" stroke="#c44a3b" stroke-width="1.1" opacity="0.75"/>
+            <polygon points="11,5 16,8 11,11" fill="#c44a3b" opacity="0.9"/>
+          </svg>
+          <div class="text"><strong>Reachability edge.</strong> <code>i</code> has enough battery to physically drive to <code>j</code>, but <code>j</code> may or may not be able to save it. Direction is asymmetric — depends on <code>i</code>'s SoC alone.</div>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <line x1="2" y1="8" x2="18" y2="8" stroke="#5a7a96" stroke-width="1.3" opacity="0.7"/>
+            <circle cx="14" cy="8" r="2.2" fill="#5a7a96" opacity="0.9"/>
+          </svg>
+          <div class="text"><strong>Feasibility edge.</strong> Subset of reachability where <code>j</code> also has enough surplus to cover <code>i</code>'s deficit. Dot marks the receiver end.</div>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <line x1="2" y1="8" x2="18" y2="8" stroke="#d97e3b" stroke-width="2"/>
+            <polygon points="14,4 19,8 14,12" fill="#d97e3b"/>
+          </svg>
+          <div class="text"><strong>Active V2V edge.</strong> <code>i</code> has committed to <code>j</code> as its helper and is heading there. <code>j</code> stays pinned until <code>i</code> arrives.</div>
+        </div>
+
+        <div style="font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; margin: 10px 0 6px 0;">Other</div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <circle cx="10" cy="8" r="7" fill="none" stroke="#1f3a2e" stroke-width="1" stroke-dasharray="2 3" opacity="0.55"/>
+            <circle cx="10" cy="8" r="1.5" fill="#1f3a2e" opacity="0.7"/>
+          </svg>
+          <div class="text"><strong>Solo-reach radius.</strong> Farthest a fully-charged robot can venture from the depot and still return alone: <code>1 / 2α</code>. Anything beyond this circle only happens via V2V.</div>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <circle cx="10" cy="8" r="6.5" fill="none" stroke="rgba(217,126,59,0.85)" stroke-width="1.3" stroke-dasharray="4 2"/>
+            <circle cx="10" cy="8" r="1.5" fill="#1f3a2e" opacity="0.7"/>
+          </svg>
+          <div class="text"><strong>Shell positions.</strong> Dashed orange rings marking the intermediate radii where refueler robots hold station (at 0.50× solo-reach in single-shell mode, or 0.33× and 0.67× in double-shell mode). Persistent even when refuelers are temporarily home charging.</div>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <circle cx="10" cy="8" r="7" fill="none" stroke="#1f3a2e" stroke-width="1" stroke-dasharray="2 4" opacity="0.4"/>
+            <circle cx="10" cy="8" r="2.5" fill="#1f3a2e"/>
+          </svg>
+          <div class="text"><strong>Recharge zone.</strong> Dashed proximity ring around the depot. Robots entering this radius automatically dock and begin recharging; explains why robots halt at a fixed distance from the depot center.</div>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <rect x="1" y="4" width="18" height="8" fill="#4a8060" opacity="0.18" rx="2"/>
+            <rect x="3" y="5" width="14" height="6" fill="#4a8060" opacity="0.32" rx="2"/>
+          </svg>
+          <div class="text"><strong>Coverage trails.</strong> Wide swept area each robot lays down as it moves. Persistence slider controls how long the paint lingers (0%&nbsp;=&nbsp;off; max&nbsp;=&nbsp;permanent map of swarm reach).</div>
+        </div>
+        <div class="legend-item">
+          <div style="background: var(--gold); border: 1px solid var(--ink); width: 10px; height: 10px; transform: rotate(45deg); flex-shrink: 0; margin: 4px 3px 0 3px;"></div>
+          <div class="text"><strong>Task site.</strong> Reaching one gives a payoff but raises discharge.</div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="metrics-row">
+      <div class="panel">
+        <h3>Tasks</h3>
+        <div class="metrics-grid">
+          <div class="metric" title="Number of tasks currently spawned and unresolved on the field."><div class="label">Active</div><div class="value" id="mActive">0</div></div>
+          <div class="metric" title="Cumulative tasks completed since last reset."><div class="label">Tasks done</div><div class="value" id="mDone">0</div></div>
+          <div class="metric" title="Cumulative tasks whose TTL ran out before any robot could reach them."><div class="label">Tasks expired</div><div class="value" id="mExpired">0</div></div>
+          <div class="metric" title="Cumulative count of attempted task engagements that the safety filter rejected because the post-task state would have been unsafe."><div class="label">Safety vetoes</div><div class="value" id="mVetoes">0</div></div>
+
+          <div class="metric-group-header">Edges (j &rarr; i)</div>
+          <div class="metric" title="Count of currently-active (committed) V2V edges: a receiver i is heading toward its pinned helper j."><div class="label">Help (active)</div><div class="value" id="mEdges">0</div></div>
+          <div class="metric" title="Count of potential helper-feasibility edges: pairs (j, i) where j is currently a valid chain-aware V2V helper for i."><div class="label">Feasible</div><div class="value" id="mFeas">0</div></div>
+          <div class="metric" title="Count of reachability edges: pairs (j, i) where i could physically drive to j on its current battery (regardless of whether j can help)."><div class="label">Reachable</div><div class="value" id="mReach">0</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Robots</h3>
+        <div class="metrics-grid">
+          <div class="metric" title="Instantaneous: the farthest robot from depot expressed as a fraction of solo-reach. 1.0&times; means a robot is right at the solo-reach circle; &gt;1.0&times; means V2V has extended its range."><div class="label">Max reach</div><div class="value" id="mMax">0&times;</div></div>
+          <div class="metric" title="Instantaneous: percentage of robots currently positioned beyond solo-reach (i.e., they require V2V to be safe)."><div class="label">Past solo-reach</div><div class="value" id="mMean">0%</div></div>
+          <div class="metric" title="Instantaneous: count of robots currently in the v2v role (chain-safe but not directly home-safe)."><div class="label">V2V-dependent</div><div class="value" id="mV2V">0</div></div>
+          <div class="metric" title="Instantaneous: arithmetic mean of all robot SoC values."><div class="label">Mean SoC</div><div class="value" id="mSoc">0%</div></div>
+          <div class="metric" title="Cumulative: the all-time maximum of (max_d / solo-reach) seen since last reset. Sub-1.0&times; means no robot has ever pushed past solo-reach; &gt;1.0&times; means V2V actually extended somebody&apos;s range."><div class="label">Peak reach</div><div class="value" id="mPeak">0&times;</div></div>
+          <div class="metric" title="Cumulative: time-averaged (max_d / solo-reach) over all sim time since reset. The envelope&apos;s running average &mdash; captures both how far AND how persistently the swarm pushes outward."><div class="label">Mean reach</div><div class="value" id="mMeanReach">&mdash;</div></div>
+          <div class="metric" title="Cumulative: fraction of robot-time spent at d &gt; 0.8 &times; solo-reach. The &apos;distal band&apos; metric &mdash; sensitive to robots loitering near the periphery even if peak reach does not exceed 1.0&times;. Captures the V2V field-stay benefit."><div class="label">Time at outer 80%</div><div class="value" id="mTimeOuter">0%</div></div>
+          <div class="metric" title="Cumulative: fraction of robot-time spent at d &gt; solo-reach (i.e., in V2V-required territory)."><div class="label">Time past solo</div><div class="value" id="mTimePastSolo">0%</div></div>
+        </div>
+      </div>
+    </div>
+
+        <div class="extras-row">
+      <div class="panel" id="socPanel">
+        <h3>SoC distribution</h3>
+        <canvas id="socHist" width="300" height="86" style="width: 100%; display: block;"></canvas>
+      </div>
+      <div class="panel" id="refimplPanel">
+        <h3>Reference implementations</h3>
+        <div class="select-row">
+          <label title="Open a minimal starter implementation of the basic swarm + V2V model in another agent-based-modeling platform. The full simulator is hidden while the source is shown; click 'Back to simulator' to return.">View source in another platform</label>
+        </div>
+        <div class="btn-row">
+          <button class="src-btn" data-lang="gama">GAMA</button>
+          <button class="src-btn" data-lang="netlogo">NetLogo</button>
+          <button class="src-btn" data-lang="python">Python</button>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--ink-soft); line-height: 1.5; margin-top: 6px;">
+          Starter templates: agents, wander, depot return, simple V2V on contact. Not the full safety-filtered / chain-aware / refueler model — just enough scaffolding to extend on your own.
+        </div>
+      </div>
+    </div>
+
+
+      <div class="explainer">
+        <div class="card">
+          <div class="card-title">The safety condition, formally</div>
+          <div class="body">
+            <p>
+              Let <code>b<sub>i</sub></code> be robot <code>i</code>'s state of charge, <code>p<sub>i</sub></code> its
+              position, <code>α</code> the energy cost per unit distance, and <code>d(·,·)</code> a distance metric
+              on the workspace (Euclidean in this simulator). Robot <code>i</code> is
+              <strong>directly safe</strong> when its reachable disk contains the depot:
+            </p>
+            <span class="math block">b<sub>i</sub>  ≥  α · d(p<sub>i</sub>, depot)</span>
+            <p>
+              Robot <code>i</code> is <strong>V2V-safe via peer</strong> <code>j</code> when both clauses hold:
+            </p>
+            <span class="math block">b<sub>i</sub> ≥ α · d(p<sub>i</sub>, p<sub>j</sub>)   (reachability)</span>
+            <span class="math block">b<sub>i</sub> + b<sub>j</sub>  ≥  α · (d(p<sub>i</sub>, p<sub>j</sub>) + 2 · d(p<sub>j</sub>, depot))   (surplus sufficiency)</span>
+            <p>
+              The first clause is a pure proximity condition: <code>i</code> can physically drive to <code>j</code>'s
+              position. The second is an energy-balance condition: once at the rendezvous, <code>j</code>'s
+              <strong>surplus</strong> <code>s<sub>j</sub> = b<sub>j</sub> − α · d(p<sub>j</sub>, depot)</code>
+              covers <code>i</code>'s <strong>deficit</strong>
+              <code>δ<sub>i</sub>(j) = α · (d(p<sub>i</sub>, p<sub>j</sub>) + d(p<sub>j</sub>, depot)) − b<sub>i</sub></code>.
+              The first gives the broad <strong>reachability graph</strong> (red edges in the visual); the conjunction
+              gives the strict <strong>help-feasibility subgraph</strong> (blue edges). The gap between them is
+              "wasted proximity" — peers <code>i</code> could reach but who can't save it.
+            </p>
+            <p>
+              The conditions are per-pair: there is <em>no general "helper" property</em>. A given <code>j</code> may
+              save some <code>i</code>s with small deficits while being unable to save others. The directed feasibility
+              edges <code>j → i</code> are the right object; counting "helpers" in isolation hides exactly the in/out-degree
+              structure that matters.
+            </p>
+            <p>
+              The condition is the same whether <code>j</code> stays deployed after the in-place exchange (default) or
+              accompanies <code>i</code> home (ferry toggle), since <code>j</code> reserves
+              <code>α · d(p<sub>j</sub>, depot)</code> for itself either way. Operationally, when <code>i</code> commits
+              to <code>j</code>, <code>j</code> is <strong>pinned</strong>: it stops wandering and waits in place until
+              <code>i</code> arrives and the transfer completes. This keeps the rendezvous deterministic; without it,
+              helpers can drift away mid-approach.
+            </p>
+            <p>
+              <em>This is the one-hop case.</em> The natural next layer is multi-hop chains
+              (i → j → k → depot) or rendezvous-then-flock with pooled redistribution, both of which strictly enlarge
+              the safe set at the cost of more elaborate proofs. The recursive form makes "helper" itself a fixed-point
+              quantity on the help graph — exactly the place where a network-CBF or graph-theoretic invariant lives.
+            </p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">How motion is filtered</div>
+          <div class="body">
+            <p>
+              When free of return commitments, each robot does a <strong>Levy walk</strong>: alternating long
+              ballistic transits (step lengths drawn from a heavy-tailed Pareto distribution, μ ≈ 1.8) with bouts of
+              area-restricted local search. There is no global task sensing — robots only discover task sites by
+              physically passing within contact range. The motion is filtered by the safety condition: the proposed
+              step must keep the robot in either its direct-safe set or, when V2V is enabled, in the union of
+              direct-safe and one-hop helped sets. When the desired step would leave the safe set, the desired
+              direction is blended toward the depot until it lies inside.
+            </p>
+            <p>
+              When SoC drops below a threshold, the robot commits to a return: it heads straight for the depot if
+              possible, otherwise toward the helper with the largest surplus. On reaching a helper, the helper
+              transfers just enough charge to make the receiver directly safe (with a small margin), then heads home.
+              Task engagement burns extra energy; if engaging would push the robot off the safe set, it abstains and
+              the encounter counts as a <strong>missed opportunity</strong>. The robot then ignores that particular
+              task until it recharges (so a single under-budget encounter is counted only once, not every frame the
+              robot lingers nearby).
+            </p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">What to look for</div>
+          <div class="body">
+            <p>
+              With V2V off, the team is bounded by the smallest reachable disk that still contains the depot — a hard
+              individual constraint. With V2V on, the coverage expands because peers near the depot have surplus to spend
+              on saving others. Turn on the help-feasibility layer and watch a directional structure emerge: peers near
+              the depot with high SoC accumulate <em>outgoing</em> edges (they can save many), while peripheral peers
+              with low SoC accumulate <em>incoming</em> edges (they have many potential saviors). The same robot is
+              both, just with different in/out degree — there is no clean partition.
+            </p>
+            <p>
+              The network property is <em>coupled</em>: a peer whose surplus shrinks (it engaged a task, or drifted
+              away) silently removes outgoing feasibility edges and may disenfranchise dependents that had counted on it.
+              The <span class="math">tasks done</span> / <span class="math">tasks expired</span> /
+              <span class="math">missed</span> triple is your range–throughput–fragility readout, and the SoC
+              distribution panel shows the underlying state on which all of those depend. Toggle V2V mid-run and let
+              metrics accumulate to compare regimes on the same task stream.
+            </p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Related work</div>
+          <div class="body">
+            <p style="margin-top: 6px; margin-bottom: 6px; color: var(--ink-soft); font-size: 13px;">
+              The literature this work draws on splits into two strands. The first is the <strong>biological precedent</strong> — social insect colonies that have organized cooperative energy transfer around a central nest for a great deal longer than engineering has had vehicles. The second is the <strong>engineering literature</strong> on formal safety frameworks for multi-robot operations, which is gradually catching up to that precedent without yet stitching the network-safety invariant fully together.
+            </p>
+
+            <h4 class="rw-major-section">Biological inspiration: trophallaxis and spatial cooperative foraging</h4>
+
+            <p style="margin-top: 0; margin-bottom: 14px; color: var(--ink-soft); font-size: 13px;">
+              Energy circulates in ant colonies through mouth-to-mouth liquid exchange (trophallaxis), in-nest storage castes (repletes), and spatially structured forager deployment — every structural element this work is trying to formalize for robotic swarms. The papers below establish that natural precedent and motivate the heterogeneous "refueler" mode in particular, which asks whether peer-to-peer energy transfer needs division of labor (in role or in space) to realize its theoretical potential.
+            </p>
+
+              <div class="ref">
+                <div class="cite">
+                  Denton, K. K., &amp; Nonacs, P. (2018). Habitat complexity and predictability effects on finding and collecting food when ants search as cooperative groups. <em>Animal Behaviour</em>, 141, 77–84. <a href="https://doi.org/10.1016/j.anbehav.2018.05.004" target="_blank" rel="noopener">doi:10.1016/j.anbehav.2018.05.004</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Experimental study of Argentine ant (<em>Linepithema humile</em>) cooperative search showing colonies sacrifice independent finding ability in favor of aggregating to amplify response to discovered food.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>The earliest empirical evidence cited by Nonacs's group for the structural insight that a colony may benefit from concentrating a stationary fraction of agents at intermediate locations to serve as encounter relays — directly analogous to placing refueler robots at intermediate shells.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Nonacs, P. (2025). Ant foraging: optimizing self-organization as a solution to a traveling salesman problem. <em>Oecologia</em>, 207, 73. <a href="https://doi.org/10.1007/s00442-025-05720-5" target="_blank" rel="noopener">doi:10.1007/s00442-025-05720-5</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Evolutionary-optimization (genetic algorithm) simulation of ant-like agents foraging across spatial networks of varying connectivity and modularity, compared against <em>L. humile</em> experiments. Explicitly articulates that at the group level it may be optimal to concentrate a stationary fraction of foragers at locations where they meet successful returning agents (citing Denton &amp; Nonacs 2018).</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>The closest published statement of the "refueler shell" hypothesis — that a heterogeneous spatial allocation (stationary intermediaries plus mobile foragers) is a candidate optimal strategy for cooperative groups searching beyond the reach of any single agent.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Greenwald, E., Baltiansky, L., &amp; Feinerman, O. (2018). Individual crop loads provide local control for collective food intake in ant colonies. <em>eLife</em>, 7, e31730. <a href="https://doi.org/10.7554/eLife.31730" target="_blank" rel="noopener">doi:10.7554/eLife.31730</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Real-time fluorescent tracking of liquid food in every ant of a <em>Camponotus sanctus</em> colony, showing that foragers unload to many receivers in small portions and that the collective food intake rate emerges from local trophallactic interactions modulated by crop fullness.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>The biological counterpart of the V2V donation rule: an agent with surplus distributes to multiple peers in proportion to their deficit, and the colony-level outcome (steady inflow) is an emergent property of these local energy transfers — closely paralleling how this simulator's V2V edges propagate reachability.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Baltiansky, L., Frankel, G., &amp; Feinerman, O. (2023). Emergent regulation of ant foraging frequency through a computationally inexpensive forager movement rule. <em>eLife</em>, 12, e77659. <a href="https://doi.org/10.7554/eLife.77659" target="_blank" rel="noopener">doi:10.7554/eLife.77659</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Shows that the linear relationship between foraging frequency and colony hunger emerges from a simple movement rule rather than from a complex internal decision, with the forager's spatial trajectory inside the nest mediating the connection between her crop state and her exit decision.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>Demonstrates that nontrivial colony-level energy-budget regulation can emerge from purely local, geometry-based individual rules — the same design philosophy underlying the per-robot V2V safety filter used here.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Hunt, E. R., Franks, N. R., &amp; Baddeley, R. J. (2020). The Bayesian superorganism: externalized memories facilitate distributed sampling. <em>Journal of the Royal Society Interface</em>, 17(167), 20190848. <a href="https://doi.org/10.1098/rsif.2019.0848" target="_blank" rel="noopener">doi:10.1098/rsif.2019.0848</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Experimental evidence and MCMC-inspired model showing that <em>Temnothorax albipennis</em> colonies use cuticular hydrocarbon footprints as a shared external memory that prevents redundant exploration of the same space.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>The genus (<em>Temnothorax</em>) most often invoked in conjectures about externally-deployed repletes as intermediate refueling stations. Documented uses of externalized substrate in this genus are spatial-memory markers rather than energy depots; whether comparable structural use of agents themselves as relays exists in this taxon remains an open question that this simulator's refueler mode is partly meant to motivate.</div>
+              </div>
+
+            <h4 class="rw-major-section">Engineering literature on energy-safe multi-robot operations</h4>
+
+            <p style="margin-top: 0;">
+              The engineering side of this problem sits at the intersection of three established themes that each address a piece of the
+              problem without quite stitching the network-safety invariant together: (1) <strong>energy as a state to
+              be safety-managed</strong> in multi-robot operations, including the closely-related
+              rendezvous-recharging and peer-to-peer power-transfer literatures; (2) <strong>network properties as
+              motion-controlled invariants</strong>, where the canonical case is communication connectivity preserved
+              by the proximity graph; and (3) the recent <strong>methodological lift of CBFs from individual to
+              graph-structured safety</strong>. The gap between these themes — a graph-theoretic, energy-aware
+              extension of CBF safety where the invariant lives on the help graph rather than on individual robots —
+              is the natural research opening. The four canonical anchors that most clearly delimit this gap are
+              Ames et al. 2017 (CBF foundations), Notomista–Ruf–Egerstedt 2018 (battery-as-CBF),
+              Mathew–Smith–Waslander 2015 (rendezvous-recharging), and Nikoletseas–Raptis–Raptopoulos 2017
+              (P2P energy balance among mobile peers).
+            </p>
+
+            <div class="ref-section">
+              <h4>Battery-aware control barrier functions</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Ames, A. D., Xu, X., Grizzle, J. W., &amp; Tabuada, P. (2017). Control barrier function based quadratic programs for safety-critical systems. <em>IEEE Transactions on Automatic Control</em>, 62(8), 3861–3876. <a href="https://doi.org/10.1109/TAC.2016.2638961" target="_blank" rel="noopener">doi:10.1109/TAC.2016.2638961</a> &middot; <a href="https://arxiv.org/abs/1609.06408" target="_blank" rel="noopener">arXiv:1609.06408</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Foundational paper unifying control Lyapunov functions and control barrier functions in a real-time QP, providing the forward-invariance machinery on which nearly all subsequent multi-robot CBF work is built.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Single-agent and safety-set-agnostic — no notion of inter-agent resource sharing or a network-level safe set.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Ames, A. D., Coogan, S., Egerstedt, M., Notomista, G., Sreenath, K., &amp; Tabuada, P. (2019). Control barrier functions: theory and applications. <em>18th European Control Conference (ECC)</em>, 3420–3431. <a href="https://doi.org/10.23919/ECC.2019.8796030" target="_blank" rel="noopener">doi:10.23919/ECC.2019.8796030</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Canonical tutorial survey of CBFs covering safe sets, higher-relative-degree extensions, robustness and multi-robot examples.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Surveys individual-agent safety conditions and at most pairwise inter-robot constraints; does not address resource (energy) transfer or graph-structured invariants.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Notomista, G., Ruf, S., &amp; Egerstedt, M. (2018). Persistification of robotic tasks using control barrier functions. <em>IEEE Robotics and Automation Letters</em>, 3(2), 758–763. <a href="https://doi.org/10.1109/LRA.2018.2789848" target="_blank" rel="noopener">doi:10.1109/LRA.2018.2789848</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Introduces "persistification": augment each robot's state with its battery level and use a CBF to keep the robot in the set "can still reach a charger." This is essentially the per-robot depot-safety condition that the V2V network condition relaxes.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Each robot's CBF is private — there is no mechanism for one robot to donate reachability to another, so the invariant is exactly the individual constraint this work generalizes.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Notomista, G., &amp; Egerstedt, M. (2021). Persistification of robotic tasks. <em>IEEE Transactions on Control Systems Technology</em>, 29(2), 756–767. <a href="https://doi.org/10.1109/TCST.2020.2978913" target="_blank" rel="noopener">doi:10.1109/TCST.2020.2978913</a> &middot; <a href="https://arxiv.org/abs/1903.05810" target="_blank" rel="noopener">arXiv:1903.05810</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Journal extension formalizing persistification, including coverage tasks and charging-station coordination via CBFs.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Still assumes fixed charging infrastructure and per-robot battery safety; explicitly handles mutually exclusive use of a single charging station rather than mutual energy donation.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Wang, L., Ames, A. D., &amp; Egerstedt, M. (2017). Safety barrier certificates for collisions-free multirobot systems. <em>IEEE Transactions on Robotics</em>, 33(3), 661–674. <a href="https://doi.org/10.1109/TRO.2017.2659727" target="_blank" rel="noopener">doi:10.1109/TRO.2017.2659727</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Develops decentralized pairwise CBFs in QP form for guaranteed collision-free multi-robot motion, with the canonical centralized-to-decentralized decomposition argument.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Pairwise constraints are symmetric "avoid each other" — they do not encode cooperative-help feasibility nor anything depending on a third point (the depot).</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Persistent monitoring with battery / refueling constraints</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Smith, S. L., Schwager, M., &amp; Rus, D. (2012). Persistent robotic tasks: monitoring and sweeping in changing environments. <em>IEEE Transactions on Robotics</em>, 28(2), 410–426. <a href="https://doi.org/10.1109/TRO.2011.2174493" target="_blank" rel="noopener">doi:10.1109/TRO.2011.2174493</a> &middot; <a href="https://arxiv.org/abs/1102.0603" target="_blank" rel="noopener">arXiv:1102.0603</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Seminal LP-based speed controller for keeping a "dirt field" bounded with mobile sensors on closed paths; defines what "persistent" formally means for multi-robot coverage.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Assumes inexhaustible energy — robots never need to return home — so does not engage the depot-safety constraint at all.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Mathew, N., Smith, S. L., &amp; Waslander, S. L. (2015). Multirobot rendezvous planning for recharging in persistent tasks. <em>IEEE Transactions on Robotics</em>, 31(1), 128–142. <a href="https://doi.org/10.1109/TRO.2014.2380593" target="_blank" rel="noopener">doi:10.1109/TRO.2014.2380593</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Plans routes for a separate team of charging robots that rendezvous with workers to recharge them mid-mission; formulates the meeting-location optimization as a TSP variant.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Chargers are dedicated tankers; there is no peer-to-peer help among workers, and the safety condition is implicit in the schedule rather than enforced as a closed-loop network invariant.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Mitchell, D., Corah, M., Chakraborty, N., Sycara, K., &amp; Michael, N. (2015). Multi-robot long-term persistent coverage with fuel-constrained robots. <em>IEEE International Conference on Robotics and Automation (ICRA)</em>, 1093–1099. <a href="https://doi.org/10.1109/ICRA.2015.7139312" target="_blank" rel="noopener">doi:10.1109/ICRA.2015.7139312</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Formulates persistent coverage as a discrete optimization with multiple fueling depots, requiring each target to be within L/2 of a depot.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Depot infrastructure is static and per-robot; the "L/2" reachability condition is exactly the individual safety invariant we generalize to a graph condition.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Asghar, A. B., Sundaram, S., &amp; Smith, S. L. (2025). Multi-robot persistent monitoring: minimizing latency and number of robots with recharging constraints. <em>IEEE Transactions on Robotics</em>, 41, 236–252. <a href="https://doi.org/10.1109/TRO.2024.3502497" target="_blank" rel="noopener">doi:10.1109/TRO.2024.3502497</a> &middot; <a href="https://arxiv.org/abs/2303.08935" target="_blank" rel="noopener">arXiv:2303.08935</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Approximation algorithm for finding the minimum-fleet schedule meeting latency and discharge-time constraints around a single recharging depot.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Recharging depot is exclusive and stationary, and energy flows only depot-to-robot — there is no V2V transfer and no notion of one robot's surplus extending another's safe operating envelope.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Mobile charging stations / tanker robots</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Zebrowski, P., &amp; Vaughan, R. T. (2005). Recharging robot teams: a tanker approach. <em>12th International Conference on Advanced Robotics (ICAR)</em>, 803–810. <a href="https://doi.org/10.1109/ICAR.2005.1507500" target="_blank" rel="noopener">doi:10.1109/ICAR.2005.1507500</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Foundational "tanker" idea: a dedicated robot ferries energy to workers via breadcrumb-trail navigation, prefiguring much of the later mobile-charging literature.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The tanker is a specialized agent whose only job is energy delivery; workers cannot help each other, so the network never re-organizes the safety set as the V2V scheme does.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Kundu, T., &amp; Saha, I. (2021). Mobile recharger path planning and recharge scheduling in a multi-robot environment. <em>IEEE/RSJ IROS</em>. <a href="https://doi.org/10.1109/IROS51168.2021.9636078" target="_blank" rel="noopener">doi:10.1109/IROS51168.2021.9636078</a> &middot; <a href="https://arxiv.org/abs/2102.12296" target="_blank" rel="noopener">arXiv:2102.12296</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>SMT-based hypercycle planning to schedule rendezvous between mobile-recharger robots and worker robots.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Chargers are dedicated and assumed never-empty in the relevant horizon — the planning problem is offline and does not maintain a continuous-time network safety invariant.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Notomista, G., Mayya, S., Emam, Y., Kroninger, C., Bohannon, A., Hutchinson, S., &amp; Egerstedt, M. (2022). A resilient and energy-aware task-allocation framework for heterogeneous multirobot systems. <em>IEEE Transactions on Robotics</em>, 38(1), 159–179. <a href="https://doi.org/10.1109/TRO.2021.3102379" target="_blank" rel="noopener">doi:10.1109/TRO.2021.3102379</a> &middot; <a href="https://arxiv.org/abs/2105.05586" target="_blank" rel="noopener">arXiv:2105.05586</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Combines CBF-style energy constraints with online task allocation for heterogeneous teams, surviving robot dropouts via slack-variable prioritization.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Energy is consumed but not transferable — robots reallocate tasks, not battery, so the failure mode is task abandonment rather than peer rescue.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Peer-to-peer wireless power transfer in mobile networks</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Nikoletseas, S., Raptis, T. P., &amp; Raptopoulos, C. (2017). Wireless charging for weighted energy balance in populations of mobile peers. <em>Ad Hoc Networks</em>, 60, 1–10. <a href="https://doi.org/10.1016/j.adhoc.2017.03.005" target="_blank" rel="noopener">doi:10.1016/j.adhoc.2017.03.005</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Designs distributed protocols by which battery-limited mobile peers wirelessly exchange energy with each other (no special chargers) to reach a weighted energy-balance state.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The protocol is purely about energy distribution among peers — there is no motion-safety coupling, no spatial cost (α·d) for transfer, and no depot.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Madhja, A., Nikoletseas, S., Raptopoulos, C., &amp; Tsolovos, D. (2016). Energy-aware network formation in peer-to-peer wireless power transfer. <em>ACM MSWiM</em>, 43–50. <a href="https://doi.org/10.1145/2988287.2989166" target="_blank" rel="noopener">doi:10.1145/2988287.2989166</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Defines protocols for forming a P2P energy-exchange network with target energy distributions over agents.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Network formation is logical and communicational, not physical-motion-coupled — agents do not have to drive to each other to transfer.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Chakraborty, P., Parker, R., Hoque, T., Cruz, J., Du, L., Wang, S., &amp; Bhunia, S. (2022). Addressing the range anxiety of battery electric vehicles with charging en route. <em>Scientific Reports</em>, 12, 5588. <a href="https://doi.org/10.1038/s41598-022-08942-2" target="_blank" rel="noopener">doi:10.1038/s41598-022-08942-2</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Peer-reviewed treatment of "P2C2": a cloud-coordinated peer-to-peer on-the-move EV charging system in which surplus-charge EVs share energy with low-charge EVs while in motion, supplemented by mobile charging stations.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Optimizes throughput and halts in an EV highway setting with centralized cloud matching; there is no formal safety invariant ("every car can still reach a station") and no notion of cooperative rendezvous-and-transfer as a depot-safety relaxation.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Energy/charging-aware EV routing and V2V power transfer</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Alvaro-Hermana, R., Fraile-Ardanuy, J., Zufiria, P. J., Knapen, L., &amp; Janssens, D. (2016). Peer-to-peer energy trading with electric vehicles. <em>IEEE Intelligent Transportation Systems Magazine</em>, 8(3), 33–44. <a href="https://doi.org/10.1109/MITS.2016.2573178" target="_blank" rel="noopener">doi:10.1109/MITS.2016.2573178</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Activity-based model and aggregator that lets EVs trade surplus energy peer-to-peer when parked; demonstrates substantial energy-cost reductions for participating drivers.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Transactions are stationary (parked) and purely economic; there is no rendezvous logistics and no analogue of the α·distance feasibility constraint between mobile prosumers.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Xu, Y., Alderete Peralta, A., &amp; Balta-Ozkan, N. (2024). Vehicle-to-vehicle energy trading framework: a systematic literature review. <em>Sustainability</em>, 16(12), 5020. <a href="https://doi.org/10.3390/su16125020" target="_blank" rel="noopener">doi:10.3390/su16125020</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Systematic literature review of 61 articles categorizing the V2V energy-trading literature by mechanism, infrastructure, and economic model.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The surveyed literature centres on grid-scale economics and protocol design; essentially no work treats V2V transfer as a closed-loop safety filter for a mobile autonomous swarm.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Connectivity-preserving multi-agent control</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Olfati-Saber, R. (2006). Flocking for multi-agent dynamic systems: algorithms and theory. <em>IEEE Transactions on Automatic Control</em>, 51(3), 401–420. <a href="https://doi.org/10.1109/TAC.2005.864190" target="_blank" rel="noopener">doi:10.1109/TAC.2005.864190</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>The reference framework: three algorithms (free-flocking, obstacle-avoiding, leader-tracking) defined on a proximity graph, with provable cohesion and migration without leaders.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The safety invariant of interest is geometric (collision-free flocking), not resource-based; potential fields penalize disconnection, but no energy budget enters the analysis.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Jadbabaie, A., Lin, J., &amp; Morse, A. S. (2003). Coordination of groups of mobile autonomous agents using nearest-neighbor rules. <em>IEEE Transactions on Automatic Control</em>, 48(6), 988–1001. <a href="https://doi.org/10.1109/TAC.2003.812781" target="_blank" rel="noopener">doi:10.1109/TAC.2003.812781</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>First rigorous proof that heading consensus emerges in Vicsek-type mobile agents under joint connectivity of the neighbor-graph sequence.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Connectivity is a sufficient condition for convergence, not a controlled invariant; the shared resource is information, not energy.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Zavlanos, M. M., Egerstedt, M. B., &amp; Pappas, G. J. (2011). Graph-theoretic connectivity control of mobile robot networks. <em>Proceedings of the IEEE</em>, 99(9), 1525–1540. <a href="https://doi.org/10.1109/JPROC.2011.2157884" target="_blank" rel="noopener">doi:10.1109/JPROC.2011.2157884</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Survey-style synthesis of centralized and distributed algorithms that keep the algebraic (Fiedler) connectivity of a proximity graph above zero throughout motion.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Maintains topological connectivity, not energy reachability — there is no asymmetric edge condition like "j can help i" depending on a third location (depot).</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Sabattini, L., Chopra, N., &amp; Secchi, C. (2013). Decentralized connectivity maintenance for cooperative control of mobile robotic systems. <em>International Journal of Robotics Research</em>, 32(12), 1411–1423. <a href="https://doi.org/10.1177/0278364913499085" target="_blank" rel="noopener">doi:10.1177/0278364913499085</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Distributed control law that estimates and bounds the second-smallest Laplacian eigenvalue to preserve global connectivity online.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The invariant is purely graph-spectral (λ₂ &gt; 0); no relation to robot energy or to a privileged depot vertex.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Ong, P., Capelli, B., Sabattini, L., &amp; Cortes, J. (2023). Nonsmooth control barrier function design of continuous constraints for network connectivity maintenance. <em>Automatica</em>, 156, 111209. <a href="https://doi.org/10.1016/j.automatica.2023.111209" target="_blank" rel="noopener">doi:10.1016/j.automatica.2023.111209</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Encodes connectivity-maintenance as a continuous nonsmooth CBF constraint compatible with arbitrary nominal multi-robot controllers.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Closest methodological precedent — connects CBF and connectivity literatures — but the safe set is again topological connectivity, not energy reachability through cooperative peer-to-peer transfer.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>MANET / VANET network-invariant maintenance through motion</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Spanos, D. P., &amp; Murray, R. M. (2004). Robust connectivity of networked vehicles. <em>43rd IEEE Conference on Decision and Control</em>, 3, 2893–2898. <a href="https://doi.org/10.1109/CDC.2004.1428904" target="_blank" rel="noopener">doi:10.1109/CDC.2004.1428904</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Earliest formal treatment of "vehicle motion must preserve a graph-theoretic communication property" — uses a robust-connectivity measure and gradient flows over vehicle positions.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The graph property is wireless link existence, not energy-help-feasibility; vehicles have no energy budget.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Networked / distributed CBFs and graph-level safety</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Zhang, S., So, O., Garg, K., &amp; Fan, C. (2025). GCBF+: a neural graph control-barrier-function framework for distributed safe multi-agent control. <em>IEEE Transactions on Robotics</em>, 41, 1533–1552. <a href="https://doi.org/10.1109/TRO.2025.3530348" target="_blank" rel="noopener">doi:10.1109/TRO.2025.3530348</a> &middot; <a href="https://arxiv.org/abs/2401.14554" target="_blank" rel="noopener">arXiv:2401.14554</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Introduces graph CBFs parameterized by GNNs; trained with 8 agents and scales to over 1000-agent systems with hardware validation on Crazyflie swarms.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Graph CBFs are learned for collision avoidance — the graph structure is the proximity graph and the invariant is geometric, not energetic.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Mestres, P., Nieto-Granda, C., &amp; Cortes, J. (2024). Distributed safe navigation of multi-agent systems using control-barrier-function-based controllers. <em>IEEE Robotics and Automation Letters</em>, 9(7), 6760–6767. <a href="https://doi.org/10.1109/LRA.2024.3414268" target="_blank" rel="noopener">doi:10.1109/LRA.2024.3414268</a> &middot; <a href="https://arxiv.org/abs/2402.06195" target="_blank" rel="noopener">arXiv:2402.06195</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Distributed synthesis where each agent solves a local CBF-QP that converges to the centralized solution of a state-dependent network optimization with safety constraints.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Networked safety here means collision avoidance under formation-maintenance; no resource-coupling between agents.</div>
+              </div>
+            </div>
+
+            <p style="margin-top: 14px;">
+              <strong>Synthesis of gaps.</strong> Despite the natural precedent above, the engineering literature has yet to formalize an analogous safety framework. Across the engineering categories above, no surveyed work simultaneously
+              provides (a) every robot performing both the primary task and donating energy, (b) safety as a closure
+              property of the energy-aware proximity graph rather than of individual agents, and (c) the CBF /
+              forward-invariance machinery lifted from a single-agent state variable to a network invariant. That
+              conjunction is the gap a contribution should aim to fill. The closest methodological precedent for the
+              lift is Ong–Capelli–Sabattini–Cortes 2023 (CBF on a network connectivity property); the closest
+              physical-system precedent is Chakraborty et al. 2022 (P2P energy transfer in motion). Combining the
+              two — with energy as the conserved network resource and a depot as the privileged sink — is the
+              territory.
+            </p>
+          </div>
+        </div>
+      </div>
+
+  </div>
+
+  <div class="code-view" id="codeView" style="display: none;">
+    <div class="code-header">
+      <button class="back-btn" id="btnBackToSim">← Back to simulator</button>
+      <h2 id="codeViewTitle">Reference implementation</h2>
+      <div style="flex: 1;"></div>
+      <div class="lang-switch">
+        <button class="lang-btn" data-lang="gama">GAMA</button>
+        <button class="lang-btn" data-lang="netlogo">NetLogo</button>
+        <button class="lang-btn" data-lang="python">Python</button>
+      </div>
+      <div class="action-buttons">
+        <button class="action-btn" id="btnCopyCode" title="Copy source to clipboard">📋 Copy</button>
+        <button class="action-btn" id="btnDownloadCode" title="Download as a file">⬇ Download</button>
+      </div>
+    </div>
+    <div class="code-note" id="codeNote"></div>
+    <pre class="code-block"><code id="codeContent"></code></pre>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── Canvas & geometry ──────────────────────────────────────────────────────
+const canvas = document.getElementById('sim');
+// HiDPI setup. The backing store is scaled by devicePixelRatio so rendering
+// happens at native device resolution. We deliberately do NOT pin the CSS
+// width/height — leaving them to the stylesheet (max-width: 100%, height: auto)
+// lets the canvas shrink responsively inside narrow containers while the
+// backing store stays high-resolution. When the browser displays the canvas
+// at a CSS size smaller than its intrinsic device-pixel size, the backing is
+// downsampled cleanly (a slight oversample, but visually sharp).
+const DPR = window.devicePixelRatio || 1;
+const LOGICAL_W = canvas.width;   // read attribute values before we resize
+const LOGICAL_H = canvas.height;
+canvas.width = Math.round(LOGICAL_W * DPR);
+canvas.height = Math.round(LOGICAL_H * DPR);
+const ctx = canvas.getContext('2d');
+ctx.scale(DPR, DPR);
+const W = LOGICAL_W;
+const H = LOGICAL_H;
+const DEPOT = { x: W / 2, y: H / 2 };
+const DEPOT_R = 18;
+const ROBOT_R = 8;
+const RECHARGE_R = DEPOT_R + 20;
+const TASK_HIT_R = 14;
+
+// ─── State ──────────────────────────────────────────────────────────────────
+const state = {
+  robots: [],
+  tasks: [],
+  t: 0,
+  v2v: true,
+  ferryHome: false,
+  showDisks: true,
+  showEdges: true,
+  showFeasibility: false,
+  showReachability: false,
+  showTasks: true,
+  showSafeSets: false,
+  showSoloReach: true,
+  trailPersistence: 0,
+  running: true,
+  speed: 1.0,
+  alpha: 0.0024,  taskRate: 0.06,
+  taskEnergyCost: 0.18,
+  rechargeRate: 0.004,
+  baseStep: 1.4,
+  lowSocThreshold: 0.25,
+  // V2V refuel target: at a V2V rendezvous, the donation is sized to bring the
+  // receiver's SoC up to this target — at minimum the chain-safety floor, at
+  // most what the helper can afford. If the resulting SoC is above the low-SoC
+  // re-trigger threshold, the receiver resumes wandering (stays in the field)
+  // rather than heading home. This is the ant-like "top up and keep working"
+  // dynamic: at low values (≤ lowSocThreshold) V2V is purely a safe-return
+  // mechanism; at higher values it enables sustained field presence.
+  refuelTargetSoc: 0.50,
+  metrics: {
+    tasksDone: 0,
+    tasksExpired: 0,
+    tasksMissed: 0,
+  },
+  // Time-integrated robot-state accumulators. cumPastSoloTime increments by
+  // (count of robots past solo-reach × dt) each step; cumTotalRobotTime by
+  // (total robots × dt). Their ratio is the long-run fraction of robot-time
+  // spent in the V2V-only zone — invariant to sim speed since both grow by
+  // the same per-step factor.
+  cumPastSoloTime: 0,
+  cumOuterBandTime: 0,
+  cumTotalRobotTime: 0,
+  // Max-reach envelope tracking. peakReach = ever-max of (max_d / soloR)
+  // since last reset; cumMaxReach integrates max_d / soloR over time, and
+  // dividing by state.t gives the time-averaged max reach.
+  peakReach: 0,
+  cumMaxReach: 0,
+  // Init mode: false = warm-start (random ring with realistic SoC),
+  // true = cold-start (all at depot, full SoC, deploy at run start).
+  coldStart: false,
+  // Refueler role: heterogeneous architecture where a fraction of the swarm
+  // is assigned as stationary (or semi-stationary) "refuelers" at intermediate
+  // shell positions around the depot. Inspired by the spatial-stationary-fraction
+  // hypothesis in Denton & Nonacs 2018 / Nonacs 2025 — see Related Work.
+  refuelerEnabled: false,
+  refuelerFrac: 0.30,                // fraction of swarm assigned as refuelers
+  shellMode: 'single',                // 'single' | 'double33'
+  refuelerMotion: 'static',           // 'static' | 'orbit' | 'search'
+  showShells: true,                   // whether to draw dashed shell reference circles
+  helpEdges: [],
+  feasibilityEdges: [],
+  reachabilityEdges: [],
+  seed: 1337,
+};
+
+// ─── Offscreen trail canvas ─────────────────────────────────────────────────
+// Coverage trails work by stamping a wide soft disk at each robot's position
+// every frame onto an offscreen canvas, then blitting that canvas onto the
+// main canvas before the rest of the scene is drawn. Persistence is controlled
+// by a fade overlay applied to the trail canvas each frame: high alpha overlay
+// = fast decay; zero alpha = permanent record. This is the "snowplow" model —
+// area swept by the swarm accumulates and slowly relaxes back to the cream
+// background. We size the stamp ~1.6× ROBOT_R so the swept stripe is visually
+// distinct from per-robot line trails.
+const trailCanvas = document.createElement('canvas');
+// Match the main canvas DPR so trail content is rendered at native device
+// resolution and composes cleanly on drawImage.
+trailCanvas.width = Math.round(W * DPR);
+trailCanvas.height = Math.round(H * DPR);
+const trailCtx = trailCanvas.getContext('2d');
+trailCtx.scale(DPR, DPR);
+function clearTrailCanvas() {
+  // Clear in device pixels to wipe the entire backing store regardless of
+  // the current logical transform.
+  trailCtx.save();
+  trailCtx.setTransform(1, 0, 0, 1, 0, 0);
+  trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+  trailCtx.restore();
+}
+
+// ─── PRNG (mulberry32) ──────────────────────────────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let rng = mulberry32(state.seed);
+
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+// ─── Initialization ─────────────────────────────────────────────────────────
+// Returns the (x, y) station position for a refueler. Computed from its
+// shell fraction and stationary angle relative to the current solo-reach
+// radius — so if α (and hence solo-reach) changes mid-run, stations
+// rescale proportionally. Returns null for workers.
+function refuelerStation(r) {
+  if (r.kind !== 'refueler') return null;
+  const soloR = 1 / (2 * state.alpha);
+  const shellR = soloR * r.shellFrac;
+  return {
+    x: DEPOT.x + Math.cos(r.stationAngle) * shellR,
+    y: DEPOT.y + Math.sin(r.stationAngle) * shellR
+  };
+}
+
+// Resolve the active shell list from the current shellMode setting.
+function activeShells() {
+  if (state.shellMode === 'single') return [0.5];
+  return [0.33, 0.67]; // 'double33'
+}
+
+function initRobots(n) {
+  state.robots = [];
+  state.tasks = [];
+  state.t = 0;
+  state.metrics = { tasksDone: 0, tasksExpired: 0, tasksMissed: 0 };
+  state.cumPastSoloTime = 0;
+  state.cumOuterBandTime = 0;
+  state.cumTotalRobotTime = 0;
+  state.peakReach = 0;
+  state.cumMaxReach = 0;
+  clearTrailCanvas();
+  rng = mulberry32(state.seed);
+
+  const soloR = 1 / (2 * state.alpha);
+  const initMaxR = Math.min(135, soloR * 0.9);
+  const initMinR = Math.min(35, initMaxR * 0.4);
+
+  // Decide refueler assignment first so we can place them at-station rather
+  // than spawning them in the worker random-ring and making them migrate.
+  const nRef = state.refuelerEnabled ? Math.round(n * state.refuelerFrac) : 0;
+  const shells = activeShells();
+  const nShells = shells.length;
+  // Distribute nRef across shells as evenly as possible; refuelers within
+  // each shell are equally spaced angularly so they form a regular pattern.
+  const shellCounts = [];
+  for (let s = 0; s < nShells; s++) {
+    shellCounts.push(Math.floor((nRef + nShells - 1 - s) / nShells));
+  }
+
+  // Two init modes:
+  //   coldStart=true   — all robots at depot with full SoC; they radiate
+  //                      outward over the first seconds as wander targets
+  //                      pull them out. Models a fresh deployment.
+  //   coldStart=false  — random ring around depot with SoC in the physically
+  //                      consistent band [α·d, 1 − α·d]: enough to return,
+  //                      no more than what a full-charge depot departure
+  //                      would have left after walking d.
+  //                      Refuelers (when enabled) are exempted from the random
+  //                      ring and instead spawn at their assigned station,
+  //                      with SoC sized for the station distance — avoids a
+  //                      long migration transient at simulation start.
+  let robotIdx = 0;
+  for (let s = 0; s < nShells; s++) {
+    const count = shellCounts[s];
+    for (let j = 0; j < count; j++) {
+      const stationAngle = (j / count) * Math.PI * 2;
+      const shellFrac = shells[s];
+      let x, y, soc;
+      if (state.coldStart) {
+        const j2 = DEPOT_R * 0.55;
+        x = DEPOT.x + (rng() - 0.5) * j2 * 2;
+        y = DEPOT.y + (rng() - 0.5) * j2 * 2;
+        soc = 1.0;
+      } else {
+        // Spawn at station with small jitter, with SoC in [α·d_station, 1 − α·d_station]
+        const stationR = soloR * shellFrac;
+        x = DEPOT.x + Math.cos(stationAngle) * stationR + (rng() - 0.5) * 8;
+        y = DEPOT.y + Math.sin(stationAngle) * stationR + (rng() - 0.5) * 8;
+        const dActual = Math.hypot(x - DEPOT.x, y - DEPOT.y);
+        const minSoc = state.alpha * dActual;
+        const maxSoc = Math.max(minSoc + 0.05, 1 - state.alpha * dActual);
+        soc = minSoc + rng() * (maxSoc - minSoc);
+      }
+      state.robots.push({
+        id: robotIdx, x, y, soc,
+        target: null,
+        mode: 'wander',
+        helperId: null,
+        pinnedBy: null,
+        role: 'safe',
+        kind: 'refueler',
+        shellFrac, stationAngle,
+        phase: 'transit',
+        loiterTimer: 0,
+        failedTasks: new WeakSet(),
+        taskCooldown: 0,
+      });
+      robotIdx++;
+    }
+  }
+  // Remaining slots are workers.
+  for (; robotIdx < n; robotIdx++) {
+    let x, y, soc;
+    if (state.coldStart) {
+      const j2 = DEPOT_R * 0.55;
+      x = DEPOT.x + (rng() - 0.5) * j2 * 2;
+      y = DEPOT.y + (rng() - 0.5) * j2 * 2;
+      soc = 1.0;
+    } else {
+      const ang = rng() * Math.PI * 2;
+      const r = initMinR + rng() * (initMaxR - initMinR);
+      x = DEPOT.x + Math.cos(ang) * r;
+      y = DEPOT.y + Math.sin(ang) * r;
+      const minSoc = state.alpha * r;
+      const maxSoc = 1 - state.alpha * r;
+      soc = minSoc + rng() * (maxSoc - minSoc);
+    }
+    state.robots.push({
+      id: robotIdx, x, y, soc,
+      target: null,
+      mode: 'wander',
+      helperId: null,
+      pinnedBy: null,
+      role: 'safe',
+      kind: 'worker',
+      phase: 'transit',
+      loiterTimer: 0,
+      failedTasks: new WeakSet(),
+      taskCooldown: 0,
+    });
+  }
+}
+
+// ─── Safety predicates ──────────────────────────────────────────────────────
+function reachableRadius(r) { return r.soc / state.alpha; }
+
+function isDirectSafe(p, b) {
+  return b >= state.alpha * dist(p, DEPOT);
+}
+
+// Is j allowed to serve as a helper given the current toggles? Refuelers can
+// always help when the refueler role is enabled (that's their entire job).
+// Worker robots can help only when the worker-to-worker V2V toggle is on.
+// The two toggles are independent, so the simulator supports four regimes:
+// pure solo, refuelers-only, worker-to-worker only, and the full hybrid.
+function isHelperEligible(j) {
+  if (j.kind === 'refueler') return state.refuelerEnabled;
+  return state.v2v;
+}
+
+// Is any form of V2V currently available? Used to short-circuit safety checks
+// and BFS when both toggles are off (the pure-solo regime).
+function anyV2VActive() {
+  return state.v2v || state.refuelerEnabled;
+}
+
+// Local feasibility check used by chain-aware code: does j look like a usable
+// next-hop helper from (p_i, b_i)? Requires:
+//   - j is currently eligible as a helper (kind + toggle)
+//   - i can physically reach j on current battery
+//   - j is not parked at depot (would be redundant with direct safety)
+//   - j has positive surplus over its own depot-return budget
+// Crucially, this does NOT require the combined-energy condition (covering
+// both legs home). The chain takes care of the rest via the depths array.
+function canHelp(p_i, b_i, j) {
+  if (!isHelperEligible(j)) return false;
+  if (dist(j, DEPOT) < RECHARGE_R) return false;
+  const dij = Math.hypot(p_i.x - j.x, p_i.y - j.y);
+  const djD = dist(j, DEPOT);
+  if (b_i < state.alpha * dij) return false;
+  if (j.soc <= state.alpha * djD) return false;
+  return true;
+}
+
+// Strict chain feasibility check used by the depth BFS and the multi-hop
+// safety filter. Given a current depths array, returns true if i at (p_i,b_i)
+// can use j as a next-hop and end up safe at some finite depth from p_j:
+// either directly home-safe from p_j, or able to reach some currently-finite-
+// depth peer k != j (also helper-eligible) which already chains back to depot.
+function canChainHelp(p_i, b_i, exclude_id, j, depths) {
+  if (!canHelp(p_i, b_i, j)) return false;
+  const dij = Math.hypot(p_i.x - j.x, p_i.y - j.y);
+  const djD = dist(j, DEPOT);
+  const xMax = j.soc - state.alpha * djD;
+  if (xMax <= 0) return false;
+  const bIPost = b_i - state.alpha * dij + xMax;
+  if (bIPost <= 0) return false;
+  if (isDirectSafe(j, bIPost)) return true;
+  for (const k of state.robots) {
+    if (k.id === exclude_id || k.id === j.id) continue;
+    if (depths[k.id] === undefined || depths[k.id] === Infinity) continue;
+    if (k.mode === 'docked' || k.mode === 'home') continue;
+    if (!isHelperEligible(k)) continue;
+    if (dist(k, DEPOT) < RECHARGE_R) continue;
+    if (k.soc <= state.alpha * dist(k, DEPOT)) continue;
+    if (bIPost >= state.alpha * Math.hypot(j.x - k.x, j.y - k.y)) return true;
+  }
+  return false;
+}
+
+// Compute "safety depth" for every robot via BFS through the help graph.
+function computeSafetyDepths() {
+  const N = state.robots.length;
+  const depths = new Array(N).fill(Infinity);
+  for (let i = 0; i < N; i++) {
+    const r = state.robots[i];
+    if (r.mode === 'docked' || r.mode === 'home') { depths[i] = 0; continue; }
+    if (isDirectSafe(r, r.soc)) depths[i] = 0;
+  }
+  if (!anyV2VActive()) return depths;
+  let changed = true;
+  let iter = 0;
+  while (changed && iter < N + 1) {
+    changed = false;
+    iter++;
+    for (let i = 0; i < N; i++) {
+      if (depths[i] !== Infinity) continue;
+      const r = state.robots[i];
+      if (r.mode === 'docked' || r.mode === 'home') continue;
+      let bestDepth = Infinity;
+      for (let j = 0; j < N; j++) {
+        if (j === i) continue;
+        if (depths[j] === Infinity) continue;
+        const pj = state.robots[j];
+        if (pj.mode === 'docked' || pj.mode === 'home') continue;
+        if (!isHelperEligible(pj)) continue;
+        if (canChainHelp(r, r.soc, r.id, pj, depths)) {
+          if (depths[j] + 1 < bestDepth) bestDepth = depths[j] + 1;
+        }
+      }
+      if (bestDepth !== Infinity) {
+        depths[i] = bestDepth;
+        changed = true;
+      }
+    }
+  }
+  return depths;
+}
+
+function bestHelper(p_i, b_i, exclude_id) {
+  const depths = state.safetyDepths || [];
+  let best = null;
+  let bestSurplus = -Infinity;
+  for (const j of state.robots) {
+    if (j.id === exclude_id) continue;
+    if (!isHelperEligible(j)) continue;
+    if (depths[j.id] === undefined || depths[j.id] === Infinity) continue;
+    if (j.pinnedBy !== null && j.pinnedBy !== undefined) continue;
+    if (j.mode === 'home' || j.mode === 'docked' || j.mode === 'helper') continue;
+    if (canChainHelp(p_i, b_i, exclude_id, j, depths)) {
+      const s = j.soc - state.alpha * dist(j, DEPOT);
+      if (s > bestSurplus) { bestSurplus = s; best = j; }
+    }
+  }
+  return best;
+}
+
+function isSafeState(p, b, exclude_id) {
+  if (isDirectSafe(p, b)) return true;
+  if (!anyV2VActive()) return false;
+  const depths = state.safetyDepths;
+  if (!depths) return false;
+  const probe = { x: p.x, y: p.y, id: exclude_id };
+  for (const j of state.robots) {
+    if (j.id === exclude_id) continue;
+    if (!isHelperEligible(j)) continue;
+    if (depths[j.id] === undefined || depths[j.id] === Infinity) continue;
+    if (j.mode === 'docked' || j.mode === 'home') continue;
+    if (canChainHelp(probe, b, exclude_id, j, depths)) return true;
+  }
+  return false;
+}
+
+// ─── Role / edge update ─────────────────────────────────────────────────────
+function updateRoles() {
+  state.helpEdges = [];
+  state.feasibilityEdges = [];
+  state.reachabilityEdges = [];
+  // Compute multi-hop safety depths once per update cycle and stash on state
+  // so downstream safety queries (isSafeState, bestHelper, canChainHelp) can
+  // consult the same snapshot rather than each recomputing the BFS.
+  state.safetyDepths = computeSafetyDepths();
+  // Assign roles and active V2V edges (committed help relationships)
+  for (const r of state.robots) {
+    if (r.mode === 'docked') {
+      r.role = 'safe';
+      continue;
+    }
+    if (isDirectSafe(r, r.soc)) {
+      r.role = 'safe';
+    } else if (anyV2VActive() && state.safetyDepths[r.id] !== Infinity) {
+      r.role = 'v2v';
+    } else {
+      r.role = 'stranded';
+    }
+    // The committed (active) V2V edge for this robot, if any
+    if (r.mode === 'helper' && r.helperId !== null) {
+      state.helpEdges.push({ from: r.helperId, to: r.id });
+    }
+  }
+  // Two-layer structural graph computed in one pass.
+  // Reachability (broad): i can physically drive to j on current battery.
+  // Feasibility (strict subset): j is a viable chain-step helper for i —
+  // requires j to be finite-depth AND to have positive surplus (so it can
+  // donate without stranding itself). We no longer require combined-energy
+  // to cover both home legs since chain-mode handles that.
+  for (const i of state.robots) {
+    if (i.mode === 'docked' || i.mode === 'home') continue;
+    for (const j of state.robots) {
+      if (j.id === i.id) continue;
+      if (j.mode === 'docked' || j.mode === 'home') continue;
+      const dij = dist(i, j);
+      const djD = dist(j, DEPOT);
+      if (djD < RECHARGE_R) continue;
+      if (i.soc < state.alpha * dij) continue;
+      state.reachabilityEdges.push({ from: j.id, to: i.id });
+      if (j.soc <= state.alpha * djD) continue;
+      if (!isHelperEligible(j)) continue;
+      if (state.safetyDepths[j.id] === Infinity) continue;
+      state.feasibilityEdges.push({ from: j.id, to: i.id });
+    }
+  }
+}
+
+// ─── Task spawning & expiry ─────────────────────────────────────────────────
+function updateTasks() {
+  // Spawn (Bernoulli per frame)
+  if (rng() < state.taskRate && state.tasks.length < 40) {
+    const maxR = Math.min(W, H) / 2 - 45;
+    const ang = rng() * Math.PI * 2;
+    const r = 70 + rng() * (maxR - 70);
+    state.tasks.push({
+      x: DEPOT.x + Math.cos(ang) * r,
+      y: DEPOT.y + Math.sin(ang) * r,
+      ttl: 700,
+      maxTtl: 700,
+    });
+  }
+  // Expire
+  for (let i = state.tasks.length - 1; i >= 0; i--) {
+    state.tasks[i].ttl--;
+    if (state.tasks[i].ttl <= 0) {
+      state.metrics.tasksExpired++;
+      state.tasks.splice(i, 1);
+    }
+  }
+}
+
+// ─── Wander targets (Levy walk: transit + area-restricted search) ───────────
+// A Levy walk alternates long ballistic jumps with localized search bouts,
+// matching the foraging patterns observed in many real animals. Step lengths
+// for the long jumps come from a heavy-tailed (Pareto) distribution with
+// exponent μ ∈ (1, 3); μ near 2 is the classical Levy regime.
+function pickLevyJump(r) {
+  const mu = 1.8;
+  const lMin = 25;
+  const u = 1 - rng();
+  let len = lMin * Math.pow(u, -1 / (mu - 1));
+  len = Math.min(len, 380); // cap absurd outliers in a bounded arena
+  const ang = rng() * Math.PI * 2;
+  return { x: r.x + Math.cos(ang) * len, y: r.y + Math.sin(ang) * len };
+}
+
+// Localized area-restricted search step
+function pickLocalWaypoint(r) {
+  const ang = rng() * Math.PI * 2;
+  const len = 8 + rng() * 22;
+  return { x: r.x + Math.cos(ang) * len, y: r.y + Math.sin(ang) * len };
+}
+
+// ─── Per-robot step ─────────────────────────────────────────────────────────
+function moveRobot(r) {
+  // ── Docked: parked at depot, recharging, no motion at all ──
+  if (r.mode === 'docked') {
+    r.soc = Math.min(1.0, r.soc + state.rechargeRate);
+    if (r.soc >= 0.95) {
+      r.mode = 'wander';
+      r.target = null;
+      r.phase = 'transit';
+      r.loiterTimer = 0;
+      r.helperId = null;
+      r.failedTasks = new WeakSet();
+    }
+    return;
+  }
+
+  // ── Pinned: committed to a specific receiver, frozen in place ──
+  if (r.pinnedBy !== null) {
+    const receiver = state.robots[r.pinnedBy];
+    // Sanity: if receiver no longer references us as helper, unpin and continue
+    if (!receiver || receiver.helperId !== r.id || receiver.mode !== 'helper') {
+      r.pinnedBy = null;
+    } else {
+      // Stay frozen until rendezvous
+      return;
+    }
+  }
+
+  // ── Arrival at depot from a committed return: transition to docked ──
+  if ((r.mode === 'home' || (r.mode === 'helper' && state.ferryHome))
+      && dist(r, DEPOT) < RECHARGE_R) {
+    // Park on the perimeter of the depot in the approach direction
+    const aFromDepot = Math.atan2(r.y - DEPOT.y, r.x - DEPOT.x);
+    const parkR = DEPOT_R + ROBOT_R + 2;
+    r.x = DEPOT.x + Math.cos(aFromDepot) * parkR;
+    r.y = DEPOT.y + Math.sin(aFromDepot) * parkR;
+    r.mode = 'docked';
+    r.target = null;
+    r.helperId = null;
+    return;
+  }
+
+  // ── Mode transitions on low SoC ──
+  if (r.soc < state.lowSocThreshold && r.mode === 'wander') {
+    if (isDirectSafe(r, r.soc)) {
+      r.mode = 'home';
+      r.target = { x: DEPOT.x, y: DEPOT.y };
+    } else if (anyV2VActive()) {
+      const h = bestHelper(r, r.soc, r.id);
+      if (h) {
+        r.mode = 'helper';
+        r.helperId = h.id;
+        r.target = { x: h.x, y: h.y };
+        h.pinnedBy = r.id;  // PIN the helper in place
+        h.target = null;    // clear its wandering target; it freezes now
+      } else {
+        r.mode = 'home'; // last-ditch attempt
+        r.target = { x: DEPOT.x, y: DEPOT.y };
+      }
+    } else {
+      r.mode = 'home';
+      r.target = { x: DEPOT.x, y: DEPOT.y };
+    }
+  }
+
+  // ── Multi-hop chain re-trigger ──
+  if (r.mode === 'home' && anyV2VActive() && !isDirectSafe(r, r.soc)) {
+    const h = bestHelper(r, r.soc, r.id);
+    if (h) {
+      r.mode = 'helper';
+      r.helperId = h.id;
+      r.target = { x: h.x, y: h.y };
+      h.pinnedBy = r.id;
+      h.target = null;
+    }
+  }
+
+  // ── Helper mode: head to pinned helper; transfer on contact ──
+  if (r.mode === 'helper') {
+    const h = state.robots[r.helperId];
+    const depths = state.safetyDepths;
+    const stillFeasible = h && h.mode !== 'docked' && h.mode !== 'home'
+                          && depths && depths[h.id] !== Infinity
+                          && canHelp(r, r.soc, h);
+    if (!stillFeasible) {
+      // Helper no longer viable; unpin and re-evaluate
+      if (h && h.pinnedBy === r.id) h.pinnedBy = null;
+      const newH = anyV2VActive() ? bestHelper(r, r.soc, r.id) : null;
+      if (newH) {
+        r.helperId = newH.id;
+        newH.pinnedBy = r.id;
+        newH.target = null;
+        r.target = { x: newH.x, y: newH.y };
+      } else {
+        r.mode = 'home';
+        r.target = { x: DEPOT.x, y: DEPOT.y };
+        r.helperId = null;
+      }
+    } else {
+      // h is frozen by pinning, so its position is stable
+      r.target = { x: h.x, y: h.y };
+      if (dist(r, h) < ROBOT_R * 2.5) {
+        // Charge transfer on contact (multi-hop economy with optional
+        // field-stay top-up).
+        //
+        // safeNeed: minimum donation that leaves r safe-at-some-depth from p_h.
+        //   = enough to reach the closer of {depot, nearest other chain peer}.
+        // targetX: how much r would need to reach the user-configured
+        //   refuelTargetSoc, which controls whether r heads home or keeps
+        //   working after the transfer.
+        // desiredX = max(safeNeed, targetX). Capped by canGive (helper's
+        //   surplus over its own depot-return).
+        const depths = state.safetyDepths || [];
+        const homeNeed = state.alpha * dist(h, DEPOT) - r.soc;
+        let minNeed = homeNeed;
+        for (const k of state.robots) {
+          if (k.id === r.id || k.id === h.id) continue;
+          if (depths[k.id] === undefined || depths[k.id] === Infinity) continue;
+          if (k.mode === 'docked' || k.mode === 'home') continue;
+          if (dist(k, DEPOT) < RECHARGE_R) continue;
+          if (k.soc <= state.alpha * dist(k, DEPOT)) continue;
+          const kNeed = state.alpha * Math.hypot(h.x - k.x, h.y - k.y) - r.soc;
+          if (kNeed < minNeed) minNeed = kNeed;
+        }
+        const safeNeed = Math.max(0, minNeed + 0.05);
+        const targetX = Math.max(0, state.refuelTargetSoc - r.soc);
+        const desiredX = Math.max(safeNeed, targetX);
+        const canGive = h.soc - state.alpha * dist(h, DEPOT) - 0.02;
+        const x = Math.max(0, Math.min(desiredX, canGive));
+        if (x > 0) {
+          h.soc -= x;
+          r.soc += x;
+        }
+        // Decide r's next mode. With a buffer above lowSocThreshold to avoid
+        // immediate re-trigger flapping: if r has clearly more than the
+        // low-SoC threshold, it can resume working in the field. Otherwise
+        // it heads home (and may chain-V2V on the way via the home-mode
+        // re-trigger).
+        const fieldResumeFloor = state.lowSocThreshold + 0.10;
+        if (r.soc > fieldResumeFloor) {
+          r.mode = 'wander';
+          r.target = null;
+          r.phase = 'transit';
+          r.loiterTimer = 0;
+        } else {
+          r.mode = 'home';
+          r.target = { x: DEPOT.x, y: DEPOT.y };
+        }
+        r.helperId = null;
+        h.pinnedBy = null;  // UNPIN
+        if (state.ferryHome) {
+          h.mode = 'home';
+          h.target = { x: DEPOT.x, y: DEPOT.y };
+          h.helperId = null;
+        }
+        // else: h's mode is still 'wander'; the wander block will pick a fresh
+        // target next step since h.target was nulled on pinning.
+      }
+    }
+  }
+
+  // ── Wander mode: refueler station-holding OR worker Levy walk ──
+  if (r.mode === 'wander') {
+    if (r.kind === 'refueler') {
+      // Refuelers have three motion modes:
+      //   'static' — hold the station point exactly (target = station, snap-clamp
+      //              in step prevents jiggle).
+      //   'orbit'  — drift tangentially around the shell at a slow constant
+      //              angular rate; no task engagement.
+      //   'search' — roam within a leash radius of the station and engage tasks
+      //              that fall inside that leash.
+      if (r.motion === undefined) r.motion = state.refuelerMotion;
+      r.motion = state.refuelerMotion; // honor live mode changes from UI
+      const soloR = 1 / (2 * state.alpha);
+      if (r.motion === 'static') {
+        r.target = refuelerStation(r);
+      } else if (r.motion === 'orbit') {
+        // Constant angular drift. All refuelers advance at the same rate so
+        // relative shell geometry is preserved.
+        r.stationAngle += 0.004;
+        if (r.stationAngle > Math.PI * 2) r.stationAngle -= Math.PI * 2;
+        r.target = refuelerStation(r);
+      } else { // 'search'
+        const station = refuelerStation(r);
+        const leashR = soloR * 0.10;       // 10% of solo-reach
+        const dStation = dist(r, station);
+        if (dStation > leashR) {
+          // Outside leash: head back to station
+          r.target = station;
+        } else if (!r.target || dist(r, r.target) < 6
+                                || dist({ x: r.target.x, y: r.target.y }, station) > leashR) {
+          // Inside leash with no/expired target: pick local waypoint within leash
+          const a = rng() * Math.PI * 2;
+          const rad = rng() * leashR;
+          r.target = {
+            x: station.x + Math.cos(a) * rad,
+            y: station.y + Math.sin(a) * rad
+          };
+        }
+      }
+    } else {
+      // Worker: Levy walk (transit + area-restricted search)
+      if (r.phase === undefined) {
+        r.phase = 'transit';
+        r.target = pickLevyJump(r);
+        r.loiterTimer = 0;
+      }
+      if (r.phase === 'transit') {
+        if (!r.target || dist(r, r.target) < 12) {
+          r.phase = 'loiter';
+          r.loiterTimer = 120 + Math.floor(rng() * 180);
+          r.target = pickLocalWaypoint(r);
+        }
+      } else { // loiter
+        if (!r.target || dist(r, r.target) < 6) {
+          r.target = pickLocalWaypoint(r);
+        }
+        r.loiterTimer--;
+        if (r.loiterTimer <= 0) {
+          r.phase = 'transit';
+          r.target = pickLevyJump(r);
+        }
+      }
+    }
+  }
+
+  // Compute proposed step toward target
+  if (!r.target) return;
+  let dx = r.target.x - r.x;
+  let dy = r.target.y - r.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 0.1) return;
+  // Clamp step to remaining distance so a robot with a fixed target (e.g. a
+  // stationary refueler) snaps to its target and stops, rather than
+  // overshooting and oscillating across it each frame.
+  let step = Math.min(state.baseStep, d);
+  let stepX = (dx / d) * step;
+  let stepY = (dy / d) * step;
+
+  // Safety filter (only for wander/task pursuit; home/helper modes commit)
+  if (r.mode === 'wander') {
+    let cand = { x: r.x + stepX, y: r.y + stepY };
+    let candBatt = r.soc - state.alpha * step;
+    if (!isSafeState(cand, candBatt, r.id)) {
+      // Try bending toward depot in a few blend steps
+      const depDx = DEPOT.x - r.x;
+      const depDy = DEPOT.y - r.y;
+      const depMag = Math.hypot(depDx, depDy);
+      let resolved = false;
+      for (const w of [0.25, 0.5, 0.75, 1.0]) {
+        const nx = (1 - w) * (dx / d) + w * (depDx / depMag);
+        const ny = (1 - w) * (dy / d) + w * (depDy / depMag);
+        const nm = Math.hypot(nx, ny);
+        if (nm < 1e-6) continue;
+        const sx = (nx / nm) * step, sy = (ny / nm) * step;
+        const c = { x: r.x + sx, y: r.y + sy };
+        const cb = r.soc - state.alpha * step;
+        if (isSafeState(c, cb, r.id)) {
+          stepX = sx; stepY = sy;
+          resolved = true;
+          break;
+        }
+      }
+      if (!resolved) {
+        // Even blending fully toward depot is unsafe — should be very rare;
+        // commit anyway and rely on home mode to take over
+        stepX = (depDx / depMag) * step;
+        stepY = (depDy / depMag) * step;
+      }
+    }
+  }
+
+  // Commit step
+  r.x += stepX;
+  r.y += stepY;
+  r.soc = Math.max(0, r.soc - state.alpha * step);
+
+  // Cooldown decay
+  if (r.taskCooldown > 0) r.taskCooldown--;
+
+  // Task discovery on contact (purely local; no global sensing).
+  // A robot that walks within TASK_HIT_R of a task attempts to engage it.
+  // If engaging would push it off the safe set, it counts as a missed
+  // opportunity and the task is recorded as "failed by this robot" so we
+  // don't double-count on subsequent steps near the same site.
+  if (r.mode === 'wander' && r.taskCooldown <= 0) {
+    // Refuelers in stationary mode never engage tasks (their job is to refuel,
+    // not forage). Refuelers in task-search mode engage only tasks that happen
+    // to fall within their leash radius of their station.
+    let refuelerSkip = false;
+    let refuelerLeashGate = null;
+    if (r.kind === 'refueler') {
+      if (state.refuelerMotion !== 'search') {
+        refuelerSkip = true;
+      } else {
+        const station = refuelerStation(r);
+        const leashR = (1 / (2 * state.alpha)) * 0.10;
+        refuelerLeashGate = { station, leashR };
+      }
+    }
+    if (!refuelerSkip) {
+      for (const task of state.tasks) {
+        if (r.failedTasks && r.failedTasks.has(task)) continue;
+        if (refuelerLeashGate && dist(task, refuelerLeashGate.station) > refuelerLeashGate.leashR) continue;
+        if (dist(r, task) < TASK_HIT_R) {
+          const afterBatt = r.soc - state.taskEnergyCost;
+          const safeAfter = isSafeState({ x: r.x, y: r.y }, afterBatt, r.id);
+          if (safeAfter && afterBatt > 0) {
+            r.soc = afterBatt;
+            state.metrics.tasksDone++;
+            const idx = state.tasks.indexOf(task);
+            if (idx >= 0) state.tasks.splice(idx, 1);
+          } else {
+            state.metrics.tasksMissed++;
+            if (!r.failedTasks) r.failedTasks = new WeakSet();
+            r.failedTasks.add(task);
+            r.taskCooldown = 30;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // Keep inside canvas (gentle wall)
+  if (r.x < ROBOT_R) r.x = ROBOT_R;
+  if (r.x > W - ROBOT_R) r.x = W - ROBOT_R;
+  if (r.y < ROBOT_R) r.y = ROBOT_R;
+  if (r.y > H - ROBOT_R) r.y = H - ROBOT_R;
+}
+
+// ─── Top-level step ─────────────────────────────────────────────────────────
+function step() {
+  const dt = 1 / 60;
+  state.t += dt;
+  updateTasks();
+  for (const r of state.robots) moveRobot(r);
+  updateRoles();
+  // Time-integrated population statistics. dt is simulated time per step;
+  // accumulation runs only when step() runs, so paused wall-time doesn't
+  // contaminate the running average.
+  const soloR = 1 / (2 * state.alpha);
+  // 80% of solo-reach: a "distal" band where commuting to/from depot is expensive,
+  // so dwelling here represents real time-on-station benefit (which V2V can extend
+  // even if it doesn't push peak reach past 1.0).
+  const outerR = 0.8 * soloR;
+  let nPastSolo = 0;
+  let nOuterBand = 0;
+  let maxD = 0;
+  for (const r of state.robots) {
+    const d = dist(r, DEPOT);
+    if (d > maxD) maxD = d;
+    if (d > soloR) nPastSolo++;
+    if (d > outerR) nOuterBand++;
+  }
+  const maxReachNow = maxD / soloR;
+  if (maxReachNow > state.peakReach) state.peakReach = maxReachNow;
+  state.cumMaxReach += maxReachNow * dt;
+  state.cumPastSoloTime += nPastSolo * dt;
+  state.cumOuterBandTime += nOuterBand * dt;
+  state.cumTotalRobotTime += state.robots.length * dt;
+  if (state.trailPersistence > 0) {
+    // Snowplow trails: fade existing paint, then stamp a wide soft disk under
+    // each robot. The persistence slider maps to a fade-alpha applied to the
+    // whole trail canvas each frame; at 1.0 the fade alpha is zero so trails
+    // never decay (permanent map of swarm reach).
+    const fadeAlpha = 0.06 * Math.pow(1 - state.trailPersistence, 1.5);
+    if (fadeAlpha > 0.0005) {
+      // Erase with destination-out so the trail canvas stays transparent
+      // outside swept regions (rather than building up a solid bg-colored
+      // rectangle, which would occlude grid lines and the depot circle).
+      trailCtx.save();
+      trailCtx.globalCompositeOperation = 'destination-out';
+      trailCtx.fillStyle = 'rgba(0,0,0,' + fadeAlpha.toFixed(4) + ')';
+      trailCtx.fillRect(0, 0, W, H);
+      trailCtx.restore();
+    }
+    // Stamp each robot: low-alpha sage disk wider than the robot itself
+    const stampR = ROBOT_R * 1.7;
+    trailCtx.fillStyle = 'rgba(74, 128, 96, 0.06)';
+    for (const r of state.robots) {
+      trailCtx.beginPath();
+      trailCtx.arc(r.x, r.y, stampR, 0, Math.PI * 2);
+      trailCtx.fill();
+    }
+  }
+}
+
+// ─── Drawing ────────────────────────────────────────────────────────────────
+function drawGrid() {
+  ctx.strokeStyle = 'rgba(74, 107, 93, 0.045)';
+  ctx.lineWidth = 1;
+  for (let x = 50; x < W; x += 50) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 50; y < H; y += 50) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+}
+
+function drawDepot() {
+  // Outer charge zone
+  ctx.strokeStyle = 'rgba(31, 58, 46, 0.22)';
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath();
+  ctx.arc(DEPOT.x, DEPOT.y, RECHARGE_R, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Body
+  ctx.fillStyle = '#1f3a2e';
+  ctx.beginPath();
+  ctx.arc(DEPOT.x, DEPOT.y, DEPOT_R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#f5ede1';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(DEPOT.x, DEPOT.y, DEPOT_R - 6, 0, Math.PI * 2);
+  ctx.stroke();
+  // Tiny bolt glyph
+  ctx.fillStyle = '#d97e3b';
+  ctx.beginPath();
+  ctx.moveTo(DEPOT.x - 3, DEPOT.y - 6);
+  ctx.lineTo(DEPOT.x + 2, DEPOT.y - 1);
+  ctx.lineTo(DEPOT.x - 1, DEPOT.y - 1);
+  ctx.lineTo(DEPOT.x + 3, DEPOT.y + 6);
+  ctx.lineTo(DEPOT.x - 2, DEPOT.y + 1);
+  ctx.lineTo(DEPOT.x + 1, DEPOT.y + 1);
+  ctx.closePath();
+  ctx.fill();
+  // Label
+  ctx.fillStyle = '#1f3a2e';
+  ctx.font = '600 9px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('DEPOT', DEPOT.x, DEPOT.y + DEPOT_R + 14);
+}
+
+function drawReachableDisks() {
+  for (const r of state.robots) {
+    const rho = reachableRadius(r);
+    if (rho < 5) continue;
+    let fill, stroke;
+    if (r.role === 'safe') { fill = 'rgba(74, 128, 96, 0.07)'; stroke = 'rgba(74, 128, 96, 0.30)'; }
+    else if (r.role === 'v2v') { fill = 'rgba(217, 126, 59, 0.07)'; stroke = 'rgba(217, 126, 59, 0.35)'; }
+    else { fill = 'rgba(196, 74, 59, 0.07)'; stroke = 'rgba(196, 74, 59, 0.40)'; }
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, rho, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function drawSafeEllipses() {
+  // Direct-safe set is {x : d(x, robot) + d(x, depot) <= rho}
+  // i.e. an ellipse with foci at robot and depot and major axis sum = rho.
+  for (const r of state.robots) {
+    const rho = reachableRadius(r);
+    const cD = dist(r, DEPOT);
+    if (rho <= cD + 1) continue;
+    const a = rho / 2;
+    const c = cD / 2;
+    const b = Math.sqrt(Math.max(0, a * a - c * c));
+    const cx = (r.x + DEPOT.x) / 2;
+    const cy = (r.y + DEPOT.y) / 2;
+    const ang = Math.atan2(DEPOT.y - r.y, DEPOT.x - r.x);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, a, b, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(74, 128, 96, 0.045)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(74, 128, 96, 0.45)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+}
+
+function drawReachabilityEdges() {
+  // The proximity layer: every (j → i) where i can physically drive to j on
+  // current battery. This is the outer layer — a strict superset of
+  // help-feasibility. Edges in here but NOT in feasibility represent "wasted
+  // proximity": peers I could reach who can't actually save me.
+  //
+  // The edge is directional: it depends only on i's SoC (the agent doing the
+  // traveling), not j's. Arrowhead points at i (the receiver-candidate).
+  // Drawn in terracotta (brand --red, warm) to contrast cleanly with the cool
+  // slate feasibility edges and the orange active edges.
+  ctx.strokeStyle = 'rgba(196, 74, 59, 0.55)';
+  ctx.lineWidth = 1.1;
+  for (const e of state.reachabilityEdges) {
+    const from = state.robots[e.from];
+    const to = state.robots[e.to];
+    if (!from || !to) continue;
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  }
+  // Small arrowhead at receiver end
+  ctx.fillStyle = 'rgba(196, 74, 59, 0.78)';
+  for (const e of state.reachabilityEdges) {
+    const from = state.robots[e.from];
+    const to = state.robots[e.to];
+    if (!from || !to) continue;
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const m = Math.hypot(dx, dy);
+    if (m < 1) continue;
+    const ax = to.x - (dx / m) * (ROBOT_R + 5);
+    const ay = to.y - (dy / m) * (ROBOT_R + 5);
+    const ang = Math.atan2(dy, dx);
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - Math.cos(ang - 0.45) * 5, ay - Math.sin(ang - 0.45) * 5);
+    ctx.lineTo(ax - Math.cos(ang + 0.45) * 5, ay - Math.sin(ang + 0.45) * 5);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+function drawFeasibilityEdges() {
+  // Render every (j → i) where j could fully save i — i.e., the menu of options.
+  // Drawn in slate blue (cool, structural) to contrast with the warm terracotta
+  // reachability edges and the orange active edges.
+  ctx.strokeStyle = 'rgba(90, 122, 150, 0.72)';
+  ctx.lineWidth = 1.4;
+  for (const e of state.feasibilityEdges) {
+    const from = state.robots[e.from];
+    const to = state.robots[e.to];
+    if (!from || !to) continue;
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  }
+  // Direction marker: small filled dot near the receiver end
+  ctx.fillStyle = 'rgba(90, 122, 150, 0.90)';
+  for (const e of state.feasibilityEdges) {
+    const from = state.robots[e.from];
+    const to = state.robots[e.to];
+    if (!from || !to) continue;
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const m = Math.hypot(dx, dy);
+    if (m < 1) continue;
+    const px = to.x - (dx / m) * (ROBOT_R + 5);
+    const py = to.y - (dy / m) * (ROBOT_R + 5);
+    ctx.beginPath();
+    ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawHelpEdges() {
+  for (const e of state.helpEdges) {
+    const from = state.robots[e.from];
+    const to = state.robots[e.to];
+    if (!from || !to) continue;
+    ctx.strokeStyle = '#d97e3b';
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Arrowhead at receiver
+    const a = Math.atan2(to.y - from.y, to.x - from.x);
+    const ax = to.x - Math.cos(a) * (ROBOT_R + 6);
+    const ay = to.y - Math.sin(a) * (ROBOT_R + 6);
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - Math.cos(a - 0.45) * 7, ay - Math.sin(a - 0.45) * 7);
+    ctx.lineTo(ax - Math.cos(a + 0.45) * 7, ay - Math.sin(a + 0.45) * 7);
+    ctx.closePath();
+    ctx.fillStyle = '#d97e3b';
+    ctx.fill();
+  }
+}
+
+function drawTrails() {
+  // Blit the accumulated offscreen trail canvas onto the main canvas.
+  // Stamping happens in step() so the buffer keeps refreshing even when the
+  // sim is paused-but-redrawing; clearing on toggle-off is handled separately.
+  ctx.drawImage(trailCanvas, 0, 0, W, H);
+}
+
+function drawSoloReachCircle() {
+  // The largest disk centered on the depot inside which a fully-charged robot
+  // can venture and still safely return: r = b_max / (2α), with b_max = 1.
+  // Drawn as a dashed reference ring on the floor — sits between grid and
+  // every other layer so it reads as a baseline target rather than UI.
+  const radius = 1 / (2 * state.alpha);
+  if (!isFinite(radius) || radius <= 0) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(31, 58, 46, 0.42)';
+  ctx.lineWidth = 1.1;
+  ctx.setLineDash([4, 5]);
+  ctx.beginPath();
+  ctx.arc(DEPOT.x, DEPOT.y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Small label so the ring is self-explanatory at a glance
+  const labelX = DEPOT.x + radius * Math.cos(-Math.PI / 4);
+  const labelY = DEPOT.y + radius * Math.sin(-Math.PI / 4) - 4;
+  ctx.fillStyle = 'rgba(31, 58, 46, 0.55)';
+  ctx.font = '500 9px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('solo-reach (1 / 2α)', labelX + 4, labelY);
+  ctx.restore();
+}
+
+// Faint orange dashed circle(s) at the refueler shell radii. Persistent even
+// when refuelers themselves are absent (e.g., all returned to depot to charge),
+// so the structural intent of the shell architecture stays visible. Colored to
+// match the refuelers' accent marker. Labels are placed on diagonally opposite
+// sides of the depot when two shells are active so they don't overlap.
+function drawShellCircles() {
+  if (!state.refuelerEnabled) return;
+  const soloR = 1 / (2 * state.alpha);
+  if (!isFinite(soloR) || soloR <= 0) return;
+  const shells = activeShells();
+  ctx.save();
+  // More saturated orange and a distinctive long-dash pattern so the shell
+  // rings remain readable even when reachable-disk overlays (also in the
+  // orange family for v2v-mode robots) cover the same area.
+  ctx.strokeStyle = 'rgba(217, 126, 59, 0.75)';
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([9, 4]);
+  for (const shellFrac of shells) {
+    const r = soloR * shellFrac;
+    ctx.beginPath();
+    ctx.arc(DEPOT.x, DEPOT.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(180, 95, 35, 0.90)';
+  ctx.font = '600 9px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'left';
+  for (let i = 0; i < shells.length; i++) {
+    const shellFrac = shells[i];
+    const r = soloR * shellFrac;
+    const ang = i === 0 ? -Math.PI / 4 : (3 * Math.PI / 4);
+    const lx = DEPOT.x + r * Math.cos(ang);
+    const ly = DEPOT.y + r * Math.sin(ang) - 4;
+    ctx.fillText(`shell ${shellFrac.toFixed(2)}×`, lx + 4, ly);
+  }
+  ctx.restore();
+}
+
+function drawTasks() {
+  for (const t of state.tasks) {
+    const alpha = Math.min(1, t.ttl / 250);
+    // pulse ring
+    const pulse = (Math.sin(state.t * 4 + t.x * 0.01) + 1) * 0.5;
+    ctx.strokeStyle = `rgba(200, 148, 65, ${alpha * 0.35})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 10 + pulse * 3, 0, Math.PI * 2);
+    ctx.stroke();
+    // diamond
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = `rgba(200, 148, 65, ${alpha})`;
+    ctx.fillRect(-4.5, -4.5, 9, 9);
+    ctx.strokeStyle = `rgba(31, 58, 46, ${alpha * 0.85})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-4.5, -4.5, 9, 9);
+    ctx.restore();
+  }
+}
+
+function drawRobots() {
+  for (const r of state.robots) {
+    let fill, stroke;
+    if (r.role === 'safe') { fill = '#b8d4c2'; stroke = '#4a8060'; }
+    else if (r.role === 'v2v') { fill = '#f3d4b3'; stroke = '#d97e3b'; }
+    else { fill = '#efc4be'; stroke = '#c44a3b'; }
+
+    // SoC ring outside the body, with a faint track for the full scale
+    const ringR = ROBOT_R + 3.5;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, ringR, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(31, 58, 46, 0.13)';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    if (r.soc > 0.005) {
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, ringR, -Math.PI / 2,
+              -Math.PI / 2 + r.soc * Math.PI * 2);
+      ctx.strokeStyle = '#1f3a2e';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+    }
+
+    // Pinned indicator: a pulsing dashed ring further out
+    if (r.pinnedBy !== null) {
+      const pulse = (Math.sin(state.t * 6) + 1) * 0.5;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, ROBOT_R + 7, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(217, 126, 59, ${0.45 + 0.4 * pulse})`;
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Body
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, ROBOT_R, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Refueler marker: a small concentric inner ring in accent orange.
+    // Visually distinct from workers without obscuring SoC ring or mode glyph.
+    if (r.kind === 'refueler') {
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, ROBOT_R - 2.5, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(217, 126, 59, 0.85)';
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, 1.3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(217, 126, 59, 0.95)';
+      ctx.fill();
+    }
+
+    // Mode glyph (subtle indicator of committed return)
+    if (r.mode === 'home' || r.mode === 'helper') {
+      ctx.fillStyle = stroke;
+      ctx.font = '600 9px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(r.mode === 'home' ? '↩' : '⇢', r.x, r.y - ringR - 3);
+    } else if (r.mode === 'docked') {
+      ctx.fillStyle = '#4a6b5d';
+      ctx.font = '600 9px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡', r.x, r.y - ringR - 3);
+    }
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawGrid();
+  if (state.trailPersistence > 0) drawTrails();
+  if (state.showSoloReach) drawSoloReachCircle();
+  if (state.showShells) drawShellCircles();
+  if (state.showSafeSets) drawSafeEllipses();
+  if (state.showDisks) drawReachableDisks();
+  if (state.showReachability) drawReachabilityEdges();
+  if (state.showFeasibility) drawFeasibilityEdges();
+  if (state.showEdges) drawHelpEdges();
+  if (state.showTasks) drawTasks();
+  drawDepot();
+  drawRobots();
+}
+
+// ─── Metrics ────────────────────────────────────────────────────────────────
+function computeMetrics() {
+  const rs = state.robots;
+  // Reference scale: max distance a fully-charged solo robot can sustain (see
+  // drawSoloReachCircle). Normalizing the population's reach by this value
+  // makes the numbers physically meaningful — independent of canvas units,
+  // and directly comparable to the dashed circle on screen.
+  const soloR = 1 / (2 * state.alpha);
+  let max = 0, socSum = 0, v2vCount = 0, stranded = 0, pinned = 0, pastSolo = 0;
+  for (const r of rs) {
+    const d = dist(r, DEPOT);
+    if (d > max) max = d;
+    if (d > soloR) pastSolo++;
+    socSum += r.soc;
+    if (r.role === 'v2v') v2vCount++;
+    if (r.role === 'stranded') stranded++;
+    if (r.pinnedBy !== null) pinned++;
+  }
+  const n = Math.max(1, rs.length);
+  const timePastSoloPct = state.cumTotalRobotTime > 0
+    ? (state.cumPastSoloTime / state.cumTotalRobotTime) * 100
+    : 0;
+  const timeAtOuterPct = state.cumTotalRobotTime > 0
+    ? (state.cumOuterBandTime / state.cumTotalRobotTime) * 100
+    : 0;
+  return {
+    maxReach: (max / soloR).toFixed(2) + '×',
+    peakReach: state.peakReach.toFixed(2) + '×',
+    meanReach: state.t > 0.05 ? (state.cumMaxReach / state.t).toFixed(2) + '×' : '—',
+    pastSolo: Math.round(pastSolo / n * 100) + '%',
+    timePastSolo: timePastSoloPct.toFixed(1) + '%',
+    timeAtOuter: timeAtOuterPct.toFixed(1) + '%',
+    tasksActive: state.tasks.length,
+    safetyVetoes: state.metrics.tasksMissed,
+    v2vCount,
+    stranded,
+    pinned,
+    helpEdges: state.helpEdges.length,
+    meanSoc: ((socSum / n) * 100).toFixed(0) + '%',
+    live: rs.length,
+  };
+}
+
+// ─── SoC histogram ──────────────────────────────────────────────────────────
+function drawSocHistogram() {
+  const c = document.getElementById('socHist');
+  if (!c) return;
+  // HiDPI handling, performed each draw so the histogram stays sharp even when
+  // the containing panel resizes (e.g., browser-window resize, layout reflow).
+  // We resize the backing store to match the current CSS dimensions × DPR, then
+  // apply a DPR transform so the rest of the drawing code can keep using
+  // logical (CSS-pixel) coordinates.
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = c.clientWidth || c.width;
+  const cssH = c.clientHeight || c.height;
+  const wantW = Math.round(cssW * dpr);
+  const wantH = Math.round(cssH * dpr);
+  if (c.width !== wantW || c.height !== wantH) {
+    c.width = wantW;
+    c.height = wantH;
+  }
+  const x = c.getContext('2d');
+  x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W2 = cssW, H2 = cssH;
+  x.clearRect(0, 0, W2, H2);
+  const bins = 10;
+  const counts = new Array(bins).fill(0);
+  for (const r of state.robots) {
+    const b = Math.min(bins - 1, Math.max(0, Math.floor(r.soc * bins)));
+    counts[b]++;
+  }
+  const maxC = Math.max(1, ...counts);
+  const pad = 4;
+  const labelH = 14;
+  const plotH = H2 - labelH - pad;
+  const w = (W2 - 2 * pad) / bins;
+  // Subtle baseline
+  x.strokeStyle = 'rgba(31, 58, 46, 0.18)';
+  x.lineWidth = 1;
+  x.beginPath();
+  x.moveTo(pad, H2 - labelH);
+  x.lineTo(W2 - pad, H2 - labelH);
+  x.stroke();
+  for (let i = 0; i < bins; i++) {
+    const h = (counts[i] / maxC) * (plotH - 4);
+    const x0 = pad + i * w + 1;
+    // Color by SoC zone
+    let color;
+    if (i < 2) color = '#c44a3b';        // 0–20% red
+    else if (i < 5) color = '#d97e3b';   // 20–50% orange
+    else if (i < 8) color = '#5a7a96';   // 50–80% blue
+    else color = '#4a8060';              // 80–100% green
+    x.fillStyle = color;
+    x.fillRect(x0, H2 - labelH - h, w - 2, h);
+    if (counts[i] > 0) {
+      x.fillStyle = '#1f3a2e';
+      x.font = '500 9px "IBM Plex Mono", monospace';
+      x.textAlign = 'center';
+      x.fillText(counts[i], x0 + (w - 2) / 2, H2 - labelH - h - 2);
+    }
+  }
+  // Axis labels
+  x.fillStyle = '#4a6b5d';
+  x.font = '9px "IBM Plex Mono", monospace';
+  x.textAlign = 'left';
+  x.fillText('0%', pad, H2 - 2);
+  x.textAlign = 'center';
+  x.fillText('50%', W2 / 2, H2 - 2);
+  x.textAlign = 'right';
+  x.fillText('100%', W2 - pad, H2 - 2);
+}
+
+// ─── Main loop ──────────────────────────────────────────────────────────────
+let stepAccumulator = 0;
+function loop() {
+  if (state.running) {
+    stepAccumulator += state.speed;
+    while (stepAccumulator >= 1) { step(); stepAccumulator -= 1; }
+  }
+  draw();
+  drawSocHistogram();
+  const m = computeMetrics();
+  document.getElementById('mMax').textContent = m.maxReach;
+  document.getElementById('mMean').textContent = m.pastSolo;
+  document.getElementById('mPeak').textContent = m.peakReach;
+  document.getElementById('mMeanReach').textContent = m.meanReach;
+  document.getElementById('mTimeOuter').textContent = m.timeAtOuter;
+  document.getElementById('mTimePastSolo').textContent = m.timePastSolo;
+  document.getElementById('mActive').textContent = m.tasksActive;
+  document.getElementById('mDone').textContent = state.metrics.tasksDone;
+  document.getElementById('mExpired').textContent = state.metrics.tasksExpired;
+  document.getElementById('mVetoes').textContent = m.safetyVetoes;
+  document.getElementById('mEdges').textContent = m.helpEdges;
+  document.getElementById('mFeas').textContent = state.feasibilityEdges.length;
+  document.getElementById('mReach').textContent = state.reachabilityEdges.length;
+  document.getElementById('mV2V').textContent = m.v2vCount;
+  document.getElementById('mSoc').textContent = m.meanSoc;
+  document.getElementById('tval').textContent = state.t.toFixed(1) + ' s';
+  document.getElementById('liveval').textContent = m.live;
+  document.getElementById('pinnedval').textContent = m.pinned;
+  document.getElementById('strandedval').textContent = m.stranded;
+  requestAnimationFrame(loop);
+}
+
+// ─── UI wiring ──────────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+
+$('btnPlay').addEventListener('click', (e) => {
+  state.running = !state.running;
+  e.target.textContent = state.running ? 'Pause' : 'Play';
+});
+$('btnStep').addEventListener('click', () => {
+  state.running = false;
+  $('btnPlay').textContent = 'Play';
+  step();
+});
+$('btnReset').addEventListener('click', () => {
+  state.seed = Math.floor(Math.random() * 1e9);
+  initRobots(parseInt($('nSlider').value));
+});
+
+$('v2vToggle').addEventListener('change', (e) => {
+  state.v2v = e.target.checked;
+  const b = $('modeBadge');
+  b.textContent = state.v2v ? 'Worker V2V on' : 'Worker V2V off';
+  b.className = 'badge ' + (state.v2v ? 'on' : 'off');
+  updateV2vDependentStyling();
+});
+
+// Visually mark toggle rows whose effect is gated on V2V being on. The rows
+// stay functional — users can still set them up while V2V is off and they'll
+// take effect when V2V is re-enabled — but the dimming is a reminder that
+// nothing they toggle here is doing anything until V2V comes back.
+function updateV2vDependentStyling() {
+  const rows = document.querySelectorAll('[data-v2v="dependent"]');
+  const active = anyV2VActive();
+  for (const row of rows) {
+    row.classList.toggle('inactive', !active);
+  }
+}
+// Visually mark rows whose effect requires refueler role to be enabled.
+// Same pattern as V2V-dependent dimming above.
+function updateRefuelerDependentStyling() {
+  const rows = document.querySelectorAll('[data-ref="dependent"]');
+  for (const row of rows) {
+    row.classList.toggle('inactive', !state.refuelerEnabled);
+  }
+}
+$('ferryToggle').addEventListener('change', (e) => { state.ferryHome = e.target.checked; });
+$('showDisks').addEventListener('change', (e) => { state.showDisks = e.target.checked; });
+$('showEdges').addEventListener('change', (e) => { state.showEdges = e.target.checked; });
+$('showFeasibility').addEventListener('change', (e) => { state.showFeasibility = e.target.checked; });
+$('showReachability').addEventListener('change', (e) => { state.showReachability = e.target.checked; });
+$('showTasks').addEventListener('change', (e) => { state.showTasks = e.target.checked; });
+$('showSafeSets').addEventListener('change', (e) => { state.showSafeSets = e.target.checked; });
+$('showSoloReach').addEventListener('change', (e) => { state.showSoloReach = e.target.checked; });
+$('coldStartToggle').addEventListener('change', (e) => { state.coldStart = e.target.checked; });
+
+// Refueler-role controls. The master toggle, fraction slider, and shell-mode
+// select all trigger an initRobots() so the new assignment takes effect
+// immediately (otherwise the user would have to manually reset every time
+// they tweak the configuration — frustrating during exploration). The
+// task-search sub-toggle takes effect live without a reset since it just
+// changes how existing refuelers behave.
+$('refuelerToggle').addEventListener('change', (e) => {
+  state.refuelerEnabled = e.target.checked;
+  updateRefuelerDependentStyling();
+  updateV2vDependentStyling();
+  initRobots(state.robots.length);
+});
+$('refFracSlider').addEventListener('input', (e) => {
+  state.refuelerFrac = parseInt(e.target.value) / 100;
+  $('refFracVal').textContent = e.target.value + '%';
+});
+$('refFracSlider').addEventListener('change', () => {
+  if (state.refuelerEnabled) initRobots(state.robots.length);
+});
+$('shellModeSelect').addEventListener('change', (e) => {
+  state.shellMode = e.target.value;
+  if (state.refuelerEnabled) initRobots(state.robots.length);
+});
+$('refuelerMotionSelect').addEventListener('change', (e) => {
+  state.refuelerMotion = e.target.value;
+});
+$('showShellsToggle').addEventListener('change', (e) => {
+  state.showShells = e.target.checked;
+});
+
+$('nSlider').addEventListener('input', (e) => { $('nVal').textContent = e.target.value; });
+$('nSlider').addEventListener('change', (e) => { initRobots(parseInt(e.target.value)); });
+
+$('aSlider').addEventListener('input', (e) => {
+  state.alpha = parseInt(e.target.value) / 10000;
+  // Endurance at full charge: 1 / (α · speed · 60 fps)
+  const endurance = 1 / (state.alpha * state.baseStep * 60);
+  $('aVal').textContent = state.alpha.toFixed(4) + ' · ~' + endurance.toFixed(1) + ' s';
+});
+$('rSlider').addEventListener('input', (e) => {
+  state.taskRate = parseInt(e.target.value) / 100;
+  $('rVal').textContent = state.taskRate.toFixed(2);
+});
+$('tmSlider').addEventListener('input', (e) => {
+  state.taskEnergyCost = parseInt(e.target.value) / 100;
+  $('tmVal').textContent = state.taskEnergyCost.toFixed(2);
+});
+$('sSlider').addEventListener('input', (e) => {
+  state.speed = parseInt(e.target.value) / 10;
+  $('sVal').textContent = state.speed.toFixed(1) + '×';
+});
+$('rtsSlider').addEventListener('input', (e) => {
+  state.refuelTargetSoc = parseInt(e.target.value) / 100;
+  $('rtsVal').textContent = e.target.value + '%';
+});
+$('tpSlider').addEventListener('input', (e) => {
+  const newVal = parseInt(e.target.value) / 100;
+  // Slider at 0 means trails fully off — wipe whatever paint is on the buffer
+  // so the canvas reflects the new state immediately rather than freezing the
+  // last frame's accumulated trails.
+  if (newVal <= 0 && state.trailPersistence > 0) clearTrailCanvas();
+  state.trailPersistence = newVal;
+  $('tpVal').textContent = e.target.value + '%';
+});
+
+// ─── Presets ────────────────────────────────────────────────────────────────
+// Each preset is a partial state diff. Only listed fields get changed —
+// unlisted fields are left at whatever the user had them at, so you can layer
+// a preset on top of your own visualization-toggle preferences.
+const PRESETS = {
+  'default': {
+    n: 12, alpha: 0.0024, taskRate: 0.06, taskEnergyCost: 0.18,
+    refuelTargetSoc: 0.50,
+    v2v: true,
+    refuelerEnabled: false, refuelerFrac: 0.30,
+    shellMode: 'single', refuelerMotion: 'static',
+    ferryHome: false, coldStart: false,
+  },
+  'range-ext': {
+    n: 20, alpha: 0.0040, taskRate: 0.06, taskEnergyCost: 0.18,
+    refuelTargetSoc: 0.40,
+    v2v: true,
+    refuelerEnabled: false,
+  },
+  'field-stay': {
+    n: 15, alpha: 0.0028, taskRate: 0.06, taskEnergyCost: 0.18,
+    refuelTargetSoc: 0.75,
+    v2v: true,
+    refuelerEnabled: false,
+  },
+  'refueler': {
+    n: 20, alpha: 0.0040, taskRate: 0.06, taskEnergyCost: 0.18,
+    refuelTargetSoc: 0.50,
+    v2v: false,
+    refuelerEnabled: true, refuelerFrac: 0.30,
+    shellMode: 'double33', refuelerMotion: 'static',
+  },
+};
+
+function applyPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  // Numeric scalars with corresponding sliders / display elements.
+  if (p.alpha !== undefined) {
+    state.alpha = p.alpha;
+    $('aSlider').value = Math.round(p.alpha * 10000);
+    const endurance = 1 / (p.alpha * state.baseStep * 60);
+    $('aVal').textContent = p.alpha.toFixed(4) + ' · ~' + endurance.toFixed(1) + ' s';
+  }
+  if (p.taskRate !== undefined) {
+    state.taskRate = p.taskRate;
+    $('rSlider').value = Math.round(p.taskRate * 100);
+    $('rVal').textContent = p.taskRate.toFixed(2);
+  }
+  if (p.taskEnergyCost !== undefined) {
+    state.taskEnergyCost = p.taskEnergyCost;
+    $('tmSlider').value = Math.round(p.taskEnergyCost * 100);
+    $('tmVal').textContent = p.taskEnergyCost.toFixed(2);
+  }
+  if (p.refuelTargetSoc !== undefined) {
+    state.refuelTargetSoc = p.refuelTargetSoc;
+    $('rtsSlider').value = Math.round(p.refuelTargetSoc * 100);
+    $('rtsVal').textContent = Math.round(p.refuelTargetSoc * 100) + '%';
+  }
+  if (p.refuelerFrac !== undefined) {
+    state.refuelerFrac = p.refuelerFrac;
+    $('refFracSlider').value = Math.round(p.refuelerFrac * 100);
+    $('refFracVal').textContent = Math.round(p.refuelerFrac * 100) + '%';
+  }
+  // Selects.
+  if (p.shellMode !== undefined) {
+    state.shellMode = p.shellMode;
+    $('shellModeSelect').value = p.shellMode;
+  }
+  if (p.refuelerMotion !== undefined) {
+    state.refuelerMotion = p.refuelerMotion;
+    $('refuelerMotionSelect').value = p.refuelerMotion;
+  }
+  // Booleans.
+  if (p.v2v !== undefined) {
+    state.v2v = p.v2v;
+    $('v2vToggle').checked = p.v2v;
+    const b = $('modeBadge');
+    b.textContent = p.v2v ? 'Worker V2V on' : 'Worker V2V off';
+    b.className = 'badge ' + (p.v2v ? 'on' : 'off');
+  }
+  if (p.refuelerEnabled !== undefined) {
+    state.refuelerEnabled = p.refuelerEnabled;
+    $('refuelerToggle').checked = p.refuelerEnabled;
+  }
+  if (p.ferryHome !== undefined) {
+    state.ferryHome = p.ferryHome;
+    $('ferryToggle').checked = p.ferryHome;
+  }
+  if (p.coldStart !== undefined) {
+    state.coldStart = p.coldStart;
+    $('coldStartToggle').checked = p.coldStart;
+  }
+  // Robot count + reset. Done last so initRobots sees the updated state.
+  const newN = p.n !== undefined ? p.n : state.robots.length;
+  $('nSlider').value = newN;
+  $('nVal').textContent = newN;
+  // Refresh dependent-row styling for both toggle families.
+  updateRefuelerDependentStyling();
+  updateV2vDependentStyling();
+  initRobots(newN);
+}
+
+// Per-preset descriptions, shown in the description box under the dropdown.
+// Each one summarizes the configuration AND what to look for, so the user
+// knows which metrics will best reveal the dynamic that preset is showing.
+const PRESET_DESCRIPTIONS = {
+  'default': 'Widget defaults: N=12, α=0.0024 (~5 s endurance), worker V2V on, refuelers off, refuel target 50%. A balanced baseline — not optimized to highlight V2V. Recommended workflow: run ~60 simulated seconds, note the cumulative metrics, then switch to a contrast preset (or toggle Worker-to-worker V2V off) and rerun to see what V2V buys you.',
+  'range-ext': 'N=20, α=0.0040 (~3 s endurance; solo-reach ≈ 125 px), worker V2V on, refuelers off, refuel target 40%. Solo-reach is tight enough that ~73% of tasks now spawn beyond it — V2V is doing real work. Contrast: turn worker V2V off and rerun; watch Tasks done, Peak reach, and Tasks expired diverge.',
+  'field-stay': 'N=15, α=0.0028 (moderate), worker V2V on, refuelers off, refuel target 75% (high). V2V donations are large enough that receivers resume wandering after a transfer rather than heading home. Contrast: drop refuel target to 25% and rerun; watch Time at outer 80% — the dwell-time metric — drop noticeably.',
+  'refueler': 'N=20, α=0.0040, worker-to-worker V2V off, refueler role on with 30% of swarm at double shells 0.33× and 0.67× (static motion), refuel target 50%. The cleanest external-repletes demo — only refuelers can give V2V. Turn on Help-feasibility edges to see the bipartite chain pattern; watch Mean reach and Time at outer 80%.',
+};
+
+function applyPresetByName(name) {
+  applyPreset(name);
+  const desc = PRESET_DESCRIPTIONS[name];
+  if (desc) $('presetDesc').textContent = desc;
+}
+
+$('presetSelect').addEventListener('change', (e) => {
+  const v = e.target.value;
+  if (v) applyPresetByName(v);
+});
+
+// ─── Reference implementations: GAMA & NetLogo source ───────────────────────
+const SOURCES = {
+  gama: `/**
+ * V2V Swarm -- Basic Model (GAMA implementation)
+ *
+ * A starter template for an energy-aware swarm with optional V2V charging.
+ * Robots wander, lose energy with distance, head home when low. Optional
+ * V2V donation: a low-SoC robot finds a peer with surplus and gets a
+ * charge transfer (contact step collapsed -- receiver and helper exchange
+ * energy in place).
+ *
+ * NOTE on naming: this file calls the task-points "mission" rather than
+ * "task" because GAMA reserves the keyword 'task' for its Behavior
+ * Architecture (BDI / finite-state systems). Declaring a species or
+ * local variable named 'task' produces a parse error in reflex bodies.
+ * Everywhere else (JS widget, NetLogo, Python) the same concept is
+ * called a "task" -- the dynamics are identical.
+ *
+ * NOTE on world size: the world is 500x500 with the depot at (250, 250)
+ * so the solo-reach circle (radius = 1/2a, which is 208 at default alpha)
+ * fits comfortably inside. Robots spawn in a disk around the depot of
+ * radius min(135, 0.9*solo-reach), and wander targets are drawn from
+ * the same disk -- matching the JS widget where the canvas IS the world
+ * and the dynamics naturally keep robots within reach.
+ *
+ * Omitted vs the full simulator: no CBF safety filter, no multi-hop chain
+ * reachability, no refueler role, no visualization of reachable disks /
+ * direct-safe sets / feasibility edges. Just the bare bones.
+ */
+model V2VSwarm
+
+global {
+    int num_robots <- 12;
+    float alpha <- 0.0024;
+    float task_rate <- 0.06;
+    bool v2v_enabled <- true;
+    float low_soc_threshold <- 0.25;
+    float refuel_target <- 0.50;
+
+    geometry shape <- square(500);
+    point depot <- {250.0, 250.0};
+    float depot_r <- 12.0;
+    float move_speed <- 1.0;
+
+    float task_energy_cost <- 0.18;
+    float task_engage_radius <- 10.0;
+
+    // Helpers: uniform random point in a disk / annulus around the depot.
+    // Matches the JS widget's geometry: robots spawn within
+    // min(135, 0.9*solo-reach) of the depot, wander targets within
+    // 0.9*solo-reach, and tasks in an annulus 30 to 0.9*solo-reach.
+    point disk_point (float r_max) {
+        float a <- rnd(360.0);
+        float r <- r_max * sqrt(rnd(1.0));
+        return depot + {r * cos(a), r * sin(a)};
+    }
+    point annulus_point (float r_min, float r_max) {
+        float a <- rnd(360.0);
+        float r <- sqrt(r_min * r_min + rnd(r_max * r_max - r_min * r_min));
+        return depot + {r * cos(a), r * sin(a)};
+    }
+
+    init {
+        float solo_reach <- 1.0 / (2.0 * alpha);
+        float init_r_max <- min(135.0, solo_reach * 0.9);
+        create robot number: num_robots {
+            location <- world.disk_point(init_r_max);
+            soc <- 0.5 + rnd(0.5);
+            mode <- "wander";
+            do pick_levy_target;
+        }
+    }
+
+    reflex spawn_missions when: length(mission) < 30 {
+        if (flip(task_rate)) {
+            float solo_reach <- 1.0 / (2.0 * alpha);
+            float r_max <- min(solo_reach * 0.9, 245.0);
+            create mission {
+                location <- world.annulus_point(30.0, r_max);
+                ttl <- 200;
+            }
+        }
+    }
+}
+
+species robot {
+    float soc <- 1.0;
+    point target <- {250.0, 250.0};
+    string mode <- "wander";
+
+    reflex recharge when: mode = "docked" {
+        soc <- soc + 0.004;
+        if (soc >= 1.0) {
+            soc <- 1.0;
+            mode <- "wander";
+            do pick_levy_target;
+        }
+    }
+
+    reflex pick_new_target when: (mode = "wander") and ((location distance_to target) < 1.0) {
+        do pick_levy_target;
+    }
+
+    // Levy-walk wander target. Heavy-tailed (Pareto) step lengths -- mu=1.8,
+    // lMin=25, cap=200 -- matching the JS widget. Produces a wiggly
+    // trajectory rather than long straight-line walks. Targets that would
+    // land beyond 0.85 * solo-reach are scaled back toward the depot so
+    // robots stay in their safe operating disk.
+    action pick_levy_target {
+        float u <- rnd(0.999);
+        float step_len <- min(25.0 * ((1.0 / (1.0 - u)) ^ 1.25), 200.0);
+        float ang <- rnd(360.0);
+        float nx <- location.x + step_len * cos(ang);
+        float ny <- location.y + step_len * sin(ang);
+        float dx <- nx - depot.x;
+        float dy <- ny - depot.y;
+        float r_out <- sqrt(dx * dx + dy * dy);
+        float solo_reach <- 1.0 / (2.0 * alpha);
+        float r_cap <- solo_reach * 0.85;
+        if (r_out > r_cap) {
+            nx <- depot.x + dx * r_cap / r_out;
+            ny <- depot.y + dy * r_cap / r_out;
+        }
+        target <- {nx, ny};
+    }
+
+    reflex low_soc_action when: (mode = "wander") and (soc < low_soc_threshold) {
+        if (v2v_enabled) {
+            list<robot> candidates <- robot where (
+                (each != self) and (each.mode = "wander")
+            );
+            candidates <- candidates where (
+                each.soc > ((alpha * (each.location distance_to depot)) + 0.10)
+            );
+            if (length(candidates) > 0) {
+                robot h <- one_of(candidates);
+                float can_give <- h.soc - (alpha * (h.location distance_to depot)) - 0.02;
+                float needed   <- refuel_target - soc;
+                float donation <- min(can_give, needed);
+                if (donation > 0) {
+                    soc   <- soc + donation;
+                    h.soc <- h.soc - donation;
+                }
+            }
+        }
+        if (soc < ((alpha * (location distance_to depot)) + 0.10)) {
+            mode <- "home";
+            target <- depot;
+        }
+    }
+
+    reflex move_robot when: mode != "docked" {
+        float d <- location distance_to target;
+        if (d > 0.0) {
+            float delta <- min(move_speed, d);
+            location <- location + (target - location) * (delta / d);
+            soc <- soc - (alpha * delta);
+        }
+        if ((mode = "home") and ((location distance_to depot) < depot_r)) {
+            mode <- "docked";
+        }
+    }
+
+    // Task engagement: local variable is typed 'agent' (not 'mission') so
+    // the statement-start doesn't put a species name in a position that
+    // could collide with GAMA's reserved-keyword parsing.
+    reflex try_mission when: (mode = "wander") and (length(mission) > 0) {
+        agent m <- mission closest_to self;
+        if (m != nil) {
+            float d <- location distance_to m.location;
+            if (d < task_engage_radius) {
+                float home_d <- location distance_to depot;
+                if ((soc - task_energy_cost) > (alpha * home_d)) {
+                    soc <- soc - task_energy_cost;
+                    ask m { do die; }
+                }
+            }
+        }
+    }
+
+    aspect base {
+        rgb body_color <- (mode = "docked") ? #forestgreen
+                       : ((mode = "home")   ? #goldenrod
+                       : ((soc < 0.3)       ? #firebrick : #steelblue));
+        draw circle(6.0) color: body_color;
+    }
+}
+
+species mission {
+    int ttl;
+
+    reflex expire {
+        ttl <- ttl - 1;
+        if (ttl <= 0) { do die; }
+    }
+
+    aspect base {
+        draw square(10.0) color: #darkorange rotate: 45;
+    }
+}
+
+experiment v2v_swarm type: gui {
+    float minimum_cycle_duration <- 0.05;
+
+    parameter "Number of robots"     var: num_robots         min: 3     max: 30   step: 1;
+    parameter "Battery cost alpha"   var: alpha              min: 0.001 max: 0.01 step: 0.0005;
+    parameter "Task spawn rate"      var: task_rate          min: 0.0   max: 0.2  step: 0.01;
+    parameter "Worker-to-worker V2V" var: v2v_enabled;
+    parameter "Low-SoC threshold"    var: low_soc_threshold  min: 0.0   max: 1.0  step: 0.05;
+    parameter "V2V refuel target"    var: refuel_target      min: 0.1   max: 1.0  step: 0.05;
+
+    output {
+        display "Field" type: 2d {
+            // Solo-reach circle: theoretical out-and-back range from depot
+            // on a full charge. Re-evaluates each cycle so it tracks alpha.
+            graphics "solo_reach" {
+                draw circle(1.0 / (2.0 * alpha)) at: depot wireframe: true border: #darkgray;
+            }
+            graphics "depot_marker" {
+                draw circle(depot_r) at: depot color: #darkgreen border: #black;
+            }
+            species robot   aspect: base;
+            species mission aspect: base;
+        }
+        monitor "Wandering"    value: length(robot where (each.mode = "wander"));
+        monitor "Heading home" value: length(robot where (each.mode = "home"));
+        monitor "Docked"       value: length(robot where (each.mode = "docked"));
+        monitor "Active tasks" value: length(mission);
+    }
+}
+`,
+
+  netlogo: `globals [previous-alpha]
+
+breed [robots robot]
+robots-own [soc target-x target-y mode]
+
+;; Renamed from 'tasks' to 'missions' to avoid any possible collision with
+;; NetLogo's deprecated 'task' keyword (anonymous-procedure literal in v5).
+;; The concept is identical to "tasks" in the JS widget, GAMA, and Python.
+breed [missions mission]
+missions-own [ttl]
+
+to setup
+  clear-all
+  ;; Depot: a green disk of patches at the origin (visual only)
+  ask patches with [distancexy 0 0 < 6] [ set pcolor green ]
+  let solo-reach 1 / (2 * alpha-decay)
+  let init-r-max min list 135 (solo-reach * 0.9)
+  create-robots num-robots [
+    ;; Spawn in a disk around the depot, matching the JS widget's init.
+    let ang random-float 360
+    let r init-r-max * sqrt random-float 1.0
+    setxy (r * cos ang) (r * sin ang)
+    set soc 0.5 + random-float 0.5
+    set mode "wander"
+    set shape "circle"
+    set size 12
+    update-color
+    pick-levy-target  ;; first wander target = Levy hop from spawn point
+  ]
+  set previous-alpha alpha-decay
+  draw-solo-reach
+  reset-ticks
+end
+
+to go
+  ;; If alpha changed via the slider since last tick, redraw the
+  ;; solo-reach circle to match the new value.
+  if alpha-decay != previous-alpha [
+    clear-drawing
+    set previous-alpha alpha-decay
+    draw-solo-reach
+  ]
+  ;; Spawn missions: annulus around origin, matching JS widget.
+  if random-float 1.0 < task-rate and count missions < 30 [
+    let solo-reach 1 / (2 * alpha-decay)
+    let r-max-task min list (solo-reach * 0.9) (max-pxcor - 45)
+    let r-min-task 30
+    create-missions 1 [
+      let ang random-float 360
+      ;; sqrt-uniform sampling between r-min and r-max for uniform area
+      let r sqrt (r-min-task ^ 2 + random-float (r-max-task ^ 2 - r-min-task ^ 2))
+      setxy (r * cos ang) (r * sin ang)
+      set ttl 200
+      set shape "star"
+      set color orange
+      set size 10
+    ]
+  ]
+  ask robots [ move-robot ]
+  ask missions [
+    set ttl ttl - 1
+    if ttl <= 0 [ die ]
+  ]
+  tick
+  ;; Throttle the default speed.
+  wait 0.02
+end
+
+to move-robot
+  ifelse mode = "docked"
+  [ recharge ]
+  [
+    if mode = "wander" and distancexy target-x target-y < 1 [
+      pick-levy-target
+    ]
+    if mode = "wander" and soc < low-soc-threshold [
+      if v2v-enabled? [ attempt-v2v ]
+      let dist-home distancexy 0 0
+      if soc < alpha-decay * dist-home + 0.10 [
+        set mode "home"
+        set target-x 0
+        set target-y 0
+      ]
+    ]
+    step-toward target-x target-y
+    if mode = "wander" [ try-mission ]
+    if mode = "home" and distancexy 0 0 < 6 [
+      set mode "docked"
+      setxy 0 0
+    ]
+    update-color
+  ]
+end
+
+to recharge
+  set soc soc + 0.004
+  if soc >= 1.0 [
+    set soc 1.0
+    set mode "wander"
+    pick-levy-target
+  ]
+  update-color
+end
+
+to step-toward [tx ty]
+  let d distancexy tx ty
+  if d > 0 [
+    let s min list 1.0 d
+    facexy tx ty
+    fd s
+    set soc soc - alpha-decay * s
+  ]
+end
+
+to attempt-v2v
+  let me self
+  let helper one-of robots with [
+    self != me
+    and mode = "wander"
+    and soc > alpha-decay * distancexy 0 0 + 0.10
+  ]
+  if helper != nobody [
+    let can-give [soc] of helper - alpha-decay * [distancexy 0 0] of helper - 0.02
+    let needed refuel-target - soc
+    let donation min list can-give needed
+    if donation > 0 [
+      set soc soc + donation
+      ask helper [ set soc soc - donation ]
+    ]
+  ]
+end
+
+to try-mission  ;; robot procedure
+  let nearby missions in-radius 10
+  if any? nearby [
+    let chosen one-of nearby
+    let home-d distancexy 0 0
+    if soc - 0.18 > alpha-decay * home-d [
+      set soc soc - 0.18
+      ask chosen [ die ]
+    ]
+  ]
+end
+
+to update-color
+  if mode = "docked" [ set color green stop ]
+  if mode = "home" [ set color yellow stop ]
+  ifelse soc < 0.3 [ set color red ] [ set color blue ]
+end
+
+;; Pick a wander target as a Levy-walk hop from the robot's current position.
+;; Levy walks alternate short steps with occasional long jumps, drawn from a
+;; heavy-tailed (Pareto) distribution -- the same wander dynamics the JS
+;; widget uses (mu=1.8, lMin=25, cap=200). Result is a wiggly trajectory
+;; rather than long straight-line walks across the world.
+;; Targets that would land outside ~0.85 * solo-reach are scaled back so
+;; robots stay within their safe operating disk.
+to pick-levy-target  ;; robot procedure
+  let u random-float 0.999
+  let step-len 25 * ((1 / (1 - u)) ^ (1 / 0.8))
+  set step-len min list step-len 200
+  let ang random-float 360
+  let nx xcor + step-len * cos ang
+  let ny ycor + step-len * sin ang
+  let solo-reach 1 / (2 * alpha-decay)
+  let r-cap solo-reach * 0.85
+  let r-out sqrt (nx * nx + ny * ny)
+  if r-out > r-cap [
+    set nx nx * r-cap / r-out
+    set ny ny * r-cap / r-out
+  ]
+  set target-x nx
+  set target-y ny
+end
+
+;; Draw the solo-reach circle as a thin gray ring on the drawing layer.
+to draw-solo-reach
+  let solo-reach 1 / (2 * alpha-decay)
+  let world-radius min (list max-pxcor (- min-pxcor) max-pycor (- min-pycor))
+  if solo-reach <= world-radius [
+    create-turtles 1 [
+      set hidden? true
+      set color gray
+      set pen-size 1
+      pen-up
+      setxy solo-reach 0
+      pen-down
+      let n 120
+      let i 1
+      while [i <= n] [
+        let theta i * 360 / n
+        setxy (solo-reach * cos theta) (solo-reach * sin theta)
+        set i i + 1
+      ]
+      pen-up
+      die
+    ]
+  ]
+end
+@#$#@#$#@
+GRAPHICS-WINDOW
+360
+10
+801
+451
+-1
+-1
+1.0
+1
+10
+1
+1
+1
+0
+1
+1
+1
+-220
+220
+-220
+220
+0
+0
+1
+ticks
+30.0
+
+BUTTON
+10
+10
+85
+43
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+95
+10
+170
+43
+NIL
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+10
+55
+350
+88
+num-robots
+num-robots
+3
+30
+12.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+10
+93
+350
+126
+alpha-decay
+alpha-decay
+0.001
+0.01
+0.0024
+0.0005
+1
+NIL
+HORIZONTAL
+
+SLIDER
+10
+131
+350
+164
+task-rate
+task-rate
+0.0
+0.2
+0.06
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+10
+169
+350
+202
+low-soc-threshold
+low-soc-threshold
+0.0
+1.0
+0.25
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+10
+207
+350
+240
+refuel-target
+refuel-target
+0.1
+1.0
+0.5
+0.05
+1
+NIL
+HORIZONTAL
+
+SWITCH
+10
+250
+200
+283
+v2v-enabled?
+v2v-enabled?
+0
+1
+-1000
+
+MONITOR
+10
+295
+105
+340
+wandering
+count robots with [mode = "wander"]
+0
+1
+11
+
+MONITOR
+115
+295
+210
+340
+home
+count robots with [mode = "home"]
+0
+1
+11
+
+MONITOR
+220
+295
+315
+340
+docked
+count robots with [mode = "docked"]
+0
+1
+11
+@#$#@#$#@
+## WHAT IS IT?
+
+V2V Swarm -- starter template. Robots wander a 100x100 sub-field around
+a depot, lose energy with distance, and head home when SoC drops below a
+threshold. When V2V is enabled, a low-SoC robot tries to find a peer with
+surplus energy and accepts an in-place charge transfer.
+
+The gray ring is the solo-reach circle: the theoretical maximum
+out-and-back distance a robot can travel on a full charge, equal to
+1/(2*alpha-decay). It re-draws when you change alpha-decay via the slider.
+
+## HOW IT WORKS
+
+Robots have three modes: wander, home, docked. The depot is the green
+patch cluster at the origin. Missions (the orange stars) spawn uniformly
+in a 100x100 sub-field around the depot and expire after 200 ticks. A
+robot consumes a mission if within range AND the safety condition holds
+(post-engagement SoC > alpha * distance_to_depot).
+
+## EXTENDING
+
+This is bare bones. Suggested additions: control-barrier-function-style
+safety filtering on engagement, multi-hop V2V chains, a refueler role
+that holds station for delivery rather than wandering, multiple depots.
+@#$#@#$#@
+default
+true
+0
+Polygon -7500403 true true 150 5 40 250 150 205 260 250
+
+circle
+false
+0
+Circle -7500403 true true 0 0 300
+
+circle 2
+false
+0
+Circle -7500403 true true 16 16 270
+Circle -16777216 true false 46 46 210
+
+square
+false
+0
+Rectangle -7500403 true true 30 30 270 270
+
+star
+false
+0
+Polygon -7500403 true true 151 1 185 108 298 108 207 175 242 282 151 216 59 282 94 175 3 108 116 108
+
+target
+false
+0
+Circle -7500403 true true 0 0 300
+Circle -16777216 true false 30 30 240
+Circle -7500403 true true 60 60 180
+Circle -16777216 true false 90 90 120
+Circle -7500403 true true 120 120 60
+
+dot
+false
+0
+Circle -7500403 true true 90 90 120
+
+x
+false
+0
+Polygon -7500403 true true 270 75 225 30 30 225 75 270
+Polygon -7500403 true true 30 75 75 30 270 225 225 270
+@#$#@#$#@
+NetLogo 6.4.0
+@#$#@#$#@
+@#$#@#$#@
+@#$#@#$#@
+@#$#@#$#@
+@#$#@#$#@
+default
+0.0
+-0.2 0 0.0 1.0
+0.0 1 1.0 0.0
+0.2 0 0.0 1.0
+link direction
+true
+0
+Line -7500403 true 150 150 90 180
+Line -7500403 true 150 150 210 180
+@#$#@#$#@
+1
+@#$#@#$#@
+`,
+
+  python: `"""
+V2V Swarm -- Basic Model (Python implementation)
+
+NumPy-vectorized simulator with two complementary modes:
+
+  1. run(config, seed) -- headless, returns metrics dict; use for parameter
+     sweeps and statistical analysis in Jupyter or scripts.
+
+  2. run_animated(config, seed) -- interactive PyGame viewer with pause,
+     speed, V2V-toggle, and reset controls. Use for visual debugging and
+     intuition building. Requires 'pip install pygame'.
+
+Direct invocation ('python v2v_swarm.py') runs the animated viewer if
+PyGame is available, and falls back to a headless run + matplotlib plot
+otherwise.
+
+Parameter-sweep idiom (headless):
+    import pandas as pd
+    rows = []
+    for alpha in [0.0024, 0.0030, 0.0040]:
+        for v2v in [False, True]:
+            for seed in range(20):
+                cfg = Config(alpha=alpha, v2v_enabled=v2v, num_robots=20)
+                r = run(cfg, seed=seed)
+                rows.append({'alpha': alpha, 'v2v': v2v, 'seed': seed,
+                             'tasks_done': r['tasks_done'],
+                             'peak_reach': r['peak_reach']})
+    df = pd.DataFrame(rows)
+    print(df.groupby(['alpha', 'v2v'])['tasks_done'].agg(['mean', 'std']))
+
+Omitted vs the full simulator: no CBF safety filter, no multi-hop chain
+reachability, no refueler role. Bare bones to extend.
+"""
+
+from dataclasses import dataclass
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+@dataclass
+class Config:
+    num_robots: int = 12
+    alpha: float = 0.0024
+    task_rate: float = 0.06
+    task_energy_cost: float = 0.18
+    low_soc_threshold: float = 0.25
+    refuel_target: float = 0.50
+    v2v_enabled: bool = True
+
+    world_size: float = 500.0
+    depot_radius: float = 3.0
+    move_step: float = 0.5
+    recharge_rate: float = 0.004
+
+    max_steps: int = 5000
+    task_ttl: int = 200
+    max_tasks: int = 30
+    task_engage_radius: float = 1.5
+
+
+class SimState:
+    """Mutable simulation state. Shared between run() and run_animated()
+    so the step logic lives in exactly one place (step_sim below)."""
+    def __init__(self, config: Config, seed: int = 0):
+        self.rng = np.random.default_rng(seed)
+        N = config.num_robots
+        L = config.world_size
+        self.depot = np.array([L / 2, L / 2])
+        solo_reach = 1.0 / (2.0 * config.alpha)
+        # Initial positions: uniform in a disk around the depot of radius
+        # min(135, 0.9*solo_reach), matching the JS widget's init geometry.
+        init_r_max = min(135.0, solo_reach * 0.9)
+        ang = self.rng.uniform(0, 2 * np.pi, size=N)
+        r = init_r_max * np.sqrt(self.rng.uniform(0, 1, size=N))
+        self.pos = self.depot + np.column_stack([r * np.cos(ang), r * np.sin(ang)])
+        self.soc = 0.5 + self.rng.uniform(0, 0.5, size=N)
+        # Wander targets: same disk so robots roam within reach by default.
+        ang = self.rng.uniform(0, 2 * np.pi, size=N)
+        r = solo_reach * 0.9 * np.sqrt(self.rng.uniform(0, 1, size=N))
+        self.target = self.depot + np.column_stack([r * np.cos(ang), r * np.sin(ang)])
+        self.mode = np.zeros(N, dtype=int)   # 0 wander, 1 home, 2 docked
+        self.task_pos = np.empty((0, 2))
+        self.task_ttl = np.empty(0, dtype=int)
+
+
+def step_sim(state: SimState, config: Config, v2v_enabled: bool):
+    """Advance the simulation by one step. Mutates state in place.
+    Returns (tasks_done_delta, tasks_expired_delta) for this step."""
+    rng = state.rng
+    L = config.world_size
+    N = config.num_robots
+    done_delta = 0
+    expired_delta = 0
+
+    # Spawn task: annulus around the depot, matching the JS widget.
+    if rng.random() < config.task_rate and len(state.task_pos) < config.max_tasks:
+        solo_reach = 1.0 / (2.0 * config.alpha)
+        r_min, r_max = 30.0, min(solo_reach * 0.9, L / 2.0 - 45.0)
+        ang = rng.uniform(0, 2 * np.pi)
+        r = np.sqrt(rng.uniform(r_min ** 2, r_max ** 2))
+        task = state.depot + r * np.array([np.cos(ang), np.sin(ang)])
+        state.task_pos = np.vstack([state.task_pos, task])
+        state.task_ttl = np.append(state.task_ttl, config.task_ttl)
+
+    # Expire tasks
+    if len(state.task_ttl) > 0:
+        state.task_ttl -= 1
+        expired = state.task_ttl <= 0
+        if expired.any():
+            expired_delta = int(expired.sum())
+            state.task_pos = state.task_pos[~expired]
+            state.task_ttl = state.task_ttl[~expired]
+
+    # Robot updates
+    for i in range(N):
+        # Docked: recharge in place
+        if state.mode[i] == 2:
+            state.soc[i] += config.recharge_rate
+            if state.soc[i] >= 1.0:
+                state.soc[i] = 1.0
+                state.mode[i] = 0
+                _a = rng.uniform(0, 2 * np.pi)
+                _r = (1.0 / (2.0 * config.alpha)) * 0.9 * np.sqrt(rng.uniform(0, 1))
+                state.target[i] = state.depot + _r * np.array([np.cos(_a), np.sin(_a)])
+            continue
+
+        # Pick fresh wander target if reached
+        d_target = np.linalg.norm(state.target[i] - state.pos[i])
+        if state.mode[i] == 0 and d_target < 1.0:
+            _a = rng.uniform(0, 2 * np.pi)
+            _r = (1.0 / (2.0 * config.alpha)) * 0.9 * np.sqrt(rng.uniform(0, 1))
+            state.target[i] = state.depot + _r * np.array([np.cos(_a), np.sin(_a)])
+            d_target = np.linalg.norm(state.target[i] - state.pos[i])
+
+        # Low-SoC trigger: try V2V, commit home if still unsafe
+        if state.mode[i] == 0 and state.soc[i] < config.low_soc_threshold:
+            if v2v_enabled:
+                others = (np.arange(N) != i) & (state.mode == 0)
+                if others.any():
+                    idx = np.where(others)[0]
+                    h_home = np.linalg.norm(state.pos[idx] - state.depot, axis=1)
+                    surplus = state.soc[idx] - config.alpha * h_home - 0.10
+                    eligible = surplus > 0
+                    if eligible.any():
+                        h = idx[eligible][np.argmax(surplus[eligible])]
+                        can_give = (state.soc[h]
+                                    - config.alpha * np.linalg.norm(state.pos[h] - state.depot)
+                                    - 0.02)
+                        needed = config.refuel_target - state.soc[i]
+                        donation = max(0.0, min(can_give, needed))
+                        if donation > 0:
+                            state.soc[i] += donation
+                            state.soc[h] -= donation
+            dist_home = np.linalg.norm(state.pos[i] - state.depot)
+            if state.soc[i] < config.alpha * dist_home + 0.10:
+                state.mode[i] = 1
+                state.target[i] = state.depot.copy()
+                d_target = dist_home
+
+        # Move toward target
+        if d_target > 0:
+            s = min(config.move_step, d_target)
+            state.pos[i] += (state.target[i] - state.pos[i]) / d_target * s
+            state.soc[i] -= config.alpha * s
+
+        # Task engagement (only in wander mode, with safety check)
+        if state.mode[i] == 0 and len(state.task_pos) > 0:
+            dists = np.linalg.norm(state.task_pos - state.pos[i], axis=1)
+            near = int(np.argmin(dists))
+            if dists[near] < config.task_engage_radius:
+                home_d = np.linalg.norm(state.pos[i] - state.depot)
+                if state.soc[i] - config.task_energy_cost > config.alpha * home_d:
+                    state.soc[i] -= config.task_energy_cost
+                    done_delta += 1
+                    state.task_pos = np.delete(state.task_pos, near, axis=0)
+                    state.task_ttl = np.delete(state.task_ttl, near)
+
+        # Dock when close enough
+        if state.mode[i] == 1 and np.linalg.norm(state.pos[i] - state.depot) < config.depot_radius:
+            state.mode[i] = 2
+            state.pos[i] = state.depot.copy()
+
+    return done_delta, expired_delta
+
+
+def run(config: Config = None, seed: int = 0):
+    """Run a single simulation headless. Returns a dict of metrics + final state."""
+    if config is None:
+        config = Config()
+    state = SimState(config, seed)
+    solo_reach = 1.0 / (2.0 * config.alpha)
+    metrics = {
+        'tasks_done': 0, 'tasks_expired': 0,
+        'peak_reach': 0.0,
+        'time_at_outer80': 0, 'time_past_solo': 0, 'total_robot_time': 0,
+        'soc_trace': [], 'reach_trace': [],
+    }
+
+    for step in range(config.max_steps):
+        dd, ed = step_sim(state, config, config.v2v_enabled)
+        metrics['tasks_done'] += dd
+        metrics['tasks_expired'] += ed
+
+        d_from = np.linalg.norm(state.pos - state.depot, axis=1)
+        norm_reach = float(d_from.max()) / solo_reach
+        metrics['peak_reach'] = max(metrics['peak_reach'], norm_reach)
+        metrics['time_past_solo'] += int(np.sum(d_from > solo_reach))
+        metrics['time_at_outer80'] += int(np.sum(d_from > 0.8 * solo_reach))
+        metrics['total_robot_time'] += config.num_robots
+
+        if step % 50 == 0:
+            metrics['soc_trace'].append((step, state.soc.copy()))
+            metrics['reach_trace'].append((step, norm_reach))
+
+    metrics['final_pos'] = state.pos.copy()
+    metrics['final_soc'] = state.soc.copy()
+    metrics['final_mode'] = state.mode.copy()
+    metrics['fraction_past_solo'] = metrics['time_past_solo'] / max(1, metrics['total_robot_time'])
+    metrics['fraction_at_outer80'] = metrics['time_at_outer80'] / max(1, metrics['total_robot_time'])
+    metrics['solo_reach'] = solo_reach
+    metrics['config'] = config
+    return metrics
+
+
+def plot_run(result):
+    """Static post-mortem plot of a single run."""
+    config = result['config']
+    L = config.world_size
+    depot = np.array([L / 2, L / 2])
+    solo_reach = result['solo_reach']
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    ax = axes[0]
+    theta = np.linspace(0, 2 * np.pi, 100)
+    ax.plot(depot[0] + solo_reach * np.cos(theta),
+            depot[1] + solo_reach * np.sin(theta),
+            'k--', alpha=0.3, label=f'Solo-reach (1/2alpha = {solo_reach:.0f})')
+    ax.scatter(*depot, s=200, c='darkgreen', marker='o', label='Depot', zorder=10)
+
+    pos = result['final_pos']
+    mode = result['final_mode']
+    for m, (c, lab) in enumerate(zip(['steelblue', 'goldenrod', 'forestgreen'],
+                                     ['Wandering', 'Heading home', 'Docked'])):
+        mask = mode == m
+        if mask.any():
+            ax.scatter(pos[mask, 0], pos[mask, 1], c=c, s=60, alpha=0.7, label=lab)
+    ax.set_xlim(0, L); ax.set_ylim(0, L); ax.set_aspect('equal')
+    ax.legend(loc='upper right', fontsize=9)
+    ax.set_title('Final positions')
+    ax.grid(alpha=0.3)
+
+    ax = axes[1]
+    if result['soc_trace']:
+        steps = np.array([s[0] for s in result['soc_trace']])
+        socs = np.array([s[1] for s in result['soc_trace']])
+        for i in range(socs.shape[1]):
+            ax.plot(steps, socs[:, i], alpha=0.3, linewidth=0.8)
+        ax.plot(steps, socs.mean(axis=1), 'k-', linewidth=2, label='Mean SoC')
+    ax.axhline(config.low_soc_threshold, color='red', linestyle='--', alpha=0.5, label='Low-SoC threshold')
+    if config.v2v_enabled:
+        ax.axhline(config.refuel_target, color='blue', linestyle='--', alpha=0.5, label='Refuel target')
+    ax.set_xlabel('Simulation step')
+    ax.set_ylabel('State of charge')
+    ax.set_ylim(0, 1.05)
+    ax.legend(fontsize=9)
+    ax.set_title('SoC traces (gray = individuals; black = mean)')
+    ax.grid(alpha=0.3)
+
+    fig.suptitle(
+        f'N={config.num_robots}  alpha={config.alpha:.4f}  '
+        f'V2V={"on" if config.v2v_enabled else "off"}  |  '
+        f'Tasks done={result["tasks_done"]}  '
+        f'Peak reach={result["peak_reach"]:.2f}x  '
+        f'Time @ outer 80%={result["fraction_at_outer80"]*100:.1f}%',
+        fontsize=11,
+    )
+    plt.tight_layout()
+    return fig
+
+
+def run_animated(config: Config = None, seed: int = 0):
+    """Interactive PyGame viewer.
+
+    Keyboard controls:
+        SPACE   pause / resume
+        + / -   speed up / slow down (1 to 20 sim-steps per frame)
+        v       toggle V2V on/off mid-run
+        r       reset
+        q/ESC   quit
+
+    Requires 'pip install pygame'. The window stays open until you quit;
+    the function returns after pygame.quit() is called.
+    """
+    try:
+        import pygame
+    except ImportError as e:
+        raise ImportError("pygame is required for animated mode. Install with: pip install pygame") from e
+
+    # pygame.font has a circular-import bug under Python 3.14 + pygame 2.6
+    # (pygame.font tries to import 'Font' from itself during partial init,
+    # raising NotImplementedError when SysFont is called). pygame.freetype
+    # is the modern replacement and is unaffected. Use it via a thin wrapper
+    # that matches the .render(text, color) and .line_height surface we use
+    # below, so the rest of the function reads the same.
+    import pygame.freetype
+
+    if config is None:
+        config = Config()
+
+    # Window geometry
+    WIN_W, WIN_H = 940, 640
+    SIM_PAD = 30
+    SIM_SIZE = WIN_H - 2 * SIM_PAD
+    HUD_X = SIM_PAD + SIM_SIZE + 30
+    L = config.world_size
+
+    pygame.init()
+    pygame.freetype.init()
+    screen = pygame.display.set_mode((WIN_W, WIN_H))
+    pygame.display.set_caption("V2V Swarm Explorer (Python)")
+    clock = pygame.time.Clock()
+
+    class _Font:
+        """Thin adapter so freetype.Font.render() returns just a Surface
+        (matching pygame.font.Font's signature) and so we can attach a
+        line_height for the HUD layout loop."""
+        def __init__(self, size, bold=False):
+            self.font = pygame.freetype.SysFont("monospace", size, bold=bold)
+            self.line_height = int(size * 1.4)
+        def render(self, text, color):
+            surf, _rect = self.font.render(text, color)
+            return surf
+
+    font = _Font(13)
+    big_font = _Font(18, bold=True)
+
+    # Brand-matching colors (match the JS widget where possible)
+    PAPER = (245, 237, 225)
+    INK = (31, 58, 46)
+    INK_LIGHT = (140, 168, 156)
+    ACCENT = (217, 126, 59)
+    GREEN = (74, 128, 96)
+    RED = (196, 74, 59)
+    BLUE = (90, 122, 150)
+    GOLD = (200, 152, 60)
+
+    state = SimState(config, seed)
+    solo_reach = 1.0 / (2.0 * config.alpha)
+
+    # World is sized so solo-reach fits inside. Simple world->screen mapping;
+    # no depot-centered zoom, no inner-field rect. Matches the JS widget
+    # where the canvas IS the world.
+    def w2s(x, y):
+        sx = SIM_PAD + x / L * SIM_SIZE
+        sy = SIM_PAD + (L - y) / L * SIM_SIZE
+        return int(sx), int(sy)
+
+    def w2s_dist(d):
+        return int(d / L * SIM_SIZE)
+
+    paused = False
+    speed = 1
+    step_counter = 0
+    tasks_done = 0
+    tasks_expired = 0
+    v2v_enabled = config.v2v_enabled
+
+    running = True
+    try:
+        while running:
+            # -- Input --
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key in (pygame.K_q, pygame.K_ESCAPE):
+                        running = False
+                    elif event.key == pygame.K_SPACE:
+                        paused = not paused
+                    elif event.key in (pygame.K_PLUS, pygame.K_EQUALS):
+                        speed = min(speed + 1, 20)
+                    elif event.key == pygame.K_MINUS:
+                        speed = max(speed - 1, 1)
+                    elif event.key == pygame.K_v:
+                        v2v_enabled = not v2v_enabled
+                    elif event.key == pygame.K_r:
+                        state = SimState(config, seed)
+                        step_counter = tasks_done = tasks_expired = 0
+
+            # -- Simulate --
+            if not paused:
+                for _ in range(speed):
+                    dd, ed = step_sim(state, config, v2v_enabled)
+                    tasks_done += dd
+                    tasks_expired += ed
+                    step_counter += 1
+
+            # -- Draw --
+            screen.fill(PAPER)
+
+            # Sim area border (the canvas edge)
+            pygame.draw.rect(screen, INK_LIGHT, (SIM_PAD, SIM_PAD, SIM_SIZE, SIM_SIZE), 1)
+
+            # Solo-reach circle (dashed, matching the JS widget's aesthetic).
+            # pygame.draw doesn't have a native dashed-circle primitive, so we
+            # approximate with N short chord segments around the circumference.
+            dx, dy = w2s(state.depot[0], state.depot[1])
+            sr_px = w2s_dist(solo_reach)
+            if sr_px > 0:
+                n_dashes = 64
+                dash_frac = 0.55
+                arc = 2 * np.pi / n_dashes
+                for i in range(n_dashes):
+                    a1 = i * arc
+                    a2 = a1 + arc * dash_frac
+                    pygame.draw.line(
+                        screen, INK_LIGHT,
+                        (dx + sr_px * np.cos(a1), dy + sr_px * np.sin(a1)),
+                        (dx + sr_px * np.cos(a2), dy + sr_px * np.sin(a2)),
+                        1,
+                    )
+
+            # Depot
+            pygame.draw.circle(screen, GREEN, (dx, dy), max(4, w2s_dist(config.depot_radius)))
+            pygame.draw.circle(screen, INK, (dx, dy), max(4, w2s_dist(config.depot_radius)), 1)
+
+            # Tasks
+            for tp in state.task_pos:
+                tx, ty = w2s(tp[0], tp[1])
+                pygame.draw.polygon(screen, ACCENT,
+                                    [(tx, ty - 5), (tx + 5, ty), (tx, ty + 5), (tx - 5, ty)])
+
+            # Robots + SoC bars
+            for i in range(config.num_robots):
+                rx, ry = w2s(state.pos[i, 0], state.pos[i, 1])
+                if state.mode[i] == 2:
+                    c = GREEN
+                elif state.mode[i] == 1:
+                    c = GOLD
+                elif state.soc[i] < 0.3:
+                    c = RED
+                else:
+                    c = BLUE
+                pygame.draw.circle(screen, c, (rx, ry), 6)
+                pygame.draw.circle(screen, INK, (rx, ry), 6, 1)
+                bw, bh = 16, 3
+                bx = rx - bw // 2
+                by = ry - 13
+                pygame.draw.rect(screen, INK_LIGHT, (bx, by, bw, bh), 1)
+                fill = max(0, min(bw - 2, int((bw - 2) * state.soc[i])))
+                pygame.draw.rect(screen, c, (bx + 1, by + 1, fill, bh - 2))
+
+            # HUD
+            d_from = np.linalg.norm(state.pos - state.depot, axis=1)
+            peak_now = float(d_from.max()) / solo_reach
+
+            hud = [
+                ("V2V Swarm (Python)", big_font, INK),
+                ("", font, INK),
+            ]
+            if paused:
+                hud.append(("[ PAUSED ]", big_font, ACCENT))
+                hud.append(("", font, INK))
+            hud += [
+                (f"Step:    {step_counter}", font, INK),
+                (f"Speed:   {speed}x", font, INK),
+                (f"V2V:     {'ON' if v2v_enabled else 'OFF'}", font, GREEN if v2v_enabled else RED),
+                ("", font, INK),
+                (f"Tasks done:    {tasks_done}", font, INK),
+                (f"Tasks expired: {tasks_expired}", font, INK),
+                (f"Mean SoC:      {state.soc.mean():.2f}", font, INK),
+                (f"Current reach: {peak_now:.2f}x", font, INK),
+                ("", font, INK),
+                ("CONTROLS", big_font, INK),
+                ("SPACE  pause/run", font, INK),
+                ("+/-    speed up/down", font, INK),
+                ("V      toggle V2V", font, INK),
+                ("R      reset", font, INK),
+                ("Q/ESC  quit", font, INK),
+            ]
+            y = SIM_PAD
+            for text, f, color in hud:
+                surf = f.render(text, color)
+                screen.blit(surf, (HUD_X, y))
+                y += f.line_height
+
+            pygame.display.flip()
+            clock.tick(30)
+
+    except KeyboardInterrupt:
+        # Ctrl+C in console: exit gracefully without a traceback.
+        pass
+    finally:
+        pygame.quit()
+
+
+def main():
+    """Entry point. Runs the animated PyGame viewer. If PyGame is not
+    installed, prints clear install instructions and exits -- does NOT
+    silently fall back to a static plot, because then it's not obvious
+    the animated viewer was missed.
+
+    For headless work (parameter sweeps, statistical analysis), import
+    this module and call run() and plot_run() directly; those have no
+    PyGame dependency.
+    """
+    # Probe PyGame availability before doing any work.
+    try:
+        import pygame  # noqa: F401
+    except ImportError:
+        bar = '=' * 70
+        print()
+        print(bar)
+        print('  This script needs PyGame for the interactive simulation viewer.')
+        print()
+        print('  Install it with:')
+        print()
+        print('      pip install pygame')
+        print()
+        print('  Then re-run this script to get the live animated window with')
+        print('  pause / speed / V2V-toggle / reset controls.')
+        print()
+        print('  (For headless parameter sweeps that do not need PyGame, import')
+        print('   this module and call run(config, seed) directly.)')
+        print(bar)
+        print()
+        raise SystemExit(1)
+
+    cfg = Config(num_robots=15, alpha=0.0030, v2v_enabled=True)
+    run_animated(cfg, seed=42)
+
+
+if __name__ == '__main__':
+    main()
+`,
+};
+
+const SOURCE_TITLES = {
+  gama: 'GAMA Implementation',
+  netlogo: 'NetLogo Implementation',
+  python: 'Python Implementation',
+};
+
+const SOURCE_FILENAMES = {
+  gama: 'V2VSwarm.gaml',
+  netlogo: 'V2VSwarm.nlogo',
+  python: 'V2VSwarm.py',
+};
+
+const SOURCE_NOTES = {
+  gama: 'In GAMA, UI controls (parameters, displays, monitors) are declared inside the experiment block of the same .gaml file — no separate interface descriptor needed. The parameter "..." var:... min: max: lines below become the sliders and toggles in the GAMA UI automatically. Heads-up: this is a starter template, not a verified GAMA program; syntax may need adjustment against your installed GAMA version. The reflex/aspect/experiment structure should be roughly canonical, but please sanity-check against the GAMA wiki.',
+  netlogo: 'This is the NetLogo 5.x/6.x text format. NetLogo 7 should auto-convert it to .nlogox XML on open, but the .nlogo parser is brittle. If NetLogo 7 rejects the file: (1) confirm the file extension is exactly .nlogo (not .txt or .nlogox); (2) create a blank new model in NetLogo 7, save it, and inspect that file in a text editor — your installation may use slightly different widget-field counts than the v6 sample I patterned this after; (3) as a fallback, keep just the procedures (everything before the first @#$@#$@ divider) and rebuild the Interface tab manually using the widgets-list-in-comments approach. The 12 sections are delimited by @#$@#$@ markers; Code tab is first, Interface widgets second, then Info, turtle shapes, version, four empty bookkeeping sections, link shapes, model settings, DeltaTick.',
+  python: 'NumPy-vectorized headless simulator. Requires Python 3.10+, numpy, and matplotlib (only for visualization; the run() function itself has no plotting dependency). Use directly (python v2v_swarm.py) for a single demonstration run, import it as a module for notebook work, or wrap run() in a parameter-sweep loop. Each 5000-step run takes well under a second on modern hardware, so multi-thousand-trial sweeps are practical — that is the main reason to use this version over the GAMA/NetLogo implementations.',
+};
+
+// Current language being shown in the code view; used by Copy and Download.
+let currentCodeLang = null;
+
+function showCode(lang) {
+  document.querySelector('.layout').style.display = 'none';
+  const cv = document.getElementById('codeView');
+  cv.style.display = 'block';
+  document.getElementById('codeViewTitle').textContent = SOURCE_TITLES[lang] || 'Reference implementation';
+  document.getElementById('codeNote').textContent = SOURCE_NOTES[lang] || '';
+  document.getElementById('codeContent').textContent = SOURCES[lang] || '';
+  currentCodeLang = lang;
+  document.querySelectorAll('.lang-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function backToSim() {
+  document.querySelector('.layout').style.display = 'grid';
+  document.getElementById('codeView').style.display = 'none';
+  currentCodeLang = null;
+}
+
+function copyCode() {
+  if (!currentCodeLang) return;
+  const code = SOURCES[currentCodeLang];
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('btnCopyCode');
+    const old = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  }).catch(() => {
+    // Fallback for browsers without async clipboard support
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    const btn = document.getElementById('btnCopyCode');
+    const old = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  });
+}
+
+function downloadCode() {
+  if (!currentCodeLang) return;
+  const code = SOURCES[currentCodeLang];
+  const filename = SOURCE_FILENAMES[currentCodeLang] || 'source.txt';
+  const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
+document.querySelectorAll('.src-btn').forEach((btn) => {
+  btn.addEventListener('click', () => showCode(btn.dataset.lang));
+});
+document.querySelectorAll('.lang-btn').forEach((btn) => {
+  btn.addEventListener('click', () => showCode(btn.dataset.lang));
+});
+document.getElementById('btnBackToSim').addEventListener('click', backToSim);
+document.getElementById('btnCopyCode').addEventListener('click', copyCode);
+document.getElementById('btnDownloadCode').addEventListener('click', downloadCode);
+
+// ─── Tooltip wiring ─────────────────────────────────────────────────────────
+// Migrate every `title` attribute to `data-tooltip` so the custom CSS
+// tooltip styling takes effect (and the slow native browser tooltip doesn't
+// race ours). Done as a single pass at load.
+document.querySelectorAll('[title]').forEach((el) => {
+  const t = el.getAttribute('title');
+  if (!t) return;
+  el.setAttribute('data-tooltip', t);
+  el.removeAttribute('title');
+});
+
+initRobots(12);
+updateRefuelerDependentStyling();
+loop();
+</script>
+</body>
+</html>
