@@ -1023,9 +1023,13 @@ input[type="range"] {
             </p>
             <p>
               The conditions are per-pair: there is <em>no general "helper" property</em>. A given <code>j</code> may
-              save some <code>i</code>s with small deficits while being unable to save others. The directed feasibility
-              edges <code>j → i</code> are the right object; counting "helpers" in isolation hides exactly the in/out-degree
-              structure that matters.
+              save some <code>i</code>s with small deficits while being unable to save others. Rather than counting
+              "helper robots," we count the directed
+              <code>j → i</code> edges that could feasibly provide help (the "Feasible" count) and the subset of them that
+              are actually being acted on (the "Help (active)" count). That is, each feasible edge is a directed
+              <code>j → i</code> edge representing a viable hand-off from a robot with enough surplus to one whose deficit
+              is small enough to cover in the field. Then, each "Help (active)" edge is a feasible edge that has been
+              committed to — <code>i</code> is en route to its pinned helper <code>j</code>, where the transfer completes.
             </p>
             <p>
               The condition is the same whether <code>j</code> stays deployed after the in-place exchange (default) or
@@ -1065,6 +1069,16 @@ input[type="range"] {
               task until it recharges (so a single under-budget encounter is counted only once, not every frame the
               robot lingers nearby).
             </p>
+            <p>
+              Refuelers are the deliberate exception to this forage-everywhere default. When the
+              <span class="math">Refueler role</span> is enabled, a designated fraction of the swarm is pulled out of the
+              Levy walk and assigned to hold station at fixed shell radii (a single ring at 0.5&times; solo-reach, or
+              inner and outer rings at 0.33&times; and 0.67&times;). Depending on the motion mode they hold position
+              exactly, drift tangentially around their shell, or roam on a short leash and engage only the tasks that
+              come within it. The point is to turn ad hoc, position-dependent peer help into a dependable spatial
+              scaffold: a worker that runs low near a shell can count on a donor being parked there to dock with, instead
+              of hoping another forager happens to be carrying surplus nearby.
+            </p>
           </div>
         </div>
 
@@ -1076,16 +1090,34 @@ input[type="range"] {
               individual constraint. With V2V on, the coverage expands because peers near the depot have surplus to spend
               on saving others. Turn on the help-feasibility layer and watch a directional structure emerge: peers near
               the depot with high SoC accumulate <em>outgoing</em> edges (they can save many), while peripheral peers
-              with low SoC accumulate <em>incoming</em> edges (they have many potential saviors). The same robot is
-              both, just with different in/out degree — there is no clean partition.
+              with low SoC accumulate <em>incoming</em> edges (they have many potential saviors). There's no fixed split into
+              "donor" and "recipient" robots — the same robot may simultaneously show feasibility edges in both
+              directions. The current SoC of a robot and its distance from the depot help decide which way it leans. That structure is also
+              coupled and fragile: when a peer's surplus shrinks — it engaged a task, or drifted away — its outgoing
+              feasibility edges silently vanish, potentially stranding dependents that were counting on it. The motion
+              filter keeps each robot individually safe but does nothing to preserve those edges, so network-level V2V
+              safety can't be taken for granted; guaranteeing it would mean filtering motion against the help graph as a
+              whole — exactly where a network-CBF invariant would live.
             </p>
             <p>
-              The network property is <em>coupled</em>: a peer whose surplus shrinks (it engaged a task, or drifted
-              away) silently removes outgoing feasibility edges and may disenfranchise dependents that had counted on it.
-              The <span class="math">tasks done</span> / <span class="math">tasks expired</span> /
-              <span class="math">missed</span> triple is your range–throughput–fragility readout, and the SoC
-              distribution panel shows the underlying state on which all of those depend. Toggle V2V mid-run and let
-              metrics accumulate to compare regimes on the same task stream.
+              Read the trade off the metric panels rather than the animation. Whether V2V actually bought range shows up
+              in <span class="math">Peak reach</span> and <span class="math">Mean reach</span> — the all-time and
+              time-averaged farthest distance any robot held, as a multiple of solo-reach — together with
+              <span class="math">Time past solo</span> and <span class="math">Time at outer 80%</span>: a value above
+              1.0&times;, or any nonzero time past solo, means a robot held ground no individual could have sustained
+              alone. The cost shows up opposite it, in <span class="math">Tasks done</span> versus
+              <span class="math">Tasks expired</span> — charge spent ferrying and time spent pinned is throughput not
+              spent closing tasks — and in <span class="math">Safety vetoes</span>, the encounters a robot declined
+              because engaging would have left it unsafe (the "missed opportunities" from the motion filter).
+              <span class="math">Mean SoC</span> and the <span class="math">SoC distribution</span> panel show the energy
+              state underneath all of it: the harder V2V is working, the more charge should spread apart — depleted
+              robots out at the periphery on the low end, topped-up donors near the depot on the high end.
+            </p>
+            <p>
+              To compare regimes cleanly, let the cumulative metrics build up over a minute or so, then change one thing
+              and rerun on a comparable task stream: toggle <span class="math">Worker-to-worker V2V</span> to isolate
+              what peer help adds, or enable the <span class="math">Refueler role</span> to ask whether a dedicated,
+              spatially-fixed donor class outperforms ad hoc worker-to-worker transfer.
             </p>
           </div>
         </div>
