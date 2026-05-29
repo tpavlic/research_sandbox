@@ -176,7 +176,11 @@ canvas {
   justify-content: space-between;
   gap: 18px;
   line-height: 1.4;
+  pointer-events: auto;   /* overlay container ignores the mouse; rows opt back in for tooltips */
 }
+/* Affordance only on rows that actually have a tooltip (so e.g. the plain "t"
+   row shows neither the help cursor nor the dotted underline). */
+.overlay .row[data-tooltip] { cursor: help; }
 .overlay .label { color: var(--ink-light); }
 .overlay .value { color: var(--ink); font-weight: 500; }
 .overlay .badge {
@@ -348,6 +352,7 @@ canvas {
 }
 label[data-tooltip],
 .metric[data-tooltip] .label,
+.overlay .row[data-tooltip] .label,
 .metric-group-header[data-tooltip] {
   text-decoration: underline dotted;
   text-decoration-color: rgba(31, 58, 46, 0.30);
@@ -356,6 +361,7 @@ label[data-tooltip],
 }
 label[data-tooltip]:hover,
 .metric[data-tooltip]:hover .label,
+.overlay .row[data-tooltip]:hover .label,
 .metric-group-header[data-tooltip]:hover {
   text-decoration-color: var(--accent);
 }
@@ -711,11 +717,11 @@ input[type="range"] {
         <canvas id="sim" width="900" height="640"></canvas>
         <div class="overlay" id="overlay">
           <div class="badge on" id="modeBadge">Worker V2V on</div>
-          <div class="row"><span class="label">t</span><span class="value" id="tval">0.0 s</span></div>
-          <div class="row"><span class="label">live</span><span class="value" id="liveval">0</span></div>
-          <div class="row"><span class="label">pinned</span><span class="value" id="pinnedval">0</span></div>
-          <div class="row"><span class="label">stranded</span><span class="value" id="strandedval">0</span></div>
-          <div class="row" title="Robots that depleted to SoC 0 and are immobilized in the field, awaiting revival by a passing robot's surplus. With a correct safety filter this should stay 0; a nonzero count flags a safety-invariant violation (usually the help graph fragmenting as a relied-on helper moved or spent its charge)."><span class="label">lost</span><span class="value" id="lostval">0</span></div>
+          <div class="row" title="Simulated elapsed time, in seconds. Advances only while the simulation is running (it does not count paused wall-clock time), and resets to 0 on reset. The time-integrated statistics in the metrics panels accumulate over this clock."><span class="label">t</span><span class="value" id="tval">0.0 s</span></div>
+          <div class="row" title="Robots currently operational: wandering, foraging, heading home, or recharging at the depot. This excludes any robot that has depleted to SoC 0 (those are counted separately as 'lost')."><span class="label">live</span><span class="value" id="liveval">0</span></div>
+          <div class="row" title="Robots currently acting as a V2V donor: frozen in place while a low-SoC peer docks against them and draws charge. A pinned robot resumes its own task once the transfer finishes. This is a normal, healthy state, not a failure."><span class="label">pinned</span><span class="value" id="pinnedval">0</span></div>
+          <div class="row" title="At-risk but NOT failed. A stranded robot still has charge and is moving, but right now it can neither reach the depot on its own nor see a feasible V2V chain to it. It is actively seeking help: if a donor comes into range a chain forms and it flips to V2V-safe (a rescue); if not, it will deplete and become 'lost'. A transient risk state, which is why the count rises and falls as the help graph changes."><span class="label">stranded</span><span class="value" id="strandedval">0</span></div>
+          <div class="row" title="Actually failed, not merely at-risk. A lost robot depleted to SoC 0 and is immobilized where it stands. Unlike a stranded robot (which still has charge and is moving), a lost one cannot move at all. It stays frozen until a passing robot that can spare enough to cover its full trip home revives it on contact; with no adequate rescuer nearby it stays lost. With a correct safety filter this should stay 0 — a nonzero count flags a safety-invariant violation (usually the help graph fragmenting as a relied-on helper moved or spent its charge)."><span class="label">lost</span><span class="value" id="lostval">0</span></div>
         </div>
       </div>
 
@@ -807,7 +813,11 @@ input[type="range"] {
         </div>
         <div class="slider-row">
           <label title="When to get charge: a foraging robot commits to a return once its SoC drops below this. It then heads to the depot directly if it can, otherwise to the nearest feasible helper, taking only enough to get home (from a peer) or as much as a refueler will spare. The amount is set by need, never by a target SoC.">Seek-charge SoC threshold <span class="val" id="rtsVal">25%</span></label>
-          <input type="range" id="rtsSlider" min="10" max="60" value="25" step="5">
+          <input type="range" id="rtsSlider" min="0" max="60" value="25" step="5">
+        </div>
+        <div class="slider-row">
+          <label title="How fast charge flows during a V2V transfer (peer-to-peer, refueler-to-worker, or courier-to-refueler), in SoC per frame. The transfer is metered over successive frames while the two robots stay in contact, so a low rate keeps a helper occupied longer — useful for studying how charging speed trades off against helper availability and throughput. The depot recharge has its own (slower) rate.">V2V transfer rate <span class="val" id="trVal">0.15/frame</span></label>
+          <input type="range" id="trSlider" min="1" max="40" value="15" step="1">
         </div>
         <div class="slider-row">
           <label title="Multiplier on simulation step rate. 1.0× is real-time at 60 fps. Higher values do more sim steps per frame; visualization rate is unchanged.">Sim speed <span class="val" id="sVal">1.0×</span></label>
@@ -877,6 +887,14 @@ input[type="range"] {
         <div class="legend-item">
           <div class="swatch" style="background: var(--red-light); border-color: var(--red);"></div>
           <div class="text"><strong>Stranded.</strong> No feasible path back — safety filter has failed.</div>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
+            <circle cx="10" cy="8" r="5.5" fill="#4a4a4a" stroke="#2e2e2e" stroke-width="1.3"/>
+            <line x1="6" y1="4" x2="14" y2="12" stroke="#e0241b" stroke-width="2" stroke-linecap="round"/>
+            <line x1="6" y1="12" x2="14" y2="4" stroke="#e0241b" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <div class="text"><strong>Lost.</strong> Depleted to 0 SoC and immobilized where it stands — a hard failure, not just at-risk. Frozen until a passing robot that can cover its full trip home revives it on contact; with no adequate rescuer nearby it stays lost.</div>
         </div>
         <div class="legend-item">
           <svg width="20" height="16" style="flex-shrink:0; margin-top:2px;" aria-hidden="true">
@@ -1530,6 +1548,13 @@ const state = {
   alpha: 0.0024,  taskRate: 0.06,
   taskEnergyCost: 0.18,
   rechargeRate: 0.004,
+  // Rate at which charge moves during a V2V transfer (worker↔worker, refueler↔
+  // worker, courier↔server), in SoC per frame. The transfer is metered over
+  // successive frames while the two robots stay in contact, so a slow rate ties
+  // a helper up longer. Default is fast (near-instant); the slider exists to
+  // study how charging speed trades against availability/throughput. Distinct
+  // from rechargeRate, which is the (slower) depot recharge speed.
+  transferRate: 0.15,
   baseStep: 1.4,
   // Seek-charge threshold: a foraging robot commits to a return (heading home if
   // it can reach the depot directly, otherwise to the nearest feasible helper)
@@ -1750,6 +1775,10 @@ function initRobots(n) {
         mode: 'wander',
         helperId: null,
         pinnedBy: null,
+        dead: false,
+        rescuerId: null,
+        rescuingId: null,
+        rescueReceived: 0,
         role: 'safe',
         kind: 'refueler',
         shellFrac, stationAngle,
@@ -1784,6 +1813,10 @@ function initRobots(n) {
       mode: 'wander',
       helperId: null,
       pinnedBy: null,
+      dead: false,
+      rescuerId: null,
+      rescuingId: null,
+      rescueReceived: 0,
       role: 'safe',
       kind: 'worker',
       phase: 'transit',
@@ -2092,8 +2125,11 @@ function moveCourierBrigade(r) {
     if (dist(r, tgt) < ROBOT_R * 2.5) {
       const need = Math.max(0, full - tgt.soc);
       const canGive = r.soc - state.alpha * dist(r, DEPOT) - 0.05; // keep enough to get home
-      const x = Math.max(0, Math.min(need, canGive));
-      if (x > 0) { r.soc -= x; tgt.soc += x; }
+      const dx = Math.max(0, Math.min(state.transferRate, need, canGive));
+      if (dx > 0) { r.soc -= dx; tgt.soc += dx; }
+      // Keep delivering over successive frames until the server is topped or we
+      // can spare no more; only then head home to recharge.
+      if (need - dx > 1e-3 && canGive - dx > 1e-3) return;
       r.courierPhase = 'load'; r.courierTargetId = null;
       r.mode = 'home'; r.target = { x: DEPOT.x, y: DEPOT.y };
     }
@@ -2125,6 +2161,15 @@ function moveCourierBrigade(r) {
 function moveRobot(r) {
   // ── Immobilized: depleted in the field, frozen until revived by contact ──
   if (r.dead) return;
+
+  // ── Rescuing: paused in place while topping up a lost robot's beacon. The
+  //    actual metered transfer happens in step()'s revival pass; here we just
+  //    hold station so the rescue is a real commitment, not a drive-by. ──
+  if (r.rescuingId !== null && r.rescuingId !== undefined) {
+    const victim = state.robots[r.rescuingId];
+    if (state.immobilizeOnEmpty && anyV2VActive() && victim && victim.dead) return;  // hold station until they recover
+    r.rescuingId = null;                  // rescue ended (revived, victim gone, or V2V/immobilization disabled)
+  }
 
   // ── Docked: parked at depot, recharging, no motion at all ──
   if (r.mode === 'docked') {
@@ -2286,11 +2331,19 @@ function moveRobot(r) {
           ? Math.max(safeNeed, 1.0 - r.soc)   // take all the source allows
           : safeNeed;                          // worker→worker: just get home
         const canGive = h.soc - state.alpha * dist(h, DEPOT) - 0.02;
-        const x = Math.max(0, Math.min(desiredX, canGive));
-        if (x > 0) {
-          h.soc -= x;
-          r.soc += x;
+        // Metered transfer: move at most transferRate of SoC this frame. Both
+        // robots stay put (h is pinned, r is at h) until the draw is satisfied or
+        // the source is tapped out, so a slow rate ties the helper up longer.
+        const dx = Math.max(0, Math.min(state.transferRate, desiredX, canGive));
+        if (dx > 0) {
+          h.soc -= dx;
+          r.soc += dx;
         }
+        // Not done yet? Stay in contact and keep transferring next frame.
+        if (desiredX - dx > 1e-3 && canGive - dx > 1e-3) {
+          return;
+        }
+        // Transfer complete (target met or source exhausted). Release.
         // Next mode is set by the kind of help, not by the resulting SoC:
         //   · a refueler that just resupplied returns to its station (wander).
         //   · a worker topped up at a refueler stays in the field if the
@@ -2442,9 +2495,25 @@ function moveRobot(r) {
   r.y += stepY;
   r.soc = Math.max(0, r.soc - state.alpha * step);
 
-  // Depletion failure: out of charge in the field. Freeze in place, drop any
-  // pinning relationships, and wait to be revived by a passing robot's surplus.
+  // Depletion in the field: out of charge.
   if (state.immobilizeOnEmpty && r.soc <= 1e-6) {
+    // Exception: if it ran dry on the depot's charging pad (center inside the
+    // recharge zone), it docks and charges rather than dying. No robot should be
+    // "lost" at the depot — the pad catches it. This matters at a near-zero
+    // seek-charge threshold, where the safety filter herds a draining robot to
+    // the depot center in wander mode (so the normal home-mode dock never fires).
+    if (dist(r, DEPOT) < RECHARGE_R) {
+      const aFromDepot = Math.atan2(r.y - DEPOT.y, r.x - DEPOT.x);
+      const parkR = DEPOT_R + ROBOT_R + 2;
+      r.x = DEPOT.x + Math.cos(aFromDepot) * parkR;
+      r.y = DEPOT.y + Math.sin(aFromDepot) * parkR;
+      r.mode = 'docked';
+      r.target = null;
+      r.helperId = null;
+      return;
+    }
+    // Otherwise it is stranded out in the field: freeze in place, drop any pinning
+    // relationships, and wait to be revived by a passing robot's surplus.
     r.dead = true;
     r.mode = 'dead';
     r.target = null;
@@ -2458,6 +2527,15 @@ function moveRobot(r) {
       if (recv && recv.helperId === r.id) { recv.helperId = null; recv.mode = 'wander'; }
       r.pinnedBy = null;
     }
+    // If it was itself rescuing someone, release that commitment; reset its own
+    // rescue ledger so a fresh rescue (by some other robot) starts clean.
+    if (r.rescuingId !== null && r.rescuingId !== undefined) {
+      const v = state.robots[r.rescuingId];
+      if (v && v.rescuerId === r.id) v.rescuerId = null;
+      r.rescuingId = null;
+    }
+    r.rescuerId = null;
+    r.rescueReceived = 0;
     return;
   }
 
@@ -2521,27 +2599,53 @@ function step() {
   state.t += dt;
   updateTasks();
   for (const r of state.robots) moveRobot(r);
-  // Contact revival: a depleted (dead) robot can be brought back by any robot
-  // that comes within transfer range and has surplus over its own depot-return.
-  // Opportunistic mutual aid — no dispatch — so a death in a trafficked area is
-  // recoverable while an isolated one is permanent (the honest outcome).
-  if (state.immobilizeOnEmpty) {
+  // Contact revival: a depleted (dead) robot keeps just enough residual power to
+  // run a help beacon and accept an inductive top-up. The top-up is metered at the
+  // same V2V transfer rate as every other transfer — no instant drive-by revival:
+  // a rescuer must reach contact AND linger long enough to deliver the full trip
+  // home, so it pauses in place while helping (see moveRobot). A robot revives only
+  // once it has banked enough to reach the depot; partial top-ups accumulate but
+  // leave it lost until the threshold is met. An isolated death, or one whose only
+  // neighbors can't spare a full trip home, stays lost. No dispatch.
+  //
+  // Revival is itself a V2V transfer, so it obeys the V2V toggles: a worker can
+  // rescue only when worker-to-worker V2V is on, a refueler only when the refueler
+  // role is on. Turn all V2V off and lost robots stay lost — exactly as solo.
+  if (state.immobilizeOnEmpty && anyV2VActive()) {
+    const surplusOf = (k) => k.soc - state.alpha * dist(k, DEPOT) - 0.02;
     for (const d of state.robots) {
       if (!d.dead) continue;
-      for (const j of state.robots) {
-        if (j === d || j.dead) continue;
-        if (dist(j, d) > ROBOT_R * 2.5) continue;
-        const give = j.soc - state.alpha * dist(j, DEPOT) - 0.02;
-        if (give <= 0.02) continue;
-        const need = state.alpha * dist(d, DEPOT) + 0.05; // enough to reach depot, small margin
-        const x = Math.min(give, need);
-        if (x <= 0) continue;
-        j.soc -= x;
-        d.soc += x;
+      if (d.rescueReceived === undefined) d.rescueReceived = 0;
+      const need = state.alpha * dist(d, DEPOT) + 0.05;
+      const remaining = need - d.rescueReceived;
+      // Keep the current rescuer if it is still eligible, in contact, and has
+      // surplus; else find a new eligible one that can finish the trip home.
+      let j = (d.rescuerId !== null && d.rescuerId !== undefined) ? state.robots[d.rescuerId] : null;
+      const stillValid = j && !j.dead && isHelperEligible(j)
+                         && dist(j, d) <= ROBOT_R * 2.5 && surplusOf(j) > 1e-3;
+      if (!stillValid) {
+        if (j) j.rescuingId = null;
+        d.rescuerId = null; j = null;
+        for (const k of state.robots) {
+          if (k === d || k.dead) continue;
+          if (!isHelperEligible(k)) continue;       // respects the worker-V2V / refueler toggles
+          if (k.rescuingId !== null && k.rescuingId !== undefined) continue; // already helping someone
+          if (dist(k, d) > ROBOT_R * 2.5) continue;
+          if (surplusOf(k) < remaining) continue;   // must be able to finish the job
+          d.rescuerId = k.id; k.rescuingId = d.id; j = k;
+          break;
+        }
+      }
+      if (!j) continue;                    // no adequate rescuer in contact — stays lost
+      const dx = Math.max(0, Math.min(state.transferRate, remaining, surplusOf(j)));
+      if (dx > 0) { j.soc -= dx; d.soc += dx; d.rescueReceived += dx; }
+      if (d.rescueReceived >= need - 1e-3) {
         d.dead = false;
         d.mode = 'home';
         d.target = { x: DEPOT.x, y: DEPOT.y };
-        break;
+        d.rescueReceived = 0;
+        d.rescuerId = null;
+        j.rescuingId = null;
       }
     }
   }
@@ -2895,21 +2999,26 @@ function drawTasks() {
 
 function drawRobots() {
   for (const r of state.robots) {
-    // Immobilized (depleted) robot: a muted gray disk with an ✕, no SoC ring.
+    // Immobilized (depleted) robot: a solid dark-gray disk slashed by a bold red
+    // X — a deliberately alarming marker, since losing a robot is a hard failure.
     if (r.dead) {
+      const R = ROBOT_R * 1.15;
       ctx.beginPath();
-      ctx.arc(r.x, r.y, ROBOT_R, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(120, 120, 120, 0.30)';
+      ctx.arc(r.x, r.y, R, 0, Math.PI * 2);
+      ctx.fillStyle = '#4a4a4a';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(90, 90, 90, 0.75)';
+      ctx.strokeStyle = '#2e2e2e';
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      ctx.fillStyle = 'rgba(70, 70, 70, 0.95)';
-      ctx.font = '600 10px "IBM Plex Mono", monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('✕', r.x, r.y + 0.5);
-      ctx.textBaseline = 'alphabetic';
+      const a = R * 0.95;
+      ctx.strokeStyle = '#e0241b';
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(r.x - a, r.y - a); ctx.lineTo(r.x + a, r.y + a);
+      ctx.moveTo(r.x - a, r.y + a); ctx.lineTo(r.x + a, r.y - a);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
       continue;
     }
     let fill, stroke;
@@ -3016,7 +3125,10 @@ function computeMetrics() {
   // stranded, pinned) stay over the whole swarm.
   for (const r of rs) {
     socSum += r.soc;
-    if (r.dead) lost++;
+    // A depleted (dead) robot is tallied ONLY as lost. Its role is still computed
+    // as 'stranded' by updateRoles (no charge, no chain), but counting it there
+    // too would double-count it; and it no longer forages, extends reach, or pins.
+    if (r.dead) { lost++; continue; }
     if (r.role === 'v2v') v2vCount++;
     if (r.role === 'stranded') stranded++;
     if (r.pinnedBy !== null) pinned++;
@@ -3052,7 +3164,7 @@ function computeMetrics() {
     meanSocRef: nRef > 0 ? ((socSumRef / nRef) * 100).toFixed(0) + '%' : null,
     refuelerN: nRef,
     lost,
-    live: rs.length,
+    live: rs.length - lost,
   };
 }
 
@@ -3321,6 +3433,10 @@ $('rtsSlider').addEventListener('input', (e) => {
   state.lowSocThreshold = parseInt(e.target.value) / 100;
   $('rtsVal').textContent = e.target.value + '%';
 });
+$('trSlider').addEventListener('input', (e) => {
+  state.transferRate = parseInt(e.target.value) / 100;
+  $('trVal').textContent = (parseInt(e.target.value) / 100).toFixed(2) + '/frame';
+});
 $('tpSlider').addEventListener('input', (e) => {
   const newVal = parseInt(e.target.value) / 100;
   // Slider at 0 means trails fully off — wipe whatever paint is on the buffer
@@ -3468,10 +3584,13 @@ const SOURCES = {
  * V2V Swarm -- Basic Model (GAMA implementation)
  *
  * A starter template for an energy-aware swarm with optional V2V charging.
- * Robots wander, lose energy with distance, head home when low. Optional
- * V2V donation: a low-SoC robot finds a peer with surplus and gets a
- * charge transfer (contact step collapsed -- receiver and helper exchange
- * energy in place).
+ * Robots wander, lose energy with distance, and decide to return when SoC
+ * drops below a seek-charge threshold. If a returning robot cannot reach the
+ * depot on its own, it pulls charge from a peer with surplus -- but only enough
+ * to get home, never a fixed "target" fill -- then heads to the depot for a full
+ * recharge. Peer V2V is purely an anti-stranding safety net. The donation is
+ * metered by transfer_rate per step (a transfer spans several steps because the
+ * seek-charge reflex re-fires while SoC stays low).
  *
  * NOTE on naming: this file calls the task-points "mission" rather than
  * "task" because GAMA reserves the keyword 'task' for its Behavior
@@ -3499,7 +3618,7 @@ global {
     float task_rate <- 0.06;
     bool v2v_enabled <- true;
     float low_soc_threshold <- 0.25;
-    float refuel_target <- 0.50;
+    float transfer_rate <- 0.15;
 
     geometry shape <- square(500);
     point depot <- {250.0, 250.0};
@@ -3589,39 +3708,75 @@ species robot {
     }
 
     reflex low_soc_action when: (mode = "wander") and (soc < low_soc_threshold) {
-        if (v2v_enabled) {
+        // Charge needed to reach the depot (small margin). The receiver only ever
+        // takes enough to get home -- never a fixed target SoC -- then returns to
+        // the depot for a full recharge.
+        float home_need <- (alpha * (location distance_to depot)) + 0.05 - soc;
+        if (v2v_enabled and home_need > 0.0) {
             list<robot> candidates <- robot where (
-                (each != self) and (each.mode = "wander")
-            );
-            candidates <- candidates where (
-                each.soc > ((alpha * (each.location distance_to depot)) + 0.10)
+                (each != self) and (each.mode = "wander") and
+                (each.soc > ((alpha * (each.location distance_to depot)) + 0.10))
             );
             if (length(candidates) > 0) {
                 robot h <- one_of(candidates);
                 float can_give <- h.soc - (alpha * (h.location distance_to depot)) - 0.02;
-                float needed   <- refuel_target - soc;
-                float donation <- min(can_give, needed);
-                if (donation > 0) {
+                // Metered by transfer_rate: the transfer spans several steps since
+                // this reflex re-fires each step while SoC stays low.
+                float donation <- min([can_give, home_need, transfer_rate]);
+                if (donation > 0.0) {
                     soc   <- soc + donation;
                     h.soc <- h.soc - donation;
                 }
             }
         }
-        if (soc < ((alpha * (location distance_to depot)) + 0.10)) {
+        // Once we can reach the depot, commit to the return.
+        if (soc >= ((alpha * (location distance_to depot)) + 0.05)) {
             mode <- "home";
             target <- depot;
         }
     }
 
-    reflex move_robot when: mode != "docked" {
+    reflex move_robot when: (mode != "docked") and (mode != "dead") {
         float d <- location distance_to target;
         if (d > 0.0) {
             float delta <- min(move_speed, d);
             location <- location + (target - location) * (delta / d);
             soc <- soc - (alpha * delta);
         }
+        // Depletion: out of charge. On the depot's charging pad -> dock and charge
+        // (no robot is lost at the depot); otherwise immobilized in the field.
+        if (soc <= 0.0) {
+            soc <- 0.0;
+            if ((location distance_to depot) < depot_r) {
+                mode <- "docked";
+                location <- depot;
+            } else {
+                mode <- "dead";
+            }
+        }
         if ((mode = "home") and ((location distance_to depot) < depot_r)) {
             mode <- "docked";
+        }
+    }
+
+    // Contact revival: a depleted robot keeps just enough residual power to run a
+    // help beacon and accept an inductive top-up. A passing robot revives it only
+    // if it can spare enough to cover the dead robot's full trip home; otherwise
+    // it stays lost (an isolated death is permanent). No dispatch. Revival is a
+    // V2V transfer, so it only happens when V2V is enabled.
+    reflex revive when: (mode = "dead") and v2v_enabled {
+        float need <- (alpha * (location distance_to depot)) + 0.05;
+        list<robot> rescuers <- robot where (
+            (each != self) and (each.mode != "dead") and
+            ((each.location distance_to location) < 3.0) and
+            ((each.soc - (alpha * (each.location distance_to depot)) - 0.02) >= need)
+        );
+        if (length(rescuers) > 0) {
+            robot rr <- one_of(rescuers);
+            rr.soc <- rr.soc - need;
+            soc <- soc + need;
+            mode <- "home";
+            target <- depot;
         }
     }
 
@@ -3643,9 +3798,10 @@ species robot {
     }
 
     aspect base {
-        rgb body_color <- (mode = "docked") ? #forestgreen
-                       : ((mode = "home")   ? #goldenrod
-                       : ((soc < 0.3)       ? #firebrick : #steelblue));
+        rgb body_color <- (mode = "dead")   ? #gray
+                       : ((mode = "docked")  ? #forestgreen
+                       : ((mode = "home")    ? #goldenrod
+                       : ((soc < 0.3)        ? #firebrick : #steelblue)));
         draw circle(6.0) color: body_color;
     }
 }
@@ -3671,7 +3827,7 @@ experiment v2v_swarm type: gui {
     parameter "Task spawn rate"      var: task_rate          min: 0.0   max: 0.2  step: 0.01;
     parameter "Worker-to-worker V2V" var: v2v_enabled;
     parameter "Low-SoC threshold"    var: low_soc_threshold  min: 0.0   max: 1.0  step: 0.05;
-    parameter "V2V refuel target"    var: refuel_target      min: 0.1   max: 1.0  step: 0.05;
+    parameter "V2V transfer rate"    var: transfer_rate      min: 0.01  max: 0.5  step: 0.01;
 
     output {
         display "Field" type: 2d {
@@ -3753,6 +3909,7 @@ to go
     ]
   ]
   ask robots [ move-robot ]
+  if v2v-enabled? [ revive-dead ]   ;; revival is a V2V transfer; off means lost stays lost
   ask missions [
     set ttl ttl - 1
     if ttl <= 0 [ die ]
@@ -3763,22 +3920,34 @@ to go
 end
 
 to move-robot
+  if mode = "dead" [ stop ]   ;; immobilized: out of charge, cannot move
   ifelse mode = "docked"
   [ recharge ]
   [
     if mode = "wander" and distancexy target-x target-y < 1 [
       pick-levy-target
     ]
+    ;; Decide to return once SoC drops below the seek-charge threshold.
     if mode = "wander" and soc < low-soc-threshold [
-      if v2v-enabled? [ attempt-v2v ]
-      let dist-home distancexy 0 0
-      if soc < alpha-decay * dist-home + 0.10 [
-        set mode "home"
-        set target-x 0
-        set target-y 0
-      ]
+      set mode "home"
+      set target-x 0
+      set target-y 0
+    ]
+    ;; While returning, if we cannot reach the depot alone, pull just enough from
+    ;; a peer to get home (metered by transfer-rate, so it spans several ticks).
+    ;; The full recharge happens at the depot, not in the field.
+    if mode = "home" and v2v-enabled? and soc < alpha-decay * (distancexy 0 0) [
+      attempt-v2v
     ]
     step-toward target-x target-y
+    ;; Depletion: out of charge. On the depot's charging pad -> dock and charge
+    ;; (no robot is lost at the depot); otherwise immobilized in the field (lost).
+    if soc <= 0 [
+      set soc 0
+      ifelse distancexy 0 0 < 6
+        [ set mode "docked" setxy 0 0 ]
+        [ set mode "dead" ]
+    ]
     if mode = "wander" [ try-mission ]
     if mode = "home" and distancexy 0 0 < 6 [
       set mode "docked"
@@ -3810,18 +3979,46 @@ end
 
 to attempt-v2v
   let me self
-  let helper one-of robots with [
-    self != me
-    and mode = "wander"
-    and soc > alpha-decay * distancexy 0 0 + 0.10
+  ;; Only enough to reach the depot (small margin) -- never a fixed target SoC.
+  let home-need (alpha-decay * (distancexy 0 0)) + 0.05 - soc
+  if home-need > 0 [
+    let helper one-of robots with [
+      self != me
+      and mode = "wander"
+      and soc > alpha-decay * distancexy 0 0 + 0.10
+    ]
+    if helper != nobody [
+      let can-give [soc] of helper - alpha-decay * [distancexy 0 0] of helper - 0.02
+      ;; Metered by transfer-rate; this fires each tick while still short of home.
+      let donation min (list can-give home-need transfer-rate)
+      if donation > 0 [
+        set soc soc + donation
+        ask helper [ set soc soc - donation ]
+      ]
+    ]
   ]
-  if helper != nobody [
-    let can-give [soc] of helper - alpha-decay * [distancexy 0 0] of helper - 0.02
-    let needed refuel-target - soc
-    let donation min list can-give needed
-    if donation > 0 [
-      set soc soc + donation
-      ask helper [ set soc soc - donation ]
+end
+
+to revive-dead
+  ;; Contact revival: a depleted robot keeps just enough residual power to run a
+  ;; help beacon and accept an inductive top-up. A passing robot revives it only
+  ;; if it can spare enough to cover the dead robot's full trip home; otherwise
+  ;; the robot stays lost (an isolated death is permanent). No dispatch.
+  ask robots with [mode = "dead"] [
+    let me self
+    let need (alpha-decay * (distancexy 0 0)) + 0.05
+    let rescuer one-of other robots with [
+      mode != "dead"
+      and distance me < 3
+      and (soc - alpha-decay * (distancexy 0 0) - 0.02) >= need
+    ]
+    if rescuer != nobody [
+      ask rescuer [ set soc soc - need ]
+      set soc soc + need
+      set mode "home"
+      set target-x 0
+      set target-y 0
+      update-color
     ]
   ]
 end
@@ -3839,6 +4036,7 @@ to try-mission  ;; robot procedure
 end
 
 to update-color
+  if mode = "dead" [ set color gray stop ]
   if mode = "docked" [ set color green stop ]
   if mode = "home" [ set color yellow stop ]
   ifelse soc < 0.3 [ set color red ] [ set color blue ]
@@ -4020,12 +4218,12 @@ SLIDER
 207
 350
 240
-refuel-target
-refuel-target
-0.1
-1.0
+transfer-rate
+transfer-rate
+0.01
 0.5
-0.05
+0.15
+0.01
 1
 NIL
 HORIZONTAL
@@ -4212,8 +4410,9 @@ class Config:
     task_rate: float = 0.06
     task_energy_cost: float = 0.18
     low_soc_threshold: float = 0.25
-    refuel_target: float = 0.50
+    transfer_rate: float = 0.15
     v2v_enabled: bool = True
+    immobilize_on_empty: bool = True
 
     world_size: float = 500.0
     depot_radius: float = 3.0
@@ -4224,6 +4423,7 @@ class Config:
     task_ttl: int = 200
     max_tasks: int = 30
     task_engage_radius: float = 1.5
+    revive_radius: float = 3.0
 
 
 class SimState:
@@ -4246,7 +4446,7 @@ class SimState:
         ang = self.rng.uniform(0, 2 * np.pi, size=N)
         r = solo_reach * 0.9 * np.sqrt(self.rng.uniform(0, 1, size=N))
         self.target = self.depot + np.column_stack([r * np.cos(ang), r * np.sin(ang)])
-        self.mode = np.zeros(N, dtype=int)   # 0 wander, 1 home, 2 docked
+        self.mode = np.zeros(N, dtype=int)   # 0 wander, 1 home, 2 docked, 3 immobilized
         self.task_pos = np.empty((0, 2))
         self.task_ttl = np.empty(0, dtype=int)
 
@@ -4281,6 +4481,10 @@ def step_sim(state: SimState, config: Config, v2v_enabled: bool):
 
     # Robot updates
     for i in range(N):
+        # Immobilized (depleted): frozen in place. Cannot move or engage tasks;
+        # only the revival pass below can bring it back.
+        if state.mode[i] == 3:
+            continue
         # Docked: recharge in place
         if state.mode[i] == 2:
             state.soc[i] += config.recharge_rate
@@ -4300,9 +4504,20 @@ def step_sim(state: SimState, config: Config, v2v_enabled: bool):
             state.target[i] = state.depot + _r * np.array([np.cos(_a), np.sin(_a)])
             d_target = np.linalg.norm(state.target[i] - state.pos[i])
 
-        # Low-SoC trigger: try V2V, commit home if still unsafe
+        # Seek-charge trigger: decide to return once SoC drops below the threshold.
         if state.mode[i] == 0 and state.soc[i] < config.low_soc_threshold:
-            if v2v_enabled:
+            state.mode[i] = 1
+            state.target[i] = state.depot.copy()
+            d_target = np.linalg.norm(state.target[i] - state.pos[i])
+
+        # While returning, if we cannot reach the depot alone, pull just enough
+        # from a peer to get home -- never a fixed target SoC. Metered by
+        # transfer_rate, so it spans several steps; the full recharge happens at
+        # the depot. Peer V2V is purely an anti-stranding safety net.
+        if state.mode[i] == 1 and v2v_enabled:
+            dist_home = np.linalg.norm(state.pos[i] - state.depot)
+            home_need = config.alpha * dist_home + 0.05 - state.soc[i]
+            if home_need > 0:
                 others = (np.arange(N) != i) & (state.mode == 0)
                 if others.any():
                     idx = np.where(others)[0]
@@ -4314,22 +4529,29 @@ def step_sim(state: SimState, config: Config, v2v_enabled: bool):
                         can_give = (state.soc[h]
                                     - config.alpha * np.linalg.norm(state.pos[h] - state.depot)
                                     - 0.02)
-                        needed = config.refuel_target - state.soc[i]
-                        donation = max(0.0, min(can_give, needed))
+                        donation = max(0.0, min(can_give, home_need, config.transfer_rate))
                         if donation > 0:
                             state.soc[i] += donation
                             state.soc[h] -= donation
-            dist_home = np.linalg.norm(state.pos[i] - state.depot)
-            if state.soc[i] < config.alpha * dist_home + 0.10:
-                state.mode[i] = 1
-                state.target[i] = state.depot.copy()
-                d_target = dist_home
 
         # Move toward target
         if d_target > 0:
             s = min(config.move_step, d_target)
             state.pos[i] += (state.target[i] - state.pos[i]) / d_target * s
             state.soc[i] -= config.alpha * s
+
+        # Depletion: out of charge. If it ran dry on the depot's charging pad,
+        # it docks and charges rather than dying -- no robot is lost at the depot.
+        # Otherwise it is immobilized in the field (counts as lost). A robot with 0
+        # SoC cannot move, so it engages no task this step.
+        if config.immobilize_on_empty and state.soc[i] <= 0.0:
+            state.soc[i] = 0.0
+            if np.linalg.norm(state.pos[i] - state.depot) < config.depot_radius:
+                state.mode[i] = 2
+                state.pos[i] = state.depot.copy()
+            else:
+                state.mode[i] = 3
+            continue
 
         # Task engagement (only in wander mode, with safety check)
         if state.mode[i] == 0 and len(state.task_pos) > 0:
@@ -4348,6 +4570,33 @@ def step_sim(state: SimState, config: Config, v2v_enabled: bool):
             state.mode[i] = 2
             state.pos[i] = state.depot.copy()
 
+    # Contact revival: a depleted robot keeps just enough residual power to run a
+    # help beacon and accept an inductive top-up. A passing robot revives it only
+    # if it can spare enough to cover the dead robot's full trip home; a partial
+    # hand-off that left it crawling at near-zero would be worse than honest. So a
+    # death near a well-charged neighbor is recoverable; an isolated one is
+    # permanent (counts as a loss). No dispatch. Revival is itself a V2V transfer,
+    # so it happens only when V2V is enabled -- turn V2V off and lost robots stay
+    # lost, exactly as in the pure-solo regime.
+    if config.immobilize_on_empty and v2v_enabled:
+        for d in np.where(state.mode == 3)[0]:
+            need = config.alpha * np.linalg.norm(state.pos[d] - state.depot) + 0.05
+            for j in range(N):
+                if j == d or state.mode[j] == 3:
+                    continue
+                if np.linalg.norm(state.pos[j] - state.pos[d]) > config.revive_radius:
+                    continue
+                give = (state.soc[j]
+                        - config.alpha * np.linalg.norm(state.pos[j] - state.depot)
+                        - 0.02)
+                if give < need:
+                    continue
+                state.soc[j] -= need
+                state.soc[d] += need
+                state.mode[d] = 1
+                state.target[d] = state.depot.copy()
+                break
+
     return done_delta, expired_delta
 
 
@@ -4361,6 +4610,7 @@ def run(config: Config = None, seed: int = 0):
         'tasks_done': 0, 'tasks_expired': 0,
         'peak_reach': 0.0,
         'time_at_outer80': 0, 'time_past_solo': 0, 'total_robot_time': 0,
+        'peak_lost': 0,
         'soc_trace': [], 'reach_trace': [],
     }
 
@@ -4368,6 +4618,7 @@ def run(config: Config = None, seed: int = 0):
         dd, ed = step_sim(state, config, config.v2v_enabled)
         metrics['tasks_done'] += dd
         metrics['tasks_expired'] += ed
+        metrics['peak_lost'] = max(metrics['peak_lost'], int(np.sum(state.mode == 3)))
 
         d_from = np.linalg.norm(state.pos - state.depot, axis=1)
         norm_reach = float(d_from.max()) / solo_reach
@@ -4383,6 +4634,7 @@ def run(config: Config = None, seed: int = 0):
     metrics['final_pos'] = state.pos.copy()
     metrics['final_soc'] = state.soc.copy()
     metrics['final_mode'] = state.mode.copy()
+    metrics['lost'] = int(np.sum(state.mode == 3))
     metrics['fraction_past_solo'] = metrics['time_past_solo'] / max(1, metrics['total_robot_time'])
     metrics['fraction_at_outer80'] = metrics['time_at_outer80'] / max(1, metrics['total_robot_time'])
     metrics['solo_reach'] = solo_reach
@@ -4407,8 +4659,8 @@ def plot_run(result):
 
     pos = result['final_pos']
     mode = result['final_mode']
-    for m, (c, lab) in enumerate(zip(['steelblue', 'goldenrod', 'forestgreen'],
-                                     ['Wandering', 'Heading home', 'Docked'])):
+    for m, (c, lab) in enumerate(zip(['steelblue', 'goldenrod', 'forestgreen', 'dimgray'],
+                                     ['Wandering', 'Heading home', 'Docked', 'Lost (immobilized)'])):
         mask = mode == m
         if mask.any():
             ax.scatter(pos[mask, 0], pos[mask, 1], c=c, s=60, alpha=0.7, label=lab)
@@ -4424,9 +4676,7 @@ def plot_run(result):
         for i in range(socs.shape[1]):
             ax.plot(steps, socs[:, i], alpha=0.3, linewidth=0.8)
         ax.plot(steps, socs.mean(axis=1), 'k-', linewidth=2, label='Mean SoC')
-    ax.axhline(config.low_soc_threshold, color='red', linestyle='--', alpha=0.5, label='Low-SoC threshold')
-    if config.v2v_enabled:
-        ax.axhline(config.refuel_target, color='blue', linestyle='--', alpha=0.5, label='Refuel target')
+    ax.axhline(config.low_soc_threshold, color='red', linestyle='--', alpha=0.5, label='Seek-charge threshold')
     ax.set_xlabel('Simulation step')
     ax.set_ylabel('State of charge')
     ax.set_ylim(0, 1.05)
@@ -4601,6 +4851,12 @@ def run_animated(config: Config = None, seed: int = 0):
             # Robots + SoC bars
             for i in range(config.num_robots):
                 rx, ry = w2s(state.pos[i, 0], state.pos[i, 1])
+                if state.mode[i] == 3:
+                    # Lost: depleted and immobilized. Draw a gray X, no SoC bar.
+                    g = (110, 110, 110)
+                    pygame.draw.line(screen, g, (rx - 5, ry - 5), (rx + 5, ry + 5), 2)
+                    pygame.draw.line(screen, g, (rx - 5, ry + 5), (rx + 5, ry - 5), 2)
+                    continue
                 if state.mode[i] == 2:
                     c = GREEN
                 elif state.mode[i] == 1:
