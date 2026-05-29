@@ -1029,7 +1029,7 @@ input[type="range"] {
           <button class="src-btn" data-lang="python">Python</button>
         </div>
         <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--ink-soft); line-height: 1.5; margin-top: 6px;">
-          Starter templates: agents, wander, depot return, simple V2V on contact. Not the full safety-filtered / chain-aware / refueler model — just enough scaffolding to extend on your own.
+          Starter templates: Levy-walk foraging, depot return, metered V2V transfer on contact, and the one-hop safety filter. They omit the widget's multi-hop chain reachability and the refueler role &mdash; just enough scaffolding to extend on your own.
         </div>
       </div>
     </div>
@@ -1080,10 +1080,31 @@ input[type="range"] {
               helpers can drift away mid-approach.
             </p>
             <p>
-              <em>This is the one-hop case.</em> The natural next layer is multi-hop chains
-              (i → j → k → depot) or rendezvous-then-flock with pooled redistribution, both of which strictly enlarge
-              the safe set at the cost of more elaborate proofs. The recursive form makes "helper" itself a fixed-point
-              quantity on the help graph — exactly the place where a network-CBF or graph-theoretic invariant lives.
+              The pairwise test above is the <strong>one-hop</strong> condition, and it is exactly what the three
+              reference implementations compute: a robot is safe if it is directly safe, or if some <em>single</em> peer
+              <code>j</code> satisfies both clauses. (Their check
+              <code>b<sub>i</sub> − α·d(p<sub>i</sub>,p<sub>j</sub>) + s<sub>j</sub> ≥ α·d(p<sub>j</sub>,depot)</code>
+              rearranges to the surplus-sufficiency clause verbatim.) With V2V off it collapses to the direct condition
+              alone, which is why conservative solo motion never strands a robot.
+            </p>
+            <p>
+              The widget itself runs the <strong>multi-hop</strong> generalization. Every frame it assigns each robot a
+              <strong>safety depth</strong> by breadth-first search over the help graph: depth 0 is the direct-safe set;
+              a robot is depth <code>d</code> if it can reach a depth-(<code>d−1</code>) peer, take that peer's surplus,
+              and from there reach the depot <em>or</em> another already-safe peer — i.e. a whole chain
+              <code>i → j → k → … → depot</code>. This is the recursive, fixed-point form of "helper" on the help graph,
+              exactly where a network-CBF or graph-theoretic invariant would live.
+            </p>
+            <p>
+              One caveat is worth stating plainly, because it is the whole reason V2V trades safety for reach: that
+              multi-hop set is an <em>optimistic, instantaneous</em> estimate. It is recomputed from a frozen snapshot
+              each frame and assumes every peer holds its position and donates its full surplus — assumptions the
+              wandering peers break the moment anyone moves or drains, which is what lets a robot over-commit to a chain
+              that then dissolves beyond its solo reach. Only the direct-safe set (depth 0) is a true invariant; the
+              one-hop set is nearly one when the helper is a station-holding refueler. Turning the multi-hop layer into a
+              guaranteed charge-safety certificate — via reserved donors, stationary anchors, or a margin sized for
+              worst-case peer drift — is the open problem, not something this simulator claims to have solved. Its job is
+              to show that such chain strategies reach measurably more tasks, not to prove they are safe.
             </p>
           </div>
         </div>
@@ -1096,9 +1117,11 @@ input[type="range"] {
               ballistic transits (step lengths drawn from a heavy-tailed Pareto distribution, μ ≈ 1.8) with bouts of
               area-restricted local search. There is no global task sensing — robots only discover task sites by
               physically passing within contact range. The motion is filtered by the safety condition: the proposed
-              step must keep the robot in either its direct-safe set or, when V2V is enabled, in the union of
-              direct-safe and one-hop helped sets. When the desired step would leave the safe set, the desired
-              direction is blended toward the depot until it lies inside.
+              step must keep the robot inside its safe set — just the direct-safe set when V2V is off, or the full
+              multi-hop safe set (any robot that can chain home through a sequence of peers, per the breadth-first
+              safety-depth pass described above) when V2V is on. The reference implementations use the simpler one-hop
+              version of this set. When the desired step would leave the safe set, the desired direction is blended
+              toward the depot until it lies inside.
             </p>
             <p>
               When SoC drops below a threshold, the robot commits to a return: it heads straight for the depot if
@@ -4401,8 +4424,8 @@ robot consumes a mission if within range AND the safety condition holds
 
 ## EXTENDING
 
-This is bare bones. Suggested additions: control-barrier-function-style
-safety filtering on engagement, multi-hop V2V chains, a refueler role
+This is bare bones; it already includes the single-hop safety filter.
+Suggested additions: multi-hop V2V chain reachability, a refueler role
 that holds station for delivery rather than wandering, multiple depots.
 @#$#@#$#@
 default
