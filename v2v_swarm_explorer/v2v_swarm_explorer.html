@@ -3606,9 +3606,10 @@ const SOURCES = {
  * the same disk -- matching the JS widget where the canvas IS the world
  * and the dynamics naturally keep robots within reach.
  *
- * Omitted vs the full simulator: no CBF safety filter, no multi-hop chain
- * reachability, no refueler role, no visualization of reachable disks /
- * direct-safe sets / feasibility edges. Just the bare bones.
+ * Omitted vs the full simulator: no multi-hop chain reachability (the safety
+ * filter here is single-hop -- a robot stays in the set from which it can reach
+ * the depot directly or via ONE peer), no refueler role, and no visualization of
+ * reachable disks / direct-safe sets / feasibility edges. Just the bare bones.
  */
 model V2VSwarm
 
@@ -3736,11 +3737,58 @@ species robot {
         }
     }
 
+    // CBF-style safety check: from candidate point p with battery b, can this robot
+    // still get home -- directly, or (V2V on) via ONE wandering peer that can top it
+    // up enough to finish the trip? Single-hop version of the widget's filter; with
+    // V2V off it is just direct reachability, so solo motion never strands a robot.
+    bool is_safe_state(point p, float b) {
+        if (b >= (alpha * (p distance_to depot))) { return true; }
+        if (!v2v_enabled) { return false; }
+        list<robot> helpers <- robot where (
+            (each != self) and (each.mode = "wander")
+            and (b >= (alpha * (p distance_to each.location)))
+            and ((each.soc - (alpha * (each.location distance_to depot))) > 0.0)
+            and ((b - (alpha * (p distance_to each.location))
+                  + each.soc - (alpha * (each.location distance_to depot)))
+                 >= (alpha * (each.location distance_to depot)))
+        );
+        return (length(helpers) > 0);
+    }
+
     reflex move_robot when: (mode != "docked") and (mode != "dead") {
         float d <- location distance_to target;
         if (d > 0.0) {
             float delta <- min(move_speed, d);
-            location <- location + (target - location) * (delta / d);
+            point dir <- (target - location) / d;   // unit heading toward target
+            // In wander mode, filter the step: never leave the safe (returnable) set.
+            // If the natural step is unsafe, bend toward the depot until it is; if
+            // even a full step inward is unsafe, head straight in as a last resort.
+            if (mode = "wander") {
+                point cand <- location + (dir * delta);
+                float cb <- soc - (alpha * delta);
+                if (!is_safe_state(cand, cb)) {
+                    float dd <- location distance_to depot;
+                    if (dd > 0.000001) {
+                        point depot_dir <- (depot - location) / dd;
+                        bool resolved <- false;
+                        loop w over: [0.25, 0.5, 0.75, 1.0] {
+                            if (!resolved) {
+                                point bd <- (dir * (1.0 - w)) + (depot_dir * w);
+                                float nm <- sqrt((bd.x * bd.x) + (bd.y * bd.y));
+                                if (nm > 0.000001) {
+                                    point bdir <- bd / nm;
+                                    if (is_safe_state(location + (bdir * delta), cb)) {
+                                        dir <- bdir;
+                                        resolved <- true;
+                                    }
+                                }
+                            }
+                        }
+                        if (!resolved) { dir <- depot_dir; }
+                    }
+                }
+            }
+            location <- location + (dir * delta);
             soc <- soc - (alpha * delta);
         }
         // Depletion: out of charge. On the depot's charging pad -> dock and charge
@@ -3800,8 +3848,8 @@ species robot {
     aspect base {
         rgb body_color <- (mode = "dead")   ? #gray
                        : ((mode = "docked")  ? #forestgreen
-                       : ((mode = "home")    ? #goldenrod
-                       : ((soc < 0.3)        ? #firebrick : #steelblue)));
+                       : ((mode = "home")    ? #firebrick      // returning home
+                       : ((soc < 0.3)        ? #goldenrod : #steelblue)));  // battery low vs healthy
         draw circle(6.0) color: body_color;
     }
 }
@@ -3939,7 +3987,9 @@ to move-robot
     if mode = "home" and v2v-enabled? and soc < alpha-decay * (distancexy 0 0) [
       attempt-v2v
     ]
-    step-toward target-x target-y
+    ;; Move. In wander mode the CBF-style safety filter is active (safe-step);
+    ;; a committed return (home) just drives straight to the depot.
+    ifelse mode = "wander" [ safe-step ] [ step-toward target-x target-y ]
     ;; Depletion: out of charge. On the depot's charging pad -> dock and charge
     ;; (no robot is lost at the depot); otherwise immobilized in the field (lost).
     if soc <= 0 [
@@ -3975,6 +4025,64 @@ to step-toward [tx ty]
     fd s
     set soc soc - alpha-decay * s
   ]
+end
+
+;; CBF-style safety check: from candidate position (px,py) with battery b, can this
+;; robot still get home -- directly, or (V2V on) via ONE wandering peer that can top
+;; it up enough to finish the trip? Single-hop version of the widget's filter; with
+;; V2V off it is just direct reachability, so solo motion never strands a robot.
+to-report is-safe-state? [px py b]
+  let dD sqrt (px * px + py * py)
+  if b >= alpha-decay * dD [ report true ]
+  if not v2v-enabled? [ report false ]
+  let me self
+  let helper one-of robots with [
+    self != me and mode = "wander"
+    and b >= alpha-decay * sqrt ((px - xcor) ^ 2 + (py - ycor) ^ 2)
+    and soc - alpha-decay * sqrt (xcor * xcor + ycor * ycor) > 0
+    and (b - alpha-decay * sqrt ((px - xcor) ^ 2 + (py - ycor) ^ 2)
+         + soc - alpha-decay * sqrt (xcor * xcor + ycor * ycor))
+        >= alpha-decay * sqrt (xcor * xcor + ycor * ycor)
+  ]
+  report helper != nobody
+end
+
+;; Wander-mode movement with the safety filter: take the step toward the target
+;; only if it keeps the robot in the safe (still-returnable) set; otherwise bend the
+;; heading toward the depot until it is safe, and as a last resort head straight in.
+to safe-step
+  let d distancexy target-x target-y
+  if d <= 0 [ stop ]
+  let s min list 1.0 d
+  let hx (target-x - xcor) / d
+  let hy (target-y - ycor) / d
+  let cb soc - alpha-decay * s
+  if not (is-safe-state? (xcor + hx * s) (ycor + hy * s) cb) [
+    let dd sqrt (xcor * xcor + ycor * ycor)
+    if dd > 1e-9 [
+      let ddx (0 - xcor) / dd
+      let ddy (0 - ycor) / dd
+      let resolved false
+      let w 0.25
+      while [not resolved and w <= 1.0001] [
+        let nx (1 - w) * hx + w * ddx
+        let ny (1 - w) * hy + w * ddy
+        let nm sqrt (nx * nx + ny * ny)
+        if nm > 1e-9 [
+          if is-safe-state? (xcor + (nx / nm) * s) (ycor + (ny / nm) * s) cb [
+            set hx nx / nm
+            set hy ny / nm
+            set resolved true
+          ]
+        ]
+        set w w + 0.25
+      ]
+      if not resolved [ set hx ddx  set hy ddy ]
+    ]
+  ]
+  set heading atan hx hy
+  fd s
+  set soc soc - alpha-decay * s
 end
 
 to attempt-v2v
@@ -4038,8 +4146,8 @@ end
 to update-color
   if mode = "dead" [ set color gray stop ]
   if mode = "docked" [ set color green stop ]
-  if mode = "home" [ set color yellow stop ]
-  ifelse soc < 0.3 [ set color red ] [ set color blue ]
+  if mode = "home" [ set color red stop ]                  ;; returning home
+  ifelse soc < 0.3 [ set color yellow ] [ set color blue ] ;; battery low vs healthy (still foraging)
 end
 
 ;; Pick a wander target as a Levy-walk hop from the robot's current position.
@@ -4394,8 +4502,9 @@ Parameter-sweep idiom (headless):
     df = pd.DataFrame(rows)
     print(df.groupby(['alpha', 'v2v'])['tasks_done'].agg(['mean', 'std']))
 
-Omitted vs the full simulator: no CBF safety filter, no multi-hop chain
-reachability, no refueler role. Bare bones to extend.
+Omitted vs the full simulator: no multi-hop chain reachability (the safety filter
+here is single-hop -- a robot stays in the set from which it can reach the depot
+either directly or via ONE peer), and no refueler role. Bare bones to extend.
 """
 
 from dataclasses import dataclass
@@ -4449,6 +4558,36 @@ class SimState:
         self.mode = np.zeros(N, dtype=int)   # 0 wander, 1 home, 2 docked, 3 immobilized
         self.task_pos = np.empty((0, 2))
         self.task_ttl = np.empty(0, dtype=int)
+
+
+def is_safe_state(state, config, i, pos, batt, v2v_enabled):
+    """CBF-style safety check: from position pos with battery batt, can robot i still
+    get home? Either directly (batt covers the trip to the depot), or -- when V2V is
+    on -- by reaching ONE peer that can spare enough to top it up for the rest of the
+    way. This is the reference's safety filter; it is the single-hop case of the
+    widget's filter (no multi-hop chaining). With V2V off it reduces to plain direct
+    reachability, which is exactly why conservative solo motion never strands a
+    robot: the filter below never lets one step outside the still-returnable set.
+    """
+    depot = state.depot
+    if batt >= config.alpha * np.linalg.norm(pos - depot):
+        return True
+    if not v2v_enabled:
+        return False
+    for j in range(config.num_robots):
+        if j == i or state.mode[j] != 0:          # only wandering peers can serve as helpers
+            continue
+        d_jD = np.linalg.norm(state.pos[j] - depot)
+        d_ij = np.linalg.norm(pos - state.pos[j])
+        if batt < config.alpha * d_ij:            # i cannot even reach peer j
+            continue
+        x_max = state.soc[j] - config.alpha * d_jD  # most j can give and still get itself home
+        if x_max <= 0:
+            continue
+        b_post = batt - config.alpha * d_ij + x_max  # i's battery after reaching j and topping up
+        if b_post >= config.alpha * d_jD:         # ...enough to reach the depot from j
+            return True
+    return False
 
 
 def step_sim(state: SimState, config: Config, v2v_enabled: bool):
@@ -4534,10 +4673,38 @@ def step_sim(state: SimState, config: Config, v2v_enabled: bool):
                             state.soc[i] += donation
                             state.soc[h] -= donation
 
-        # Move toward target
+        # Move toward target. In wander mode the CBF-style safety filter is active:
+        # never take a step that would leave the safe (still-returnable) set. If the
+        # natural step is unsafe, bend it toward the depot until it is safe; if even a
+        # full step toward the depot is unsafe (the robot is already past its safety
+        # boundary), commit toward the depot anyway and let the return logic recover.
+        # Home/immobilized modes are not filtered -- a returning robot commits.
         if d_target > 0:
             s = min(config.move_step, d_target)
-            state.pos[i] += (state.target[i] - state.pos[i]) / d_target * s
+            step_dir = (state.target[i] - state.pos[i]) / d_target
+            if state.mode[i] == 0:
+                cand = state.pos[i] + step_dir * s
+                cand_batt = state.soc[i] - config.alpha * s
+                if not is_safe_state(state, config, i, cand, cand_batt, v2v_enabled):
+                    to_depot = state.depot - state.pos[i]
+                    dd = np.linalg.norm(to_depot)
+                    if dd > 1e-9:
+                        depot_dir = to_depot / dd
+                        resolved = False
+                        for w in (0.25, 0.5, 0.75, 1.0):
+                            bd = (1.0 - w) * step_dir + w * depot_dir
+                            nm = np.linalg.norm(bd)
+                            if nm < 1e-9:
+                                continue
+                            bd = bd / nm
+                            if is_safe_state(state, config, i, state.pos[i] + bd * s,
+                                             state.soc[i] - config.alpha * s, v2v_enabled):
+                                step_dir = bd
+                                resolved = True
+                                break
+                        if not resolved:
+                            step_dir = depot_dir
+            state.pos[i] += step_dir * s
             state.soc[i] -= config.alpha * s
 
         # Depletion: out of charge. If it ran dry on the depot's charging pad,
@@ -4659,7 +4826,7 @@ def plot_run(result):
 
     pos = result['final_pos']
     mode = result['final_mode']
-    for m, (c, lab) in enumerate(zip(['steelblue', 'goldenrod', 'forestgreen', 'dimgray'],
+    for m, (c, lab) in enumerate(zip(['steelblue', 'firebrick', 'forestgreen', 'dimgray'],
                                      ['Wandering', 'Heading home', 'Docked', 'Lost (immobilized)'])):
         mask = mode == m
         if mask.any():
@@ -4860,9 +5027,9 @@ def run_animated(config: Config = None, seed: int = 0):
                 if state.mode[i] == 2:
                     c = GREEN
                 elif state.mode[i] == 1:
-                    c = GOLD
+                    c = RED          # returning home
                 elif state.soc[i] < 0.3:
-                    c = RED
+                    c = GOLD         # battery low (still foraging)
                 else:
                     c = BLUE
                 pygame.draw.circle(screen, c, (rx, ry), 6)
