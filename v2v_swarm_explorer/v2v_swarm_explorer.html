@@ -1192,11 +1192,34 @@ input[type="range"] {
               The literature this work draws on splits into two strands. The first is the <strong>biological precedent</strong> — social insect colonies that have organized cooperative energy transfer around a central nest for a great deal longer than engineering has had vehicles. The second is the <strong>engineering literature</strong> on formal safety frameworks for multi-robot operations, which is gradually catching up to that precedent without yet stitching the network-safety invariant fully together.
             </p>
 
-            <h4 class="rw-major-section">Biological inspiration: trophallaxis and spatial cooperative foraging</h4>
+            <h4 class="rw-major-section">Biological inspiration: trophallaxis, spatial foraging, self-assembly, and central-place theory</h4>
 
             <p style="margin-top: 0; margin-bottom: 14px; color: var(--ink-soft); font-size: 13px;">
-              Energy circulates in ant colonies through mouth-to-mouth liquid exchange (trophallaxis), in-nest storage castes (repletes), and spatially structured forager deployment — every structural element this work is trying to formalize for robotic swarms. The papers below establish that natural precedent and motivate the heterogeneous "refueler" mode in particular, which asks whether peer-to-peer energy transfer needs division of labor (in role or in space) to realize its theoretical potential.
+              Energy circulates in ant colonies through mouth-to-mouth liquid exchange (trophallaxis), in-nest storage castes (repletes), and spatially structured forager deployment — and, when the collective demands it, individuals abandon the primary task altogether to become living structure, as in army-ant bridges and walls or fire-ant rafts. These are the structural elements this work is trying to formalize for robotic swarms. The papers below establish that natural precedent and motivate the heterogeneous "refueler" mode in particular, which asks whether peer-to-peer energy transfer needs division of labor (in role or in space) — and whether that division might arise on its own, from an agent's position in the help graph, rather than being assigned in advance. Underneath all of it sits central-place foraging theory — the optimal-foraging account of how the distance to a home or replenishment point modulates the value of foraging beyond it. That point need not be the depot: a helper met in the field can act as a mobile, relational central place, so the same distance-modulates-value logic may recur at more than one scale rather than attaching to the depot alone.
             </p>
+
+            <div class="ref-section">
+              <h4>Trophallaxis and colony-level energy regulation</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Greenwald, E., Baltiansky, L., &amp; Feinerman, O. (2018). Individual crop loads provide local control for collective food intake in ant colonies. <em>eLife</em>, 7, e31730. <a href="https://doi.org/10.7554/eLife.31730" target="_blank" rel="noopener">doi:10.7554/eLife.31730</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Real-time fluorescent tracking of liquid food in every ant of a <em>Camponotus sanctus</em> colony, showing that foragers unload to many receivers in small portions and that the collective food intake rate emerges from local trophallactic interactions modulated by crop fullness.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>The biological counterpart of the V2V donation rule: an agent with surplus distributes to multiple peers in proportion to their deficit, and the colony-level outcome (steady inflow) is an emergent property of these local energy transfers — closely paralleling how this simulator's V2V edges propagate reachability.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Baltiansky, L., Frankel, G., &amp; Feinerman, O. (2023). Emergent regulation of ant foraging frequency through a computationally inexpensive forager movement rule. <em>eLife</em>, 12, e77659. <a href="https://doi.org/10.7554/eLife.77659" target="_blank" rel="noopener">doi:10.7554/eLife.77659</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Shows that the linear relationship between foraging frequency and colony hunger emerges from a simple movement rule rather than from a complex internal decision, with the forager's spatial trajectory inside the nest mediating the connection between her crop state and her exit decision.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>Demonstrates that nontrivial colony-level energy-budget regulation can emerge from purely local, geometry-based individual rules — the same design philosophy underlying the per-robot V2V safety filter used here.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Spatial cooperative foraging and stationary relays</h4>
 
               <div class="ref">
                 <div class="cite">
@@ -1216,43 +1239,73 @@ input[type="range"] {
 
               <div class="ref">
                 <div class="cite">
-                  Greenwald, E., Baltiansky, L., &amp; Feinerman, O. (2018). Individual crop loads provide local control for collective food intake in ant colonies. <em>eLife</em>, 7, e31730. <a href="https://doi.org/10.7554/eLife.31730" target="_blank" rel="noopener">doi:10.7554/eLife.31730</a>
-                </div>
-                <div class="annot"><span class="tag tag-what">What</span>Real-time fluorescent tracking of liquid food in every ant of a <em>Camponotus sanctus</em> colony, showing that foragers unload to many receivers in small portions and that the collective food intake rate emerges from local trophallactic interactions modulated by crop fullness.</div>
-                <div class="annot"><span class="tag tag-bio">Inspiration</span>The biological counterpart of the V2V donation rule: an agent with surplus distributes to multiple peers in proportion to their deficit, and the colony-level outcome (steady inflow) is an emergent property of these local energy transfers — closely paralleling how this simulator's V2V edges propagate reachability.</div>
-              </div>
-
-              <div class="ref">
-                <div class="cite">
-                  Baltiansky, L., Frankel, G., &amp; Feinerman, O. (2023). Emergent regulation of ant foraging frequency through a computationally inexpensive forager movement rule. <em>eLife</em>, 12, e77659. <a href="https://doi.org/10.7554/eLife.77659" target="_blank" rel="noopener">doi:10.7554/eLife.77659</a>
-                </div>
-                <div class="annot"><span class="tag tag-what">What</span>Shows that the linear relationship between foraging frequency and colony hunger emerges from a simple movement rule rather than from a complex internal decision, with the forager's spatial trajectory inside the nest mediating the connection between her crop state and her exit decision.</div>
-                <div class="annot"><span class="tag tag-bio">Inspiration</span>Demonstrates that nontrivial colony-level energy-budget regulation can emerge from purely local, geometry-based individual rules — the same design philosophy underlying the per-robot V2V safety filter used here.</div>
-              </div>
-
-              <div class="ref">
-                <div class="cite">
                   Hunt, E. R., Franks, N. R., &amp; Baddeley, R. J. (2020). The Bayesian superorganism: externalized memories facilitate distributed sampling. <em>Journal of the Royal Society Interface</em>, 17(167), 20190848. <a href="https://doi.org/10.1098/rsif.2019.0848" target="_blank" rel="noopener">doi:10.1098/rsif.2019.0848</a>
                 </div>
                 <div class="annot"><span class="tag tag-what">What</span>Experimental evidence and MCMC-inspired model showing that <em>Temnothorax albipennis</em> colonies use cuticular hydrocarbon footprints as a shared external memory that prevents redundant exploration of the same space.</div>
                 <div class="annot"><span class="tag tag-bio">Inspiration</span>The genus (<em>Temnothorax</em>) most often invoked in conjectures about externally-deployed repletes as intermediate refueling stations. Documented uses of externalized substrate in this genus are spatial-memory markers rather than energy depots; whether comparable structural use of agents themselves as relays exists in this taxon remains an open question that this simulator's refueler mode is partly meant to motivate.</div>
               </div>
+            </div>
 
-            <h4 class="rw-major-section">Engineering literature on energy-safe multi-robot operations</h4>
+            <div class="ref-section">
+              <h4>Self-assembled structures and task diversion</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Reid, C. R., Lutz, M. J., Powell, S., Kao, A. B., Couzin, I. D., &amp; Garnier, S. (2015). Army ants dynamically adjust living bridges in response to a cost–benefit trade-off. <em>Proceedings of the National Academy of Sciences</em>, 112(49), 15113–15118. <a href="https://doi.org/10.1073/pnas.1512241112" target="_blank" rel="noopener">doi:10.1073/pnas.1512241112</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Field experiments showing <em>Eciton</em> army ants build living bridges from their own bodies to shortcut gaps in the foraging trail; the bridges lengthen, widen, and migrate with traffic and terrain, and ants stay locked in place only while the structure is used, dissolving it once the cost of immobilized workers outweighs the benefit of the shortcut — all without any individual sensing the global cost or benefit.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>The clearest template for what the simulator does not yet do: individuals diverting from the primary task into a stationary, load-bearing role, held there by ongoing use and released when no longer worthwhile. It suggests V2V workers could self-select into refuelers — or into a load-bearing "phalanx" that ferries energy outward from the depot — based on their position and the traffic through them, rather than being designated in advance.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Graham, J. M., Kao, A. B., Wilhelm, D. A., &amp; Garnier, S. (2017). Optimal construction of army ant living bridges. <em>Journal of Theoretical Biology</em>, 435, 184–198. <a href="https://doi.org/10.1016/j.jtbi.2017.09.017" target="_blank" rel="noopener">doi:10.1016/j.jtbi.2017.09.017</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>A mathematical framework extending the Reid et al. cost–benefit picture, converting the benefit (shorter trail) and the cost (workers pulled from the foraging pool) into the common currency of colony foraging rate and predicting optimal bridge position and formation across obstacle geometries.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>The optimization-theoretic companion: it shows the divert-into-structure decision has a well-posed optimum — committed builders versus freed foragers — exactly the local cost–benefit calculus a self-organized refueler allocation would have to approximate.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Baudier, K. M., &amp; Pavlic, T. P. (2020). Incidental interactions among Neotropical army-ant colonies are met with self-organized walls of ants (Hymenoptera: Formicidae). <em>Myrmecological News</em>, 30, 251. <a href="https://doi.org/10.25849/myrmecol.news_030:251" target="_blank" rel="noopener">doi:10.25849/myrmecol.news_030:251</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Documents transient, double-layered living walls that army ants self-assemble at incidental encounters with other raiding colonies (and non-prey ants such as leafcutters), establishing avoidance by diverting workers into a defensive boundary structure built from individuals that would otherwise be raiding.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>A second self-assembly modality — a wall rather than a bridge — triggered and sustained by local encounters. That encounter-driven onset is the cue analog the simulator could use to recruit refuelers exactly where help-demand (encounter rate in the feasibility graph) runs highest.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Mlot, N. J., Tovey, C. A., &amp; Hu, D. L. (2011). Fire ants self-assemble into waterproof rafts to survive floods. <em>Proceedings of the National Academy of Sciences</em>, 108(19), 7669–7673. <a href="https://doi.org/10.1073/pnas.1016658108" target="_blank" rel="noopener">doi:10.1073/pnas.1016658108</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Shows <em>Solenopsis invicta</em> fire ants link their bodies within minutes into a buoyant, water-repellent raft, with individuals taking and holding structural positions that trade their own mobility for the survival of the collective.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>The canonical case of individuals becoming load-bearing structure; together with the army-ant bridges and walls it establishes self-assembly from diverted individuals as a widespread social-insect solution, motivating an emergent rather than a pre-assigned refueler caste.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Central-place foraging theory</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Olsson, O., Brown, J. S., &amp; Helf, K. L. (2008). A guide to central place effects in foraging. <em>Theoretical Population Biology</em>, 74(1), 22–33. <a href="https://doi.org/10.1016/j.tpb.2008.04.005" target="_blank" rel="noopener">doi:10.1016/j.tpb.2008.04.005</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>A general patch-use model of central place foraging that catalogs how distance from the central place raises foraging costs, giving-up densities, and quitting harvest rates, with the effects amplified by metabolic cost, predation risk, and load-carrying cost.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>The formal account of why a fixed return point makes value decay with distance — the biological statement of the solo-reach boundary, and the baseline that V2V and refuelers are designed to push outward by relocating the central place.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Stephens, D. W., &amp; Krebs, J. R. (1986). <em>Foraging Theory</em>. Princeton University Press.
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>The foundational synthesis of optimal foraging theory, including the central-place and patch-residence models that formalize the travel-cost-versus-gain trade-offs facing a forager tied to a home base.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>The canonical source for the currency-and-constraint framing borrowed here: net energetic gain maximized subject to a return-trip budget.</div>
+              </div>
+            </div>
+
+            <h4 class="rw-major-section">Engineering literature related to energy-safe multi-robot operations</h4>
 
             <p style="margin-top: 0;">
-              The engineering side of this problem sits at the intersection of three established themes that each address a piece of the
-              problem without quite stitching the network-safety invariant together: (1) <strong>energy as a state to
-              be safety-managed</strong> in multi-robot operations, including the closely-related
-              rendezvous-recharging and peer-to-peer power-transfer literatures; (2) <strong>network properties as
-              motion-controlled invariants</strong>, where the canonical case is communication connectivity preserved
-              by the proximity graph; and (3) the recent <strong>methodological lift of CBFs from individual to
-              graph-structured safety</strong>. The gap between these themes — a graph-theoretic, energy-aware
-              extension of CBF safety where the invariant lives on the help graph rather than on individual robots —
-              is the natural research opening. The four canonical anchors that most clearly delimit this gap are
-              Ames et al. 2017 (CBF foundations), Notomista–Ruf–Egerstedt 2018 (battery-as-CBF),
-              Mathew–Smith–Waslander 2015 (rendezvous-recharging), and Nikoletseas–Raptis–Raptopoulos 2017
-              (P2P energy balance among mobile peers).
+              Much of the engineering side of this problem sits at the intersection of three established themes that each address a piece of it without quite stitching the network-safety invariant together: (1) <strong>energy as a state to be safety-managed</strong> in multi-robot operations, including the closely-related rendezvous-recharging and peer-to-peer power-transfer literatures; (2) <strong>network properties as motion-controlled invariants</strong>, where the canonical case is communication connectivity preserved by the proximity graph; and (3) the recent <strong>methodological lift of CBFs from individual to graph-structured safety</strong>. The gap between these themes — a graph-theoretic, energy-aware extension of CBF safety where the invariant lives on the help graph rather than on individual robots — is the natural research opening, with canonical anchors in Ames et al. 2017 (CBF foundations), Notomista–Ruf–Egerstedt 2018 (battery-as-CBF), Mathew–Smith–Waslander 2015 (rendezvous-recharging), and Nikoletseas–Raptis–Raptopoulos 2017 (P2P energy balance among mobile peers). Two further strands are included because they bear on questions the safety framing alone does not: bio-inspired <strong>central-place and multiple-place foraging</strong>, which treats the depot itself as something that can be replicated or relocated, and <strong>encounter-driven self-assembly</strong>, which shows how an agent can latch into a structural role from purely local cues — the route by which refuelers might emerge rather than be assigned.
             </p>
 
             <div class="ref-section">
@@ -1333,6 +1386,14 @@ input[type="range"] {
                 <div class="annot"><span class="tag tag-what">What</span>Approximation algorithm for finding the minimum-fleet schedule meeting latency and discharge-time constraints around a single recharging depot.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>Recharging depot is exclusive and stationary, and energy flows only depot-to-robot — there is no V2V transfer and no notion of one robot's surplus extending another's safe operating envelope.</div>
               </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Latif, E., Gui, Y., Munir, A., &amp; Parasuraman, R. (2021). Energy-aware multi-robot task allocation in persistent tasks. <em>arXiv preprint</em> arXiv:2112.15282. <a href="https://arxiv.org/abs/2112.15282" target="_blank" rel="noopener">arXiv:2112.15282</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>A distributed, energy-conscious task-allocation scheme for continuous (unlimited-foraging) missions that schedules exploration, collection, and trips to a fixed charging station to keep robots alive while maximizing resources returned to a collection bin.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Survivability comes from who-does-what-and-when scheduling against fixed charging infrastructure, not from peer transfer; workers cannot extend one another's range and there is no closed-loop motion-safety invariant — though the foraging-with-a-home framing is the same one used here.</div>
+              </div>
             </div>
 
             <div class="ref-section">
@@ -1364,6 +1425,38 @@ input[type="range"] {
             </div>
 
             <div class="ref-section">
+              <h4>Central-place and multiple-place foraging in robot swarms</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Hecker, J. P., &amp; Moses, M. E. (2015). Beyond pheromones: evolving error-tolerant, flexible, and scalable ant-inspired robot swarms. <em>Swarm Intelligence</em>, 9(1), 43–70. <a href="https://doi.org/10.1007/s11721-015-0104-z" target="_blank" rel="noopener">doi:10.1007/s11721-015-0104-z</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>The Central-Place Foraging Algorithm (CPFA): a seed-harvester-ant-inspired swarm that explores outward from a single nest and returns resources to it, with search and recruitment parameters tuned by a genetic algorithm for error tolerance, flexibility, and scalability.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Coordinates search and retrieval around a single fixed nest with no energy budget &mdash; robots never run out of charge, so the central place is a collection point, not a survival constraint, and there is no peer energy transfer.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Lu, Q., Hecker, J. P., &amp; Moses, M. E. (2018). Multiple-place swarm foraging with dynamic depots. <em>Autonomous Robots</em>, 42(4), 909–926. <a href="https://doi.org/10.1007/s10514-017-9693-2" target="_blank" rel="noopener">doi:10.1007/s10514-017-9693-2</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Extends the CPFA to multiple collection zones and to <em>dynamic depots</em> that relocate toward the centroid of discovered resources, cutting travel cost and congestion; explicitly motivated by polydomous ants and other animals that keep several home sites.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Makes the central place plural and mobile &mdash; the spatial-infrastructure analog of the refueler shells &mdash; but the depots are collection points for retrieved resources, not energy sources, so there is still no battery state, no return-to-charge reachability, and no peer-to-peer transfer.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Encounter-driven self-assembly and role switching in robot swarms</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Kannapiran, S., Oikonomou, E., Chu, A., Berman, S., &amp; Pavlic, T. P. (2025). Ant-inspired walling strategies for scalable swarm separation: reinforcement learning approaches based on finite state machines. <em>arXiv preprint</em> arXiv:2510.22524. <a href="https://arxiv.org/abs/2510.22524" target="_blank" rel="noopener">arXiv:2510.22524</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Two decentralized, ant-inspired controllers that keep heterogeneous swarm subgroups spatially separated while running concurrent tasks: a finite-state-machine controller whose encounter-triggered transitions latch robots into a rigid wall, and an FSM-plus-Deep-Q-Network variant that learns to optimize separation through emergent buffer zones. Modeled on the temporary walls army ants raise to keep foraging trails from interfering.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The latched role is a separation wall, not an energy structure, so no battery, transfer, or depot enters. But it is the closest robotic precedent for the mechanism an emergent refueler caste would need — a local, encounter- or position-dependent trigger that converts a mobile worker into a held-station structural agent. Here that trigger would key off the help-feasibility graph, latching workers into refuelers (or into an energy-carrying "phalanx" reaching outward from the depot) where demand is highest.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
               <h4>Peer-to-peer wireless power transfer in mobile networks</h4>
 
               <div class="ref">
@@ -1388,6 +1481,14 @@ input[type="range"] {
                 </div>
                 <div class="annot"><span class="tag tag-what">What</span>Peer-reviewed treatment of "P2C2": a cloud-coordinated peer-to-peer on-the-move EV charging system in which surplus-charge EVs share energy with low-charge EVs while in motion, supplemented by mobile charging stations.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>Optimizes throughput and halts in an EV highway setting with centralized cloud matching; there is no formal safety invariant ("every car can still reach a station") and no notion of cooperative rendezvous-and-transfer as a depot-safety relaxation.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Daymude, J. J., Richa, A. W., &amp; Weber, J. W. (2021). Bio-inspired energy distribution for programmable matter. <em>22nd International Conference on Distributed Computing and Networking (ICDCN)</em>, 86–95. <a href="https://doi.org/10.1145/3427796.3427835" target="_blank" rel="noopener">doi:10.1145/3427796.3427835</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>A self-stabilizing distributed algorithm for energy distribution in active programmable matter (the amoebot model): the system draws from a single external source reachable by at least one module and relays charge module-to-module to keep the whole collective powered, with a sharing rule loosely inspired by metabolite signaling in <em>Bacillus subtilis</em> biofilms.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The closest sibling in spirit — one source feeding a collective through peer relay — but energy flows along a fixed lattice of adjacent modules rather than via agents crossing space, so there is no α·distance transfer cost and no return-to-depot reachability. It is the structural-graph analog of depot-plus-V2V without the spatial-mobility safety dimension added here.</div>
               </div>
             </div>
 
@@ -1453,6 +1554,14 @@ input[type="range"] {
                 <div class="annot"><span class="tag tag-what">What</span>Encodes connectivity-maintenance as a continuous nonsmooth CBF constraint compatible with arbitrary nominal multi-robot controllers.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>Closest methodological precedent — connects CBF and connectivity literatures — but the safe set is again topological connectivity, not energy reachability through cooperative peer-to-peer transfer.</div>
               </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Alamdar, K. G., &amp; Petrović, T. (2025). Decentralized battery-aware connectivity maintenance for multi-UAV missions. <em>IEEE Access</em>, 13, 83738–83751. <a href="https://doi.org/10.1109/ACCESS.2025.3569206" target="_blank" rel="noopener">doi:10.1109/ACCESS.2025.3569206</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Extends a classical algebraic-connectivity maintenance controller for multi-UAV teams by folding each agent's battery state into the connectivity control input, so that depleting agents bias the team's motion toward preserving the communication graph.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The controlled invariant is still communication connectivity, with battery only weighting it — energy is a constraint on staying connected, not a transferable resource, and there is no depot-return reachability or peer-to-peer donation.</div>
+              </div>
             </div>
 
             <div class="ref-section">
@@ -1464,6 +1573,14 @@ input[type="range"] {
                 </div>
                 <div class="annot"><span class="tag tag-what">What</span>Earliest formal treatment of "vehicle motion must preserve a graph-theoretic communication property" — uses a robust-connectivity measure and gradient flows over vehicle positions.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>The graph property is wireless link existence, not energy-help-feasibility; vehicles have no energy budget.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Konak, A. (2017). A distributed multi-agent algorithm for topology control in mobile ad-hoc networks. <em>18th International Conference on Advanced Robotics (ICAR)</em>, 244–249. <a href="https://doi.org/10.1109/ICAR.2017.8023525" target="_blank" rel="noopener">doi:10.1109/ICAR.2017.8023525</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>A decentralized algorithm in which autonomous agent-nodes reposition themselves to keep a mobile ad-hoc network connected, proactively augmenting the topology to forestall partitions without any central coordinator.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The invariant shepherded through motion is wireless-link connectivity; there is no energy state, transfer, or depot — the agents steer the communication graph rather than an energy budget.</div>
               </div>
             </div>
 
@@ -1485,18 +1602,18 @@ input[type="range"] {
                 <div class="annot"><span class="tag tag-what">What</span>Distributed synthesis where each agent solves a local CBF-QP that converges to the centralized solution of a state-dependent network optimization with safety constraints.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>Networked safety here means collision avoidance under formation-maintenance; no resource-coupling between agents.</div>
               </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Li, J., Wang, C., Li, B., Wei, Q., Song, L., &amp; Huang, D. (2025). Maintaining connectivity in coverage control: a distributed algebraic connectivity estimation approach using control barrier functions. <em>Aerospace Systems</em>, 1–11. <a href="https://doi.org/10.1007/s42401-025-00424-3" target="_blank" rel="noopener">doi:10.1007/s42401-025-00424-3</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Distributed coverage control that preserves persistent connectivity by treating algebraic connectivity (the Fiedler value of the communication Laplacian) as a control barrier function, holding it positive while a Voronoi partition optimizes area coverage.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The CBF-protected safe set is topological (λ₂ &gt; 0); the conserved resource is the communication graph, not energy, and no depot or return-home reachability appears — the same graph-CBF machinery this work redirects onto an energy invariant.</div>
+              </div>
             </div>
 
             <p style="margin-top: 14px;">
-              <strong>Synthesis of gaps.</strong> Despite the natural precedent above, the engineering literature has yet to formalize an analogous safety framework. Across the engineering categories above, no surveyed work simultaneously
-              provides (a) every robot performing both the primary task and donating energy, (b) safety as a closure
-              property of the energy-aware proximity graph rather than of individual agents, and (c) the CBF /
-              forward-invariance machinery lifted from a single-agent state variable to a network invariant. That
-              conjunction is the gap a contribution should aim to fill. The closest methodological precedent for the
-              lift is Ong–Capelli–Sabattini–Cortes 2023 (CBF on a network connectivity property); the closest
-              physical-system precedent is Chakraborty et al. 2022 (P2P energy transfer in motion). Combining the
-              two — with energy as the conserved network resource and a depot as the privileged sink — is the
-              territory.
+              <strong>Synthesis of gaps.</strong> Despite the natural precedent above, the engineering literature has yet to formalize an analogous safety framework. Across the engineering categories above, no surveyed work simultaneously provides (a) every robot performing both the primary task and donating energy, (b) safety as a closure property of the energy-aware proximity graph rather than of individual agents, and (c) the CBF / forward-invariance machinery lifted from a single-agent state variable to a network invariant. That conjunction is the gap a contribution should aim to fill. The closest methodological precedent for the lift is Ong–Capelli–Sabattini–Cortes 2023 (CBF on a network connectivity property); the closest physical-system precedent is Chakraborty et al. 2022 (P2P energy transfer in motion). Combining the two — with energy as the conserved network resource and a depot as the privileged sink — is the territory. Two further openings sit just past it. First, the depot need not be singular or fixed: central-place foraging theory and the multiple-/dynamic-depot algorithms point toward replicating or relocating the privileged sink, which is what the refueler shells begin to do. Second, the refueler role is assigned here in advance, whereas the self-assembly and encounter-driven walling literatures suggest it could instead emerge — a worker latching into a held-station refueler, or into an energy-carrying phalanx reaching outward from the depot, from nothing more than its position in the help-feasibility graph and the traffic through it. Neither is represented in the simulator, and neither needs to be, but both are where the biology points.
             </p>
           </div>
         </div>
