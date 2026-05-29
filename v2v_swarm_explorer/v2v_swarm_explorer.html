@@ -359,11 +359,13 @@ label[data-tooltip]:hover,
 .metric-group-header[data-tooltip]:hover {
   text-decoration-color: var(--accent);
 }
-[data-tooltip]:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: calc(100% + 6px);
-  right: 0;
+/* Tooltip box is rendered by JS as a single body-level element (.js-tooltip),
+   so it can never be clipped or mis-stacked by control-panel ancestors the way
+   a :hover::after pseudo-element can (and it works over SVG too). The affordance
+   styles above — dotted underline + help cursor — still apply. */
+.js-tooltip {
+  position: fixed;
+  z-index: 99999;
   background: var(--ink);
   color: var(--paper);
   padding: 8px 10px;
@@ -371,27 +373,14 @@ label[data-tooltip]:hover,
   font-family: 'IBM Plex Mono', monospace;
   font-size: 10.5px;
   font-weight: 400;
-  font-style: normal;
-  letter-spacing: 0;
-  text-transform: none;
-  text-decoration: none;
   line-height: 1.5;
-  white-space: normal;
-  width: 270px;
-  z-index: 1000;
+  max-width: 270px;
   pointer-events: none;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 0.08s ease;
 }
-[data-tooltip]:hover::before {
-  content: '';
-  position: absolute;
-  bottom: calc(100% + 1px);
-  right: 12px;
-  border: 5px solid transparent;
-  border-top-color: var(--ink);
-  z-index: 1000;
-  pointer-events: none;
-}
+.js-tooltip.show { opacity: 1; }
 .preset-desc {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 10.5px;
@@ -726,6 +715,7 @@ input[type="range"] {
           <div class="row"><span class="label">live</span><span class="value" id="liveval">0</span></div>
           <div class="row"><span class="label">pinned</span><span class="value" id="pinnedval">0</span></div>
           <div class="row"><span class="label">stranded</span><span class="value" id="strandedval">0</span></div>
+          <div class="row" title="Robots that depleted to SoC 0 and are immobilized in the field, awaiting revival by a passing robot's surplus. With a correct safety filter this should stay 0; a nonzero count flags a safety-invariant violation (usually the help graph fragmenting as a relied-on helper moved or spent its charge)."><span class="label">lost</span><span class="value" id="lostval">0</span></div>
         </div>
       </div>
 
@@ -742,7 +732,7 @@ input[type="range"] {
             <option value="refueler">Refueler architecture (external repletes)</option>
           </select>
         </div>
-        <div class="preset-desc" id="presetDesc">Widget defaults: N=12, α=0.0024 (~5 s endurance), worker V2V on, refuelers off, refuel target 50%. A balanced baseline — not optimized to highlight V2V. Recommended workflow: run ~60 simulated seconds, note the cumulative metrics, then switch to a contrast preset (or toggle Worker-to-worker V2V off) and rerun to see what V2V buys you.</div>
+        <div class="preset-desc" id="presetDesc">Widget defaults: N=12, α=0.0024 (~5 s endurance), worker V2V on, refuelers off, seek-charge threshold 25%. A balanced baseline — not optimized to highlight V2V. Recommended workflow: run ~60 simulated seconds, note the cumulative metrics, then switch to a contrast preset (or toggle Worker-to-worker V2V off) and rerun to see what V2V buys you.</div>
       </div>
       <div class="panel" id="runPanel">
         <h3>Run</h3>
@@ -754,6 +744,10 @@ input[type="range"] {
         <div class="toggle-row">
           <label for="coldStartToggle" title="On the next reset, all robots start at the depot with full SoC and radiate outward. Default is a warm-start ring with random SoC values consistent with already having walked out from the depot.">Cold-start from depot (on reset)</label>
           <input type="checkbox" id="coldStartToggle" class="checkbox">
+        </div>
+        <div class="toggle-row">
+          <label for="immobilizeToggle" title="When on, a robot whose SoC reaches 0 is immobilized where it stands (a real depletion failure) and counts as 'lost' until a passing robot with surplus revives it on contact. When off, depleted robots keep gliding to the depot for free (a forgiving visualization). With a correct safety filter the lost count should stay 0.">Immobilize on depletion (SoC = 0)</label>
+          <input type="checkbox" id="immobilizeToggle" class="checkbox" checked>
         </div>
         <div class="toggle-row">
           <label for="showDisks" title="For each robot, draw the disk of all positions it could physically drive to on its current battery (radius = SoC / α).">Reachable disks</label>
@@ -812,8 +806,8 @@ input[type="range"] {
           <input type="range" id="tmSlider" min="2" max="40" value="18" step="1">
         </div>
         <div class="slider-row">
-          <label title="Target SoC for a V2V receiver after donation. If above the low-SoC re-trigger threshold (0.25), the receiver resumes wandering after the transfer; otherwise it heads home. At the minimum, the chain-safety floor still applies.">V2V refuel target SoC <span class="val" id="rtsVal">50%</span></label>
-          <input type="range" id="rtsSlider" min="10" max="90" value="50" step="5">
+          <label title="When to get charge: a foraging robot commits to a return once its SoC drops below this. It then heads to the depot directly if it can, otherwise to the nearest feasible helper, taking only enough to get home (from a peer) or as much as a refueler will spare. The amount is set by need, never by a target SoC.">Seek-charge SoC threshold <span class="val" id="rtsVal">25%</span></label>
+          <input type="range" id="rtsSlider" min="10" max="60" value="25" step="5">
         </div>
         <div class="slider-row">
           <label title="Multiplier on simulation step rate. 1.0× is real-time at 60 fps. Higher values do more sim steps per frame; visualization rate is unchanged.">Sim speed <span class="val" id="sVal">1.0×</span></label>
@@ -849,6 +843,17 @@ input[type="range"] {
             <option value="orbit">Orbit (tangential drift, no tasks)</option>
             <option value="search">Search on leash (engage tasks within leash)</option>
           </select>
+        </div>
+        <div class="select-row" data-ref="dependent">
+          <label for="refuelerLogisticsSelect" title="How refuelers replenish. Self-resupply: a depleted refueler goes inward and pulls charge from the nearest refueler closer to the depot (or the depot). Bucket brigade: with two shells, the inner refuelers become dedicated couriers that shuttle depot → nearest needy outer refueler → depot, holding the outer shell topped so it never leaves station. In brigade mode inner couriers do NOT serve workers; with a single shell there are no couriers and it behaves like self-resupply.">Refueler logistics</label>
+          <select id="refuelerLogisticsSelect">
+            <option value="self">Self-resupply (outer pulls inward)</option>
+            <option value="brigade">Bucket brigade (inner couriers push out)</option>
+          </select>
+        </div>
+        <div class="toggle-row" data-ref="dependent">
+          <label for="stayInFieldToggle" title="After a worker tops up at a refueler, does it stay in the field and keep working (on) or head back to the depot anyway (off)? Worker-to-worker rescues always head home regardless, since they only carry enough to reach the depot.">Stay in field after refueler recharge</label>
+          <input type="checkbox" id="stayInFieldToggle" class="checkbox" checked>
         </div>
         <div class="toggle-row" data-ref="dependent">
           <label for="showShellsToggle" title="Draw dashed orange rings at the shell radii. Persistent even when refuelers are temporarily home charging, so the structural intent of the architecture stays visible.">Show shell positions</label>
@@ -1079,7 +1084,7 @@ input[type="range"] {
             </p>
             <p>
               When SoC drops below a threshold, the robot commits to a return: it heads straight for the depot if
-              possible, otherwise toward the helper with the largest surplus. On reaching a helper, the helper
+              possible, otherwise toward the nearest helper that can feasibly cover its deficit. On reaching a helper, the helper
               transfers just enough charge to make the receiver directly safe (with a small margin), then heads home.
               Task engagement burns extra energy; if engaging would push the robot off the safe set, it abstains and
               the encounter counts as a <strong>missed opportunity</strong>. The robot then ignores that particular
@@ -1526,15 +1531,16 @@ const state = {
   taskEnergyCost: 0.18,
   rechargeRate: 0.004,
   baseStep: 1.4,
+  // Seek-charge threshold: a foraging robot commits to a return (heading home if
+  // it can reach the depot directly, otherwise to the nearest feasible helper)
+  // once its SoC falls below this. This is the "when to get charge" decision; the
+  // *amount* taken is never a target SoC — it is set by need (enough to get home
+  // from a peer, or as much as a refueler will spare).
   lowSocThreshold: 0.25,
-  // V2V refuel target: at a V2V rendezvous, the donation is sized to bring the
-  // receiver's SoC up to this target — at minimum the chain-safety floor, at
-  // most what the helper can afford. If the resulting SoC is above the low-SoC
-  // re-trigger threshold, the receiver resumes wandering (stays in the field)
-  // rather than heading home. This is the ant-like "top up and keep working"
-  // dynamic: at low values (≤ lowSocThreshold) V2V is purely a safe-return
-  // mechanism; at higher values it enables sustained field presence.
-  refuelTargetSoc: 0.50,
+  // After a worker tops up at a refueler, does it stay in the field and keep
+  // working (true) or head home anyway (false)? Worker-to-worker rescues always
+  // head home regardless — they only ever carry enough to reach the depot.
+  stayInFieldAfterRefuel: true,
   metrics: {
     tasksDone: 0,
     tasksExpired: 0,
@@ -1564,6 +1570,30 @@ const state = {
   refuelerFrac: 0.30,                // fraction of swarm assigned as refuelers
   shellMode: 'single',                // 'single' | 'double33'
   refuelerMotion: 'static',           // 'static' | 'orbit' | 'search'
+  // Refuelers hold a deeper reserve than foragers. A worker heads home when it
+  // can just barely still reach the depot (reserve ≈ α·d). A refueler must retain
+  // enough to (a) get itself home AND (b) hand a near-empty robot at its station
+  // enough to get home too — roughly 2·α·d_station, i.e. twice a forager's own
+  // one-way cost. A refueler seeks resupply once SoC drops below this. Note that
+  // for the outer 0.67× shell 2·α·d ≈ 0.67 ≈ the most it can ever arrive holding
+  // (1 − α·d ≈ 0.665), so that shell rides the edge of viability by design.
+  refuelerReserveFactor: 2,
+  // When true, a robot whose SoC hits 0 is immobilized where it stands (a real
+  // depletion failure) rather than gliding home for free. It can only be revived
+  // by a robot with surplus that comes into contact. With a correct safety
+  // filter and a static help graph nothing should ever immobilize; depletions
+  // are the signal that the graph fragmented (a relied-on helper moved or spent
+  // its charge). This is the failure metric the safety guarantee is judged by.
+  immobilizeOnEmpty: true,
+  // Refueler resupply logistics:
+  //   'self'    — a depleted refueler goes inward and pulls charge from the
+  //               nearest refueler closer to the depot (or the depot itself).
+  //   'brigade' — with ≥2 shells, inner refuelers become dedicated couriers that
+  //               shuttle depot → nearest needy outer refueler → depot, holding
+  //               the outer shell topped so it never has to leave station. Inner
+  //               couriers do NOT serve workers. With a single shell there are no
+  //               couriers and this falls back to 'self'.
+  refuelerLogistics: 'self',
   showShells: true,                   // whether to draw dashed shell reference circles
   helpEdges: [],
   feasibilityEdges: [],
@@ -1630,6 +1660,25 @@ function activeShells() {
   return [0.33, 0.67]; // 'double33'
 }
 
+// Brigade roles. In 'brigade' logistics with ≥2 shells, refuelers on the
+// outermost shell are SERVERS (hold station, serve workers, get fed in place);
+// all inner refuelers are COURIERS (shuttle depot → needy server → depot, no
+// worker service). With a single shell there are no couriers — everyone is a
+// server and falls back to self-resupply.
+function maxShellFrac() {
+  const sh = activeShells();
+  return Math.max.apply(null, sh);
+}
+function isBrigade() {
+  return state.refuelerLogistics === 'brigade' && activeShells().length >= 2;
+}
+function isCourier(r) {
+  return r.kind === 'refueler' && isBrigade() && r.shellFrac < maxShellFrac();
+}
+function isServer(r) {
+  return r.kind === 'refueler' && isBrigade() && r.shellFrac >= maxShellFrac();
+}
+
 function initRobots(n) {
   state.robots = [];
   state.tasks = [];
@@ -1684,14 +1733,16 @@ function initRobots(n) {
         y = DEPOT.y + (rng() - 0.5) * j2 * 2;
         soc = 1.0;
       } else {
-        // Spawn at station with small jitter, with SoC in [α·d_station, 1 − α·d_station]
+        // Spawn at station with small jitter. SoC = full minus the energy spent
+        // driving out from the depot to the station: a refueler launches from the
+        // depot topped off and arrives holding exactly (1 − α·d_station). That is
+        // the physical maximum it can carry at station while still able to return,
+        // so it starts with the largest possible donatable surplus, 1 − 2·α·d.
         const stationR = soloR * shellFrac;
         x = DEPOT.x + Math.cos(stationAngle) * stationR + (rng() - 0.5) * 8;
         y = DEPOT.y + Math.sin(stationAngle) * stationR + (rng() - 0.5) * 8;
         const dActual = Math.hypot(x - DEPOT.x, y - DEPOT.y);
-        const minSoc = state.alpha * dActual;
-        const maxSoc = Math.max(minSoc + 0.05, 1 - state.alpha * dActual);
-        soc = minSoc + rng() * (maxSoc - minSoc);
+        soc = Math.max(0.05, 1 - state.alpha * dActual);
       }
       state.robots.push({
         id: robotIdx, x, y, soc,
@@ -1756,6 +1807,7 @@ function isDirectSafe(p, b) {
 // The two toggles are independent, so the simulator supports four regimes:
 // pure solo, refuelers-only, worker-to-worker only, and the full hybrid.
 function isHelperEligible(j) {
+  if (isCourier(j)) return false; // brigade couriers serve only outer refuelers
   if (j.kind === 'refueler') return state.refuelerEnabled;
   return state.v2v;
 }
@@ -1850,9 +1902,17 @@ function computeSafetyDepths() {
 }
 
 function bestHelper(p_i, b_i, exclude_id) {
+  // Among helpers that can feasibly cover i's deficit (canChainHelp), pick the
+  // NEAREST to the receiver rather than the one with the most surplus. Max-surplus
+  // selection was distance-blind: an inner-shell refueler always has more surplus
+  // than an outer one (it reserves less to get itself home), so workers stranded
+  // beside an outer refueler would drive all the way back to the inner shell,
+  // leaving the outer shell structurally unused. Nearest-feasible sends each
+  // worker to its closest viable savior, so both shells serve the workers around
+  // them. Feasibility/safety is unchanged — only the tie-break among safe options.
   const depths = state.safetyDepths || [];
   let best = null;
-  let bestSurplus = -Infinity;
+  let bestDist = Infinity;
   for (const j of state.robots) {
     if (j.id === exclude_id) continue;
     if (!isHelperEligible(j)) continue;
@@ -1860,9 +1920,34 @@ function bestHelper(p_i, b_i, exclude_id) {
     if (j.pinnedBy !== null && j.pinnedBy !== undefined) continue;
     if (j.mode === 'home' || j.mode === 'docked' || j.mode === 'helper') continue;
     if (canChainHelp(p_i, b_i, exclude_id, j, depths)) {
-      const s = j.soc - state.alpha * dist(j, DEPOT);
-      if (s > bestSurplus) { bestSurplus = s; best = j; }
+      const dd = dist(p_i, j);
+      if (dd < bestDist) { bestDist = dd; best = j; }
     }
+  }
+  return best;
+}
+
+// Bucket-brigade resupply source for a depleted refueler. Rather than commute
+// all the way back to the depot, a refueler pulls charge inward from the nearest
+// refueler that sits CLOSER to the depot and still has surplus to give — so
+// energy radiates outward depot → inner shell → outer shell in short hops. The
+// search is pull-based: a depleted outer refueler cannot signal inward, it must
+// go in and find a charged inner one. Returns null when no closer-in refueler can
+// help (e.g. an inner refueler, which then falls back to a depot recharge run).
+function bestResupplySource(r) {
+  const dR = dist(r, DEPOT);
+  let best = null, bestDist = Infinity;
+  for (const j of state.robots) {
+    if (j.id === r.id) continue;
+    if (j.kind !== 'refueler') continue;             // only refuelers relay charge
+    if (j.mode === 'docked' || j.mode === 'home') continue;
+    if (j.pinnedBy !== null && j.pinnedBy !== undefined) continue;
+    const dJ = dist(j, DEPOT);
+    if (dJ >= dR - 1) continue;                       // must sit meaningfully inward
+    if (j.soc - state.alpha * dJ <= 0.05) continue;   // negligible surplus to give
+    const dij = dist(r, j);
+    if (r.soc < state.alpha * dij) continue;          // r can't even reach j
+    if (dij < bestDist) { bestDist = dij; best = j; }
   }
   return best;
 }
@@ -1981,7 +2066,66 @@ function pickLocalWaypoint(r) {
 }
 
 // ─── Per-robot step ─────────────────────────────────────────────────────────
+// Brigade courier: an inner refueler that ferries charge from the depot out to
+// the nearest needy outer (server) refueler and back. It does not serve workers.
+// Sets r.target; transfers on contact; returns home to recharge after a delivery
+// or whenever it is not topped off. With same-speed agents the courier easily
+// overtakes a slowly orbiting server, so we let it chase the server's live
+// position rather than pinning it (pinning would distort orbit spacing).
+function moveCourierBrigade(r) {
+  if (r.courierPhase === undefined) r.courierPhase = 'load';
+
+  // ── Deliver phase: committed to a server; chase it and transfer on contact ──
+  // Crucially the courier does NOT abort just because its SoC drops in transit —
+  // it commits to the run once it leaves the depot full, and only the reach-and-
+  // return feasibility check at selection time keeps that safe.
+  if (r.courierPhase === 'deliver') {
+    const tgt = (r.courierTargetId != null) ? state.robots[r.courierTargetId] : null;
+    const full = tgt ? Math.min(1.0, 1 - state.alpha * dist(tgt, DEPOT)) : 0;
+    if (!tgt || tgt.dead || !isServer(tgt) || tgt.soc >= full - 0.02) {
+      // Target vanished or got topped by another courier: abandon, go recharge.
+      r.courierPhase = 'load'; r.courierTargetId = null;
+      r.mode = 'home'; r.target = { x: DEPOT.x, y: DEPOT.y };
+      return;
+    }
+    r.target = { x: tgt.x, y: tgt.y }; // chase live position (handles orbiting servers)
+    if (dist(r, tgt) < ROBOT_R * 2.5) {
+      const need = Math.max(0, full - tgt.soc);
+      const canGive = r.soc - state.alpha * dist(r, DEPOT) - 0.05; // keep enough to get home
+      const x = Math.max(0, Math.min(need, canGive));
+      if (x > 0) { r.soc -= x; tgt.soc += x; }
+      r.courierPhase = 'load'; r.courierTargetId = null;
+      r.mode = 'home'; r.target = { x: DEPOT.x, y: DEPOT.y };
+    }
+    return;
+  }
+
+  // ── Load phase: top off at the depot, then commit to the nearest needy server ──
+  if (r.soc < 0.95) {
+    r.mode = 'home'; r.target = { x: DEPOT.x, y: DEPOT.y };
+    return;
+  }
+  let tgt = null, bestD = Infinity;
+  for (const s of state.robots) {
+    if (!isServer(s) || s.dead) continue;
+    const dS = dist(s, DEPOT);
+    const full = Math.min(1.0, 1 - state.alpha * dS);
+    if (s.soc >= full - 0.05) continue;                  // already topped
+    const dThere = dist(r, s);
+    if (r.soc < state.alpha * (dThere + dS)) continue;   // must reach it AND get home
+    if (dThere < bestD) { bestD = dThere; tgt = s; }
+  }
+  if (!tgt) { r.mode = 'wander'; r.target = { x: DEPOT.x, y: DEPOT.y }; return; }
+  r.courierPhase = 'deliver';
+  r.courierTargetId = tgt.id;
+  r.mode = 'wander';
+  r.target = { x: tgt.x, y: tgt.y };
+}
+
 function moveRobot(r) {
+  // ── Immobilized: depleted in the field, frozen until revived by contact ──
+  if (r.dead) return;
+
   // ── Docked: parked at depot, recharging, no motion at all ──
   if (r.mode === 'docked') {
     r.soc = Math.min(1.0, r.soc + state.rechargeRate);
@@ -2023,7 +2167,36 @@ function moveRobot(r) {
   }
 
   // ── Mode transitions on low SoC ──
-  if (r.soc < state.lowSocThreshold && r.mode === 'wander') {
+  // Brigade couriers manage their own recharge (in moveCourierBrigade) and
+  // brigade servers wait in place to be fed by couriers, so neither runs the
+  // self-resupply trigger. Self-resupply refuelers use a distance-aware reserve
+  // (refuelerReserveFactor·α·d_station) so an outer refueler — whose own home
+  // cost exceeds the forager threshold — actually triggers a refill instead of
+  // stalling just above its self-rescue floor. Workers use the flat threshold.
+  if (r.kind === 'refueler') {
+    if (!isBrigade()) {
+      // Self-resupply logistics (also the single-shell fallback).
+      const st = refuelerStation(r) || r;
+      const trig = state.refuelerReserveFactor * state.alpha * dist(st, DEPOT);
+      if (r.soc < trig && r.mode === 'wander' && anyV2VActive()) {
+        // Pull charge inward from the nearest charged refueler closer to the
+        // depot; commute to the depot only if none is available (the innermost
+        // shell always lands here, which is correct — it recharges at the source).
+        const src = bestResupplySource(r);
+        if (src) {
+          r.mode = 'helper';
+          r.helperId = src.id;
+          r.target = { x: src.x, y: src.y };
+          src.pinnedBy = r.id;
+          src.target = null;
+        } else {
+          r.mode = 'home';
+          r.target = { x: DEPOT.x, y: DEPOT.y };
+        }
+      }
+    }
+    // Brigade couriers/servers: no self-resupply trigger here.
+  } else if (r.soc < state.lowSocThreshold && r.mode === 'wander') {
     if (isDirectSafe(r, r.soc)) {
       r.mode = 'home';
       r.target = { x: DEPOT.x, y: DEPOT.y };
@@ -2082,16 +2255,12 @@ function moveRobot(r) {
       // h is frozen by pinning, so its position is stable
       r.target = { x: h.x, y: h.y };
       if (dist(r, h) < ROBOT_R * 2.5) {
-        // Charge transfer on contact (multi-hop economy with optional
-        // field-stay top-up).
+        // Charge transfer on contact.
         //
-        // safeNeed: minimum donation that leaves r safe-at-some-depth from p_h.
+        // safeNeed: minimum donation that leaves r safe-at-some-depth from p_h
         //   = enough to reach the closer of {depot, nearest other chain peer}.
-        // targetX: how much r would need to reach the user-configured
-        //   refuelTargetSoc, which controls whether r heads home or keeps
-        //   working after the transfer.
-        // desiredX = max(safeNeed, targetX). Capped by canGive (helper's
-        //   surplus over its own depot-return).
+        // The actual draw (below) is safeNeed for a worker-to-worker rescue, or
+        // as much as the source can spare for a refueler top-up.
         const depths = state.safetyDepths || [];
         const homeNeed = state.alpha * dist(h, DEPOT) - r.soc;
         let minNeed = homeNeed;
@@ -2105,21 +2274,34 @@ function moveRobot(r) {
           if (kNeed < minNeed) minNeed = kNeed;
         }
         const safeNeed = Math.max(0, minNeed + 0.05);
-        const targetX = Math.max(0, state.refuelTargetSoc - r.soc);
-        const desiredX = Math.max(safeNeed, targetX);
+        // The amount drawn is set by need and source, never by a target SoC:
+        //   · from a refueler (or a refueler resupplying itself) → take as much as
+        //       the source can spare (fill toward full, capped by canGive). This is
+        //       the "gas station" top-up that lets a worker stay in the field.
+        //   · worker-to-worker → take only safeNeed: exactly enough to reach the
+        //       depot (or the next chain hop). Peers are an anti-stranding safety
+        //       net, not a field-stay provider.
+        const fromRefueler = (h.kind === 'refueler');
+        const desiredX = (fromRefueler || r.kind === 'refueler')
+          ? Math.max(safeNeed, 1.0 - r.soc)   // take all the source allows
+          : safeNeed;                          // worker→worker: just get home
         const canGive = h.soc - state.alpha * dist(h, DEPOT) - 0.02;
         const x = Math.max(0, Math.min(desiredX, canGive));
         if (x > 0) {
           h.soc -= x;
           r.soc += x;
         }
-        // Decide r's next mode. With a buffer above lowSocThreshold to avoid
-        // immediate re-trigger flapping: if r has clearly more than the
-        // low-SoC threshold, it can resume working in the field. Otherwise
-        // it heads home (and may chain-V2V on the way via the home-mode
-        // re-trigger).
-        const fieldResumeFloor = state.lowSocThreshold + 0.10;
-        if (r.soc > fieldResumeFloor) {
+        // Next mode is set by the kind of help, not by the resulting SoC:
+        //   · a refueler that just resupplied returns to its station (wander).
+        //   · a worker topped up at a refueler stays in the field if the
+        //       stay-in-field option is on; otherwise it heads home.
+        //   · a worker rescued by a peer took only enough to get home, so it heads
+        //       home (to fully recharge at the depot) — never lingers in the field.
+        let stayOut;
+        if (r.kind === 'refueler') stayOut = true;
+        else if (fromRefueler) stayOut = state.stayInFieldAfterRefuel;
+        else stayOut = false;
+        if (stayOut) {
           r.mode = 'wander';
           r.target = null;
           r.phase = 'transit';
@@ -2143,7 +2325,10 @@ function moveRobot(r) {
 
   // ── Wander mode: refueler station-holding OR worker Levy walk ──
   if (r.mode === 'wander') {
-    if (r.kind === 'refueler') {
+    if (isCourier(r)) {
+      // Brigade courier: shuttle charge from the depot out to needy servers.
+      moveCourierBrigade(r);
+    } else if (r.kind === 'refueler') {
       // Refuelers have three motion modes:
       //   'static' — hold the station point exactly (target = station, snap-clamp
       //              in step prevents jiggle).
@@ -2257,6 +2442,25 @@ function moveRobot(r) {
   r.y += stepY;
   r.soc = Math.max(0, r.soc - state.alpha * step);
 
+  // Depletion failure: out of charge in the field. Freeze in place, drop any
+  // pinning relationships, and wait to be revived by a passing robot's surplus.
+  if (state.immobilizeOnEmpty && r.soc <= 1e-6) {
+    r.dead = true;
+    r.mode = 'dead';
+    r.target = null;
+    if (r.helperId !== null && r.helperId !== undefined) {
+      const h = state.robots[r.helperId];
+      if (h && h.pinnedBy === r.id) h.pinnedBy = null;
+      r.helperId = null;
+    }
+    if (r.pinnedBy !== null && r.pinnedBy !== undefined) {
+      const recv = state.robots[r.pinnedBy];
+      if (recv && recv.helperId === r.id) { recv.helperId = null; recv.mode = 'wander'; }
+      r.pinnedBy = null;
+    }
+    return;
+  }
+
   // Cooldown decay
   if (r.taskCooldown > 0) r.taskCooldown--;
 
@@ -2317,6 +2521,30 @@ function step() {
   state.t += dt;
   updateTasks();
   for (const r of state.robots) moveRobot(r);
+  // Contact revival: a depleted (dead) robot can be brought back by any robot
+  // that comes within transfer range and has surplus over its own depot-return.
+  // Opportunistic mutual aid — no dispatch — so a death in a trafficked area is
+  // recoverable while an isolated one is permanent (the honest outcome).
+  if (state.immobilizeOnEmpty) {
+    for (const d of state.robots) {
+      if (!d.dead) continue;
+      for (const j of state.robots) {
+        if (j === d || j.dead) continue;
+        if (dist(j, d) > ROBOT_R * 2.5) continue;
+        const give = j.soc - state.alpha * dist(j, DEPOT) - 0.02;
+        if (give <= 0.02) continue;
+        const need = state.alpha * dist(d, DEPOT) + 0.05; // enough to reach depot, small margin
+        const x = Math.min(give, need);
+        if (x <= 0) continue;
+        j.soc -= x;
+        d.soc += x;
+        d.dead = false;
+        d.mode = 'home';
+        d.target = { x: DEPOT.x, y: DEPOT.y };
+        break;
+      }
+    }
+  }
   updateRoles();
   // Time-integrated population statistics. dt is simulated time per step;
   // accumulation runs only when step() runs, so paused wall-time doesn't
@@ -2667,6 +2895,23 @@ function drawTasks() {
 
 function drawRobots() {
   for (const r of state.robots) {
+    // Immobilized (depleted) robot: a muted gray disk with an ✕, no SoC ring.
+    if (r.dead) {
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, ROBOT_R, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(120, 120, 120, 0.30)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(90, 90, 90, 0.75)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(70, 70, 70, 0.95)';
+      ctx.font = '600 10px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✕', r.x, r.y + 0.5);
+      ctx.textBaseline = 'alphabetic';
+      continue;
+    }
     let fill, stroke;
     if (r.role === 'safe') { fill = '#b8d4c2'; stroke = '#4a8060'; }
     else if (r.role === 'v2v') { fill = '#f3d4b3'; stroke = '#d97e3b'; }
@@ -2763,7 +3008,7 @@ function computeMetrics() {
   // and directly comparable to the dashed circle on screen.
   const soloR = 1 / (2 * state.alpha);
   let max = 0, socSum = 0, v2vCount = 0, stranded = 0, pinned = 0, pastSolo = 0;
-  let nForagers = 0, socSumSearch = 0, socSumRef = 0, nRef = 0;
+  let nForagers = 0, socSumSearch = 0, socSumRef = 0, nRef = 0, lost = 0;
   // Reach stats (max, pastSolo) use the foraging population only — refuelers are
   // anchored and excluded. Mean SoC is split: searchers vs refuelers, since a
   // blended mean is dominated by whichever population is larger and conflates a
@@ -2771,6 +3016,7 @@ function computeMetrics() {
   // stranded, pinned) stay over the whole swarm.
   for (const r of rs) {
     socSum += r.soc;
+    if (r.dead) lost++;
     if (r.role === 'v2v') v2vCount++;
     if (r.role === 'stranded') stranded++;
     if (r.pinnedBy !== null) pinned++;
@@ -2805,6 +3051,7 @@ function computeMetrics() {
     meanSoc: nForagers > 0 ? ((socSumSearch / nForagers) * 100).toFixed(0) + '%' : '—',
     meanSocRef: nRef > 0 ? ((socSumRef / nRef) * 100).toFixed(0) + '%' : null,
     refuelerN: nRef,
+    lost,
     live: rs.length,
   };
 }
@@ -2953,6 +3200,7 @@ function loop() {
   document.getElementById('liveval').textContent = m.live;
   document.getElementById('pinnedval').textContent = m.pinned;
   document.getElementById('strandedval').textContent = m.stranded;
+  document.getElementById('lostval').textContent = m.lost;
   requestAnimationFrame(loop);
 }
 
@@ -3009,6 +3257,7 @@ $('showTasks').addEventListener('change', (e) => { state.showTasks = e.target.ch
 $('showSafeSets').addEventListener('change', (e) => { state.showSafeSets = e.target.checked; });
 $('showSoloReach').addEventListener('change', (e) => { state.showSoloReach = e.target.checked; });
 $('coldStartToggle').addEventListener('change', (e) => { state.coldStart = e.target.checked; });
+$('immobilizeToggle').addEventListener('change', (e) => { state.immobilizeOnEmpty = e.target.checked; });
 
 // Refueler-role controls. The master toggle, fraction slider, and shell-mode
 // select all trigger an initRobots() so the new assignment takes effect
@@ -3036,6 +3285,13 @@ $('shellModeSelect').addEventListener('change', (e) => {
 $('refuelerMotionSelect').addEventListener('change', (e) => {
   state.refuelerMotion = e.target.value;
 });
+$('refuelerLogisticsSelect').addEventListener('change', (e) => {
+  state.refuelerLogistics = e.target.value;
+  if (state.refuelerEnabled) initRobots(state.robots.length);
+});
+$('stayInFieldToggle').addEventListener('change', (e) => {
+  state.stayInFieldAfterRefuel = e.target.checked;
+});
 $('showShellsToggle').addEventListener('change', (e) => {
   state.showShells = e.target.checked;
 });
@@ -3062,7 +3318,7 @@ $('sSlider').addEventListener('input', (e) => {
   $('sVal').textContent = state.speed.toFixed(1) + '×';
 });
 $('rtsSlider').addEventListener('input', (e) => {
-  state.refuelTargetSoc = parseInt(e.target.value) / 100;
+  state.lowSocThreshold = parseInt(e.target.value) / 100;
   $('rtsVal').textContent = e.target.value + '%';
 });
 $('tpSlider').addEventListener('input', (e) => {
@@ -3082,30 +3338,33 @@ $('tpSlider').addEventListener('input', (e) => {
 const PRESETS = {
   'default': {
     n: 12, alpha: 0.0024, taskRate: 0.06, taskEnergyCost: 0.18,
-    refuelTargetSoc: 0.50,
+    lowSocThreshold: 0.25,
     v2v: true,
     refuelerEnabled: false, refuelerFrac: 0.30,
     shellMode: 'single', refuelerMotion: 'static',
-    ferryHome: false, coldStart: false,
+    refuelerLogistics: 'self', ferryHome: false, coldStart: false,
   },
   'range-ext': {
     n: 20, alpha: 0.0040, taskRate: 0.06, taskEnergyCost: 0.18,
-    refuelTargetSoc: 0.40,
+    lowSocThreshold: 0.25,
     v2v: true,
     refuelerEnabled: false,
   },
   'field-stay': {
-    n: 15, alpha: 0.0028, taskRate: 0.06, taskEnergyCost: 0.18,
-    refuelTargetSoc: 0.75,
+    // Field presence now comes from gas stations, not generous peer top-ups:
+    // a single refueler shell lets workers stay out (stay-in-field on by default).
+    n: 18, alpha: 0.0040, taskRate: 0.06, taskEnergyCost: 0.18,
+    lowSocThreshold: 0.30,
     v2v: true,
-    refuelerEnabled: false,
+    refuelerEnabled: true, refuelerFrac: 0.30,
+    shellMode: 'single', refuelerMotion: 'static', refuelerLogistics: 'self',
   },
   'refueler': {
     n: 20, alpha: 0.0040, taskRate: 0.06, taskEnergyCost: 0.18,
-    refuelTargetSoc: 0.50,
+    lowSocThreshold: 0.25,
     v2v: false,
     refuelerEnabled: true, refuelerFrac: 0.30,
-    shellMode: 'double33', refuelerMotion: 'static',
+    shellMode: 'double33', refuelerMotion: 'static', refuelerLogistics: 'self',
   },
 };
 
@@ -3129,10 +3388,10 @@ function applyPreset(name) {
     $('tmSlider').value = Math.round(p.taskEnergyCost * 100);
     $('tmVal').textContent = p.taskEnergyCost.toFixed(2);
   }
-  if (p.refuelTargetSoc !== undefined) {
-    state.refuelTargetSoc = p.refuelTargetSoc;
-    $('rtsSlider').value = Math.round(p.refuelTargetSoc * 100);
-    $('rtsVal').textContent = Math.round(p.refuelTargetSoc * 100) + '%';
+  if (p.lowSocThreshold !== undefined) {
+    state.lowSocThreshold = p.lowSocThreshold;
+    $('rtsSlider').value = Math.round(p.lowSocThreshold * 100);
+    $('rtsVal').textContent = Math.round(p.lowSocThreshold * 100) + '%';
   }
   if (p.refuelerFrac !== undefined) {
     state.refuelerFrac = p.refuelerFrac;
@@ -3147,6 +3406,10 @@ function applyPreset(name) {
   if (p.refuelerMotion !== undefined) {
     state.refuelerMotion = p.refuelerMotion;
     $('refuelerMotionSelect').value = p.refuelerMotion;
+  }
+  if (p.refuelerLogistics !== undefined) {
+    state.refuelerLogistics = p.refuelerLogistics;
+    $('refuelerLogisticsSelect').value = p.refuelerLogistics;
   }
   // Booleans.
   if (p.v2v !== undefined) {
@@ -3182,10 +3445,10 @@ function applyPreset(name) {
 // Each one summarizes the configuration AND what to look for, so the user
 // knows which metrics will best reveal the dynamic that preset is showing.
 const PRESET_DESCRIPTIONS = {
-  'default': 'Widget defaults: N=12, α=0.0024 (~5 s endurance), worker V2V on, refuelers off, refuel target 50%. A balanced baseline — not optimized to highlight V2V. Recommended workflow: run ~60 simulated seconds, note the cumulative metrics, then switch to a contrast preset (or toggle Worker-to-worker V2V off) and rerun to see what V2V buys you.',
-  'range-ext': 'N=20, α=0.0040 (~3 s endurance; solo-reach ≈ 125 px), worker V2V on, refuelers off, refuel target 40%. Solo-reach is tight enough that ~73% of tasks now spawn beyond it — V2V is doing real work. Contrast: turn worker V2V off and rerun; watch Tasks done, Peak reach, and Tasks expired diverge.',
-  'field-stay': 'N=15, α=0.0028 (moderate), worker V2V on, refuelers off, refuel target 75% (high). V2V donations are large enough that receivers resume wandering after a transfer rather than heading home. Contrast: drop refuel target to 25% and rerun; watch Time at outer 80% — the dwell-time metric — drop noticeably.',
-  'refueler': 'N=20, α=0.0040, worker-to-worker V2V off, refueler role on with 30% of swarm at double shells 0.33× and 0.67× (static motion), refuel target 50%. The cleanest external-repletes demo — only refuelers can give V2V. Turn on Help-feasibility edges to see the bipartite chain pattern; watch Mean reach and Time at outer 80%.',
+  'default': 'Widget defaults: N=12, α=0.0024 (~5 s endurance), worker V2V on, refuelers off, seek-charge threshold 25%. A balanced baseline — not optimized to highlight V2V. Recommended workflow: run ~60 simulated seconds, note the cumulative metrics, then switch to a contrast preset (or toggle Worker-to-worker V2V off) and rerun to see what V2V buys you.',
+  'range-ext': 'N=20, α=0.0040 (~3 s endurance; solo-reach ≈ 125 px), worker V2V on, refuelers off, seek-charge threshold 25%. Solo-reach is tight enough that ~73% of tasks now spawn beyond it — V2V is doing real work as a safe-return net (peers give only enough to get home). Contrast: turn worker V2V off and rerun; watch Tasks done, Peak reach, and Tasks expired diverge.',
+  'field-stay': 'N=18, α=0.0040, worker V2V on (safe-return net) plus a single refueler shell at 0.5× solo-reach with stay-in-field on. Field presence here is provided by the gas-station shell, not by peer top-ups — a worker that tops up at a refueler keeps working instead of returning. Contrast: toggle "Stay in field after refueler recharge" off and watch Time at outer 80% drop.',
+  'refueler': 'N=20, α=0.0040, worker-to-worker V2V off, refueler role on with 30% of swarm at double shells 0.33× and 0.67× (static), self-resupply logistics. The cleanest external-repletes demo — only refuelers can give V2V. Switch Refueler logistics to "Bucket brigade" to see inner refuelers turn into couriers that feed the outer shell in place. Turn on Help-feasibility edges; watch Mean reach and Time at outer 80%.',
 };
 
 function applyPresetByName(name) {
@@ -4530,15 +4793,52 @@ document.getElementById('btnCopyCode').addEventListener('click', copyCode);
 document.getElementById('btnDownloadCode').addEventListener('click', downloadCode);
 
 // ─── Tooltip wiring ─────────────────────────────────────────────────────────
-// Migrate every `title` attribute to `data-tooltip` so the custom CSS
-// tooltip styling takes effect (and the slow native browser tooltip doesn't
-// race ours). Done as a single pass at load.
+// Migrate every `title` attribute to `data-tooltip` (avoids the slow native
+// browser tooltip and lets us render our own).
 document.querySelectorAll('[title]').forEach((el) => {
   const t = el.getAttribute('title');
   if (!t) return;
   el.setAttribute('data-tooltip', t);
   el.removeAttribute('title');
 });
+
+// Render the tooltip as a single body-level floating element positioned near the
+// cursor. Delegated listeners cover every [data-tooltip] (including any added
+// later and SVG elements), and a fixed, body-level box is immune to the ancestor
+// clipping / stacking that can silently swallow a :hover::after pseudo-element.
+(function initTooltips() {
+  const tip = document.createElement('div');
+  tip.className = 'js-tooltip';
+  document.body.appendChild(tip);
+  let current = null;
+  function place(e) {
+    const pad = 14;
+    const r = tip.getBoundingClientRect();
+    let x = e.clientX + pad, y = e.clientY + pad;
+    if (x + r.width > window.innerWidth - 8) x = e.clientX - r.width - pad;
+    if (y + r.height > window.innerHeight - 8) y = e.clientY - r.height - pad;
+    tip.style.left = Math.max(8, x) + 'px';
+    tip.style.top = Math.max(8, y) + 'px';
+  }
+  document.addEventListener('mouseover', (e) => {
+    const t = e.target.closest ? e.target.closest('[data-tooltip]') : null;
+    if (!t) return;
+    if (t !== current) {
+      current = t;
+      tip.textContent = t.getAttribute('data-tooltip') || '';
+      tip.classList.add('show');
+    }
+    place(e);
+  });
+  document.addEventListener('mousemove', (e) => { if (current) place(e); });
+  document.addEventListener('mouseout', (e) => {
+    if (!current) return;
+    const to = e.relatedTarget;
+    if (to && (current === to || current.contains(to))) return;
+    current = null;
+    tip.classList.remove('show');
+  });
+})();
 
 initRobots(12);
 updateRefuelerDependentStyling();
