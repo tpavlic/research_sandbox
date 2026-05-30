@@ -120,6 +120,7 @@ aside { grid-area: aside; }
       "presetsArea"
       "runArea"
       "paramsArea"
+      "hesitationArea"
       "refuelerArea"
       "socArea"
       "metrics"
@@ -130,6 +131,7 @@ aside { grid-area: aside; }
   #presetsPanel  { grid-area: presetsArea; }
   #runPanel      { grid-area: runArea; }
   #paramsPanel   { grid-area: paramsArea; }
+  #hesitationPanel { grid-area: hesitationArea; }
   #refuelerPanel { grid-area: refuelerArea; }
   #socPanel      { grid-area: socArea; }
   #legendPanel   { grid-area: legendArea; }
@@ -2282,13 +2284,18 @@ function updateRoles() {
   for (const e of state.feasibilityEdges) {
     const j = state.robots[e.from];
     const i = state.robots[e.to];
-    if (j) {
-      j.feasOut++;
-      // Only dependents farther from the depot than j pull it outward; inward
-      // dependents would just collapse the column back onto the depot.
-      if (dist(i, DEPOT) > dist(j, DEPOT)) { j._depSumX += i.x; j._depSumY += i.y; j._depN++; }
-    }
-    if (i) i.feasIn++;
+    if (!j || !i) continue;
+    // Degree-based hesitation models emergent division of labor AMONG WORKERS.
+    // Refuelers are dedicated, always-full infrastructure at fixed stations — a
+    // worker should not anchor toward them or treat them as dependents. Counting
+    // them caged workers inside the refueler ring, whose symmetric centroid sits
+    // at the depot. Restrict degree and dependent-centroid to worker<->worker
+    // edges; refuelers still extend the safety filter, so they enable workers to
+    // range farther rather than pulling them in.
+    if (j.kind === 'refueler' || i.kind === 'refueler') continue;
+    j.feasOut++;
+    if (dist(i, DEPOT) > dist(j, DEPOT)) { j._depSumX += i.x; j._depSumY += i.y; j._depN++; }
+    i.feasIn++;
   }
   for (const r of state.robots) {
     r.depCentroid = r._depN > 0 ? { x: r._depSumX / r._depN, y: r._depSumY / r._depN } : null;
