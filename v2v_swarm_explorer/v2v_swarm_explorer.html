@@ -766,7 +766,7 @@ input[type="range"] {
           <input type="checkbox" id="showDisks" class="checkbox" checked>
         </div>
         <div class="toggle-row">
-          <label for="showSafeSets" title="For each robot, draw the set of positions from which it can both reach the goal AND return safely. The 'direct-safe' set — used by the CBF safety filter when V2V is off.">Direct-safe ellipses</label>
+          <label for="showSafeSets" title="For each robot, the set of positions it could move to and still return to the depot on its own battery (an ellipse with foci at the robot and the depot). This is the 'direct-safe' set — exactly what the CBF safety filter enforces when V2V is off. When V2V is on, the CBF's effective safe set is larger than these ellipses: it also admits positions made safe via V2V chains, and how far beyond the ellipses it reaches depends on the multi-hop vs one-hop safety filter toggle. So the ellipses always show the solo (direct-safe) base, not the full V2V-augmented safe region.">Direct-safe ellipses</label>
           <input type="checkbox" id="showSafeSets" class="checkbox">
         </div>
         <div class="toggle-row">
@@ -840,24 +840,24 @@ input[type="range"] {
       </div>
 
       <div class="panel" id="hesitationPanel">
-        <h3>Degree-based movement hesitation</h3>
+        <h3>Network-based movement biases</h3>
         <div class="toggle-row" data-v2v="dependent">
-          <label for="bridgeToggle" title="An experimental route to emergent, self-organized division of labor. Each frame, a free-wandering worker holds station with a probability set by its position in the help-feasibility graph: high out-degree (many robots depend on it) -> it tends to stay put and act as a stationary helper others can draw from; high in-degree (many robots can help it) -> it tends to keep moving. Staying costs no energy, so roles (anchor vs. rover) emerge from local graph structure rather than being assigned in advance. Requires worker-to-worker V2V.">Enable degree-based hesitation</label>
-          <input type="checkbox" id="bridgeToggle" class="checkbox">
-        </div>
-        <div class="toggle-row" data-v2v="dependent">
-          <label for="driftToggle" title="Directional refinement of the hold (requires degree-based hesitation on). Rather than pausing in place, a robot that has dependents farther out than itself steers toward their centroid — but only while it can still reach the depot on its own — repositioning to support them. This pushes the support frontier outward instead of milling at the depot, and measurably extends reach. Caveat from testing: with the current optimistic multi-hop safety filter, the longer support structure emboldens frontier robots onto chains that can dissolve, so strandings rise noticeably. Pair it with a higher seek-charge threshold or a stricter safety regime if you want the extension without the losses.">Steer toward dependents (directional)</label>
+          <label for="driftToggle" title="Directional bias, independent of the hesitation hold below. A worker that has dependents farther from the depot than itself steers toward their centroid — but only while it can still reach the depot on its own — repositioning to support them. This pushes the support frontier outward instead of milling at the depot, and measurably extends reach. It considers worker-to-worker V2V only; refuelers are ignored. Caveat from testing: with the multi-hop safety filter the longer support structure emboldens frontier robots onto chains that can dissolve, so strandings rise; pair it with one-hop safety or a higher seek-charge threshold if you want the extension without the losses.">Steer toward dependents (directional)</label>
           <input type="checkbox" id="driftToggle" class="checkbox">
         </div>
-        <div class="select-row" data-v2v="dependent">
-          <label for="bridgeRuleSelect" title="How out-degree and in-degree combine into a stay probability. Difference (out - in): incoming helpers relieve the duty to stay. Out-degree only: stay whenever others depend on you, regardless of your own helpers.">Hesitation rule</label>
+        <div class="toggle-row" data-v2v="dependent">
+          <label for="bridgeToggle" title="Degree-based hesitation, independent of the directional steering above. Each frame a free-wandering worker holds station with a probability set by its position in the worker-to-worker help-feasibility graph: high out-degree (many workers depend on it) -> it tends to stay put as a stationary helper others can draw from; high in-degree (many workers can help it) -> it tends to keep moving. Staying costs no energy, so anchor-vs-rover roles emerge from local graph structure rather than being assigned. Refuelers are ignored. Requires worker-to-worker V2V.">Enable degree-based hesitation</label>
+          <input type="checkbox" id="bridgeToggle" class="checkbox">
+        </div>
+        <div class="select-row" data-v2v="dependent" data-hesitation="dependent">
+          <label for="bridgeRuleSelect" title="How out-degree and in-degree combine into a stay probability (applies to the hesitation hold only). Difference (out - in): incoming helpers relieve the duty to stay. Out-degree only: stay whenever others depend on you, regardless of your own helpers.">Hesitation rule</label>
           <select id="bridgeRuleSelect">
             <option value="difference">Difference (out &minus; in)</option>
             <option value="outDominant">Out-degree only</option>
           </select>
         </div>
-        <div class="slider-row" data-v2v="dependent">
-          <label title="Logistic gain on the degree drive. Higher = a sharper switch from moving to holding station as out-degree (or out - in) grows. At strength 1.0, a net drive of one link gives ~60% stay, two ~82%, three ~90% (capped at 95%).">Hesitation strength <span class="val" id="bridgeStrengthVal">1.0</span></label>
+        <div class="slider-row" data-v2v="dependent" data-hesitation="dependent">
+          <label title="Logistic gain on the degree drive for the hesitation hold. Higher = a sharper switch from moving to holding station as out-degree (or out - in) grows. At strength 1.0, a net drive of one link gives ~60% stay, two ~82%, three ~90% (capped at 95%).">Hesitation strength <span class="val" id="bridgeStrengthVal">1.0</span></label>
           <input type="range" id="bridgeStrengthSlider" min="2" max="40" value="10" step="1">
         </div>
       </div>
@@ -2703,24 +2703,27 @@ function moveRobot(r) {
   // an outward movement bias). Skipped for refuelers/couriers (own station
   // logic) and for any robot already committed to home/helper (a depleting
   // anchor still leaves to recharge).
-  // Support behaviors only while the robot has charge to spare. Once its SoC
-  // nears the seek-charge threshold it stops volunteering (no hold, no outward
-  // drift) and is free to head in and recharge rather than loitering as a weak
-  // anchor — a robot bound for the depot ignores its V2V/support role.
-  if (state.bridgeMode && anyV2VActive() && r.mode === 'wander'
+  // ── Network-based movement bias ──
+  // Two independent levers, both worker-only and gated on having charge to spare
+  // (a robot near its seek-charge threshold disengages to recharge and ignores
+  // its support role):
+  //   1. Directional drift (hesitationDrift): steer toward the centroid of
+  //      outward dependents while still directly depot-safe.
+  //   2. Degree-based hesitation (bridgeMode): probabilistically hold station,
+  //      by worker-to-worker graph degree.
+  // Drift sets *where* to go; hesitation sets *whether* to pause. They compose.
+  if (anyV2VActive() && r.mode === 'wander'
       && r.kind !== 'refueler' && !isCourier(r)
       && r.soc > state.lowSocThreshold + 0.10) {
     if (state.hesitationDrift && r.depCentroid && isDirectSafe(r, r.soc)) {
-      // Directional: steer toward the centroid of *outward* dependents (those
-      // farther from the depot than r — the ones that "left" and now lean on it),
-      // but only while r can still reach the depot on its own. Once it would have
-      // to rely on helpers behind it (not direct-safe), it stops actively pressing
-      // outward and the normal safety machinery governs — Ted's "ignore in-degree
-      // only so long as the depot is reachable". Net effect: supporters advance to
-      // the edge of their own solo-reach and hold there, forming a safe frontier.
+      // Drifting this frame: steer toward the outward-dependent centroid and do
+      // NOT also run the random hold — the positioning is the movement decision,
+      // and double-applying the hold makes drifters jiggle and clump (a "comet").
       r.target = { x: r.depCentroid.x, y: r.depCentroid.y };
-    } else if (rng() < stayProbability(r)) {
-      return;  // random hold: no dependents to steer toward, or drift disabled
+    } else if (state.bridgeMode && rng() < stayProbability(r)) {
+      // Not drifting (drift off, or no outward dependents, or not depot-safe):
+      // probabilistically hold station by degree.
+      return;
     }
   }
 
@@ -3658,10 +3661,17 @@ $('safetyToggle').addEventListener('change', (e) => { state.safetyMode = e.targe
 // take effect when V2V is re-enabled — but the dimming is a reminder that
 // nothing they toggle here is doing anything until V2V comes back.
 function updateV2vDependentStyling() {
-  const rows = document.querySelectorAll('[data-v2v="dependent"]');
-  const active = anyV2VActive();
+  const v2vActive = anyV2VActive();
+  const hesActive = state.bridgeMode;
+  // A row may depend on V2V, on hesitation, or both. It is greyed if any gate
+  // it declares is unmet. Handled in one pass so the two conditions can't fight
+  // over the 'inactive' class.
+  const rows = document.querySelectorAll('[data-v2v="dependent"], [data-hesitation="dependent"]');
   for (const row of rows) {
-    row.classList.toggle('inactive', !active);
+    const needsV2v = row.getAttribute('data-v2v') === 'dependent';
+    const needsHes = row.getAttribute('data-hesitation') === 'dependent';
+    const inactive = (needsV2v && !v2vActive) || (needsHes && !hesActive);
+    row.classList.toggle('inactive', inactive);
   }
 }
 // Visually mark rows whose effect requires refueler role to be enabled.
@@ -3749,7 +3759,7 @@ $('trSlider').addEventListener('input', (e) => {
   state.transferRate = parseInt(e.target.value) / 100;
   $('trVal').textContent = (parseInt(e.target.value) / 100).toFixed(2) + '/frame';
 });
-$('bridgeToggle').addEventListener('change', (e) => { state.bridgeMode = e.target.checked; });
+$('bridgeToggle').addEventListener('change', (e) => { state.bridgeMode = e.target.checked; updateV2vDependentStyling(); });
 $('driftToggle').addEventListener('change', (e) => { state.hesitationDrift = e.target.checked; });
 $('bridgeRuleSelect').addEventListener('change', (e) => { state.bridgeRule = e.target.value; });
 $('bridgeStrengthSlider').addEventListener('input', (e) => {
