@@ -771,6 +771,10 @@ input[type="range"] {
           <label for="v2vToggle" title="When on, any worker robot (non-refueler) can serve as a V2V helper for another. Independent of the refueler role.">Worker-to-worker V2V</label>
           <input type="checkbox" id="v2vToggle" class="checkbox" checked>
         </div>
+        <div class="toggle-row">
+          <label for="sepToggle" title="Soft separation: in wander/forage movement, robots bias their heading away from nearby robots so they don't navigate onto one another's centers. Overlap is still allowed (e.g. while charging at the depot), and V2V rendezvous is unaffected — this is a steering bias, not a hard sphere constraint, so no geometric room is needed to charge.">Soft separation (avoid stacking)</label>
+          <input type="checkbox" id="sepToggle" class="checkbox" checked>
+        </div>
         <div class="toggle-row" data-v2v="dependent">
           <label for="ferryToggle" title="When a V2V transfer completes, the helper accompanies the receiver back to the depot rather than staying on station.">Helper ferries home with receiver</label>
           <input type="checkbox" id="ferryToggle" class="checkbox">
@@ -826,6 +830,29 @@ input[type="range"] {
         <div class="slider-row">
           <label title="How long the swept coverage paint each robot leaves behind lingers. 0% = no trails. 100% = trails never fade (permanent coverage map).">Trail persistence <span class="val" id="tpVal">0%</span></label>
           <input type="range" id="tpSlider" min="0" max="100" value="0" step="1">
+        </div>
+      </div>
+
+      <div class="panel" id="hesitationPanel">
+        <h3>Degree-based movement hesitation</h3>
+        <div class="toggle-row" data-v2v="dependent">
+          <label for="bridgeToggle" title="An experimental route to emergent, self-organized division of labor. Each frame, a free-wandering worker holds station with a probability set by its position in the help-feasibility graph: high out-degree (many robots depend on it) -> it tends to stay put and act as a stationary helper others can draw from; high in-degree (many robots can help it) -> it tends to keep moving. Staying costs no energy, so roles (anchor vs. rover) emerge from local graph structure rather than being assigned in advance. Requires worker-to-worker V2V.">Enable degree-based hesitation</label>
+          <input type="checkbox" id="bridgeToggle" class="checkbox">
+        </div>
+        <div class="toggle-row" data-v2v="dependent">
+          <label for="driftToggle" title="Directional refinement of the hold (requires degree-based hesitation on). Rather than pausing in place, a robot that has dependents farther out than itself steers toward their centroid — but only while it can still reach the depot on its own — repositioning to support them. This pushes the support frontier outward instead of milling at the depot, and measurably extends reach. Caveat from testing: with the current optimistic multi-hop safety filter, the longer support structure emboldens frontier robots onto chains that can dissolve, so strandings rise noticeably. Pair it with a higher seek-charge threshold or a stricter safety regime if you want the extension without the losses.">Steer toward dependents (directional)</label>
+          <input type="checkbox" id="driftToggle" class="checkbox">
+        </div>
+        <div class="select-row" data-v2v="dependent">
+          <label for="bridgeRuleSelect" title="How out-degree and in-degree combine into a stay probability. Difference (out - in): incoming helpers relieve the duty to stay. Out-degree only: stay whenever others depend on you, regardless of your own helpers.">Hesitation rule</label>
+          <select id="bridgeRuleSelect">
+            <option value="difference">Difference (out &minus; in)</option>
+            <option value="outDominant">Out-degree only</option>
+          </select>
+        </div>
+        <div class="slider-row" data-v2v="dependent">
+          <label title="Logistic gain on the degree drive. Higher = a sharper switch from moving to holding station as out-degree (or out - in) grows. At strength 1.0, a net drive of one link gives ~60% stay, two ~82%, three ~90% (capped at 95%).">Hesitation strength <span class="val" id="bridgeStrengthVal">1.0</span></label>
+          <input type="range" id="bridgeStrengthSlider" min="2" max="40" value="10" step="1">
         </div>
       </div>
 
@@ -1696,6 +1723,11 @@ const state = {
   // from rechargeRate, which is the (slower) depot recharge speed.
   transferRate: 0.15,
   baseStep: 1.4,
+  // Soft separation: in wander/forage movement, bias the heading away from
+  // nearby robots so they don't navigate onto one another's centers. Overlap is
+  // still allowed (e.g. while charging at the depot); this is a steering bias,
+  // not a hard sphere constraint, so no geometric room is required to charge.
+  softSeparation: true,
   // Seek-charge threshold: a foraging robot commits to a return (heading home if
   // it can reach the depot directly, otherwise to the nearest feasible helper)
   // once its SoC falls below this. This is the "when to get charge" decision; the
@@ -1706,6 +1738,23 @@ const state = {
   // working (true) or head home anyway (false)? Worker-to-worker rescues always
   // head home regardless — they only ever carry enough to reach the depot.
   stayInFieldAfterRefuel: true,
+  // ── Degree-based hesitation ("bridge mode") ──
+  // When on (and V2V active), a free-wandering worker holds station this frame
+  // with a probability set by its position in the help-feasibility graph:
+  // high out-degree (many robots depend on it) → likely to stay and act as an
+  // emergent relay/anchor; high in-degree (many robots can help it) → likely to
+  // move and range farther. Staying costs no energy (energy is tied to distance),
+  // so an anchor only drains by donating and is itself topped up by closer peers
+  // — the makings of a depot-to-rim "bridge".
+  bridgeMode: false,
+  bridgeRule: 'difference',   // 'difference' (out − in) | 'outDominant' (out only)
+  bridgeStrength: 1.0,        // logistic gain on the degree drive
+  // Directional refinement: instead of a random hold, a robot with dependents
+  // steers toward the centroid of its out-neighbors (the robots it can help),
+  // governed by the existing safety filter (which only consults helpers/in-degree
+  // when the robot is not directly depot-safe). Positioning subsumes the random
+  // hold for robots that have dependents.
+  hesitationDrift: false,
   metrics: {
     tasksDone: 0,
     tasksExpired: 0,
@@ -2009,6 +2058,24 @@ function canHelp(p_i, b_i, j) {
   return true;
 }
 
+// Degree-based hesitation probability for "bridge mode". A free-wandering worker
+// holds station this frame with this probability, turning a high out-degree
+// (many dependents) into an emergent refueling anchor and a high in-degree
+// (many helpers) into license to range farther. Uses last frame's feasibility
+// degree (r.feasOut / r.feasIn), recomputed each step in updateRoles().
+function stayProbability(r) {
+  const dout = r.feasOut || 0;
+  const din = r.feasIn || 0;
+  // drive > 0 pulls toward staying; <= 0 means just wander normally.
+  //   'difference'  : helpers relieve the duty to anchor (out − in).
+  //   'outDominant' : anchor whenever others depend on you, ignoring your own
+  //                   helpers (in-degree cannot lower it; the baseline is move).
+  const drive = (state.bridgeRule === 'outDominant') ? dout : (dout - din);
+  if (drive <= 0) return 0;
+  const pMax = 0.95;   // never a hard freeze — an anchor still nudges occasionally
+  return pMax * (1 - Math.exp(-state.bridgeStrength * drive));
+}
+
 // Strict chain feasibility check used by the depth BFS and the multi-hop
 // safety filter. Given a current depths array, returns true if i at (p_i,b_i)
 // can use j as a next-hop and end up safe at some finite depth from p_j:
@@ -2189,6 +2256,26 @@ function updateRoles() {
       if (state.safetyDepths[j.id] === Infinity) continue;
       state.feasibilityEdges.push({ from: j.id, to: i.id });
     }
+  }
+  // Per-robot help-feasibility degree, consumed by bridge-mode hesitation:
+  //   feasOut = # robots this one can feasibly help (how many depend on it)
+  //   feasIn  = # robots that can feasibly help it (how many helpers it has)
+  // Also accumulate the centroid of out-neighbors (dependents) for directional
+  // drift: a supporter steers toward the average position of those it can help.
+  for (const r of state.robots) { r.feasOut = 0; r.feasIn = 0; r._depSumX = 0; r._depSumY = 0; r._depN = 0; }
+  for (const e of state.feasibilityEdges) {
+    const j = state.robots[e.from];
+    const i = state.robots[e.to];
+    if (j) {
+      j.feasOut++;
+      // Only dependents farther from the depot than j pull it outward; inward
+      // dependents would just collapse the column back onto the depot.
+      if (dist(i, DEPOT) > dist(j, DEPOT)) { j._depSumX += i.x; j._depSumY += i.y; j._depN++; }
+    }
+    if (i) i.feasIn++;
+  }
+  for (const r of state.robots) {
+    r.depCentroid = r._depN > 0 ? { x: r._depSumX / r._depN, y: r._depSumY / r._depN } : null;
   }
 }
 
@@ -2584,6 +2671,36 @@ function moveRobot(r) {
     }
   }
 
+  // ── Degree-based hesitation ("bridge mode") ──
+  // A free-wandering worker may hold station this frame with a probability set
+  // by its feasibility-graph degree (see stayProbability). Staying costs no
+  // energy, so high-out-degree robots self-organize into stationary relays while
+  // high-in-degree robots keep roving. Motion is undirected, so this yields
+  // anchors + rovers, not a pronounced depot-to-rim bridge (that would also need
+  // an outward movement bias). Skipped for refuelers/couriers (own station
+  // logic) and for any robot already committed to home/helper (a depleting
+  // anchor still leaves to recharge).
+  // Support behaviors only while the robot has charge to spare. Once its SoC
+  // nears the seek-charge threshold it stops volunteering (no hold, no outward
+  // drift) and is free to head in and recharge rather than loitering as a weak
+  // anchor — a robot bound for the depot ignores its V2V/support role.
+  if (state.bridgeMode && anyV2VActive() && r.mode === 'wander'
+      && r.kind !== 'refueler' && !isCourier(r)
+      && r.soc > state.lowSocThreshold + 0.10) {
+    if (state.hesitationDrift && r.depCentroid && isDirectSafe(r, r.soc)) {
+      // Directional: steer toward the centroid of *outward* dependents (those
+      // farther from the depot than r — the ones that "left" and now lean on it),
+      // but only while r can still reach the depot on its own. Once it would have
+      // to rely on helpers behind it (not direct-safe), it stops actively pressing
+      // outward and the normal safety machinery governs — Ted's "ignore in-degree
+      // only so long as the depot is reachable". Net effect: supporters advance to
+      // the edge of their own solo-reach and hold there, forming a safe frontier.
+      r.target = { x: r.depCentroid.x, y: r.depCentroid.y };
+    } else if (rng() < stayProbability(r)) {
+      return;  // random hold: no dependents to steer toward, or drift disabled
+    }
+  }
+
   // Compute proposed step toward target
   if (!r.target) return;
   let dx = r.target.x - r.x;
@@ -2594,8 +2711,33 @@ function moveRobot(r) {
   // stationary refueler) snaps to its target and stops, rather than
   // overshooting and oscillating across it each frame.
   let step = Math.min(state.baseStep, d);
-  let stepX = (dx / d) * step;
-  let stepY = (dy / d) * step;
+  let ux = dx / d, uy = dy / d;
+  // Soft separation (navigation only): nudge the heading away from nearby robots
+  // so paths don't pile onto one another. Overlap is still permitted (e.g. while
+  // charging at the depot) — this is a steering bias, not a hard collision
+  // constraint. Applied only in wander/forage movement (including outward drift),
+  // never when committing home or closing on a helper, so depot stacking and V2V
+  // rendezvous are unaffected.
+  if (state.softSeparation && r.mode === 'wander') {
+    let sx = 0, sy = 0;
+    const sepR = ROBOT_R * 3;
+    for (const o of state.robots) {
+      if (o.id === r.id || o.dead) continue;
+      const ox = r.x - o.x, oy = r.y - o.y;
+      const od = Math.hypot(ox, oy);
+      if (od > 1e-6 && od < sepR) {
+        const wgt = (sepR - od) / sepR;   // stronger the closer the neighbor
+        sx += (ox / od) * wgt;
+        sy += (oy / od) * wgt;
+      }
+    }
+    const SEP = 0.6;   // soft weight: biases the course, doesn't forbid overlap
+    const nx = ux + SEP * sx, ny = uy + SEP * sy;
+    const nm = Math.hypot(nx, ny);
+    if (nm > 1e-6) { ux = nx / nm; uy = ny / nm; }
+  }
+  let stepX = ux * step;
+  let stepY = uy * step;
 
   // Safety filter (only for wander/task pursuit; home/helper modes commit)
   if (r.mode === 'wander') {
@@ -3480,6 +3622,7 @@ $('v2vToggle').addEventListener('change', (e) => {
   b.className = 'badge ' + (state.v2v ? 'on' : 'off');
   updateV2vDependentStyling();
 });
+$('sepToggle').addEventListener('change', (e) => { state.softSeparation = e.target.checked; });
 
 // Visually mark toggle rows whose effect is gated on V2V being on. The rows
 // stay functional — users can still set them up while V2V is off and they'll
@@ -3576,6 +3719,13 @@ $('rtsSlider').addEventListener('input', (e) => {
 $('trSlider').addEventListener('input', (e) => {
   state.transferRate = parseInt(e.target.value) / 100;
   $('trVal').textContent = (parseInt(e.target.value) / 100).toFixed(2) + '/frame';
+});
+$('bridgeToggle').addEventListener('change', (e) => { state.bridgeMode = e.target.checked; });
+$('driftToggle').addEventListener('change', (e) => { state.hesitationDrift = e.target.checked; });
+$('bridgeRuleSelect').addEventListener('change', (e) => { state.bridgeRule = e.target.value; });
+$('bridgeStrengthSlider').addEventListener('input', (e) => {
+  state.bridgeStrength = parseInt(e.target.value) / 10;
+  $('bridgeStrengthVal').textContent = state.bridgeStrength.toFixed(1);
 });
 $('tpSlider').addEventListener('input', (e) => {
   const newVal = parseInt(e.target.value) / 100;
