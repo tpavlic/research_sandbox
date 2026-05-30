@@ -800,8 +800,8 @@ input[type="range"] {
       <div class="panel" id="paramsPanel">
         <h3>Parameters</h3>
         <div class="slider-row">
-          <label title="Number of robots in the swarm. Changes take effect immediately and reinitialize the swarm.">Robots <span class="val" id="nVal">12</span></label>
-          <input type="range" id="nSlider" min="3" max="28" value="12" step="1">
+          <label title="Number of robots in the swarm. Changes take effect immediately and reinitialize the swarm. A minimum of 1 isolates a single robot to show the direct-safe (solo-reach) condition on its own.">Number of robots <span class="val" id="nVal">12</span></label>
+          <input type="range" id="nSlider" min="1" max="30" value="12" step="1">
         </div>
         <div class="slider-row">
           <label title="Energy consumption rate per unit distance. Solo-reach radius = 1 / (2α). Higher α → smaller individual range. Endurance shown is the time a fully-charged robot can travel at base speed before depleting.">Battery cost α &nbsp;·&nbsp; endurance <span class="val" id="aVal">0.0024 · ~5.0 s</span></label>
