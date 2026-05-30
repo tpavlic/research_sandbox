@@ -756,6 +756,10 @@ input[type="range"] {
           <input type="checkbox" id="immobilizeToggle" class="checkbox" checked>
         </div>
         <div class="toggle-row">
+          <label for="sepToggle" title="Soft separation: in wander/forage movement, robots bias their heading away from nearby robots so they don't navigate onto one another's centers. Overlap is still allowed (e.g. while charging at the depot), and V2V rendezvous is unaffected — this is a steering bias, not a hard sphere constraint, so no geometric room is needed to charge. Not tied to V2V.">Soft separation (avoid stacking)</label>
+          <input type="checkbox" id="sepToggle" class="checkbox" checked>
+        </div>
+        <div class="toggle-row">
           <label for="showDisks" title="For each robot, draw the disk of all positions it could physically drive to on its current battery (radius = SoC / α).">Reachable disks</label>
           <input type="checkbox" id="showDisks" class="checkbox" checked>
         </div>
@@ -771,9 +775,9 @@ input[type="range"] {
           <label for="v2vToggle" title="When on, any worker robot (non-refueler) can serve as a V2V helper for another. Independent of the refueler role.">Worker-to-worker V2V</label>
           <input type="checkbox" id="v2vToggle" class="checkbox" checked>
         </div>
-        <div class="toggle-row">
-          <label for="sepToggle" title="Soft separation: in wander/forage movement, robots bias their heading away from nearby robots so they don't navigate onto one another's centers. Overlap is still allowed (e.g. while charging at the depot), and V2V rendezvous is unaffected — this is a steering bias, not a hard sphere constraint, so no geometric room is needed to charge.">Soft separation (avoid stacking)</label>
-          <input type="checkbox" id="sepToggle" class="checkbox" checked>
+        <div class="toggle-row" data-v2v="dependent">
+          <label for="safetyToggle" title="When on, the multi-hop (chained) safety filter is used: a robot counts as safe if it can chain back to the depot through any number of V2V helpers (the BFS safety depth). When off, a one-hop filter is used instead — a robot is safe only if it can reach the depot directly, or via a single helper from which it can then reach the depot directly. The one-hop rule is the pairwise filter the GAML/NetLogo/Python reference implementations compute; it is more conservative and avoids over-hesitating on long chains whose own links sit near the safety barrier.">Use multi-hop safety filter</label>
+          <input type="checkbox" id="safetyToggle" class="checkbox" checked>
         </div>
         <div class="toggle-row" data-v2v="dependent">
           <label for="ferryToggle" title="When a V2V transfer completes, the helper accompanies the receiver back to the depot rather than staying on station.">Helper ferries home with receiver</label>
@@ -1722,6 +1726,14 @@ const state = {
   // study how charging speed trades against availability/throughput. Distinct
   // from rechargeRate, which is the (slower) depot recharge speed.
   transferRate: 0.15,
+  // Safety filter mode. 'multihop' (default): a robot counts as safe if it can
+  // chain back to the depot through any number of finite-depth helpers (the BFS
+  // safety depth). 'onehop': safe only if direct-safe, or one hop to a helper
+  // from which it can reach the depot directly — the pairwise filter the three
+  // reference implementations compute. One-hop is the more conservative rule and
+  // avoids "over-hesitating" on optimistic chains whose own links sit near the
+  // safety barrier.
+  safetyMode: 'multihop',
   baseStep: 1.4,
   // Soft separation: in wander/forage movement, bias the heading away from
   // nearby robots so they don't navigate onto one another's centers. Overlap is
@@ -2090,6 +2102,10 @@ function canChainHelp(p_i, b_i, exclude_id, j, depths) {
   const bIPost = b_i - state.alpha * dij + xMax;
   if (bIPost <= 0) return false;
   if (isDirectSafe(j, bIPost)) return true;
+  // One-hop mode stops here: i is safe via j only if it can reach the depot
+  // directly after topping up (i -> j -> depot). The chain search below is the
+  // multi-hop extension and is skipped — matching the reference implementations.
+  if (state.safetyMode === 'onehop') return false;
   for (const k of state.robots) {
     if (k.id === exclude_id || k.id === j.id) continue;
     if (depths[k.id] === undefined || depths[k.id] === Infinity) continue;
@@ -2723,6 +2739,11 @@ function moveRobot(r) {
     const sepR = ROBOT_R * 3;
     for (const o of state.robots) {
       if (o.id === r.id || o.dead) continue;
+      // Only avoid other robots that are themselves freely moving. Docked,
+      // returning (home), and rendezvous (helper/pinned) robots are excluded:
+      // a wanderer shouldn't be shoved back and forth by the parked crowd at the
+      // depot (where overlap is meant to be free) or by a helper it's meeting.
+      if (o.mode !== 'wander') continue;
       const ox = r.x - o.x, oy = r.y - o.y;
       const od = Math.hypot(ox, oy);
       if (od > 1e-6 && od < sepR) {
@@ -3623,6 +3644,7 @@ $('v2vToggle').addEventListener('change', (e) => {
   updateV2vDependentStyling();
 });
 $('sepToggle').addEventListener('change', (e) => { state.softSeparation = e.target.checked; });
+$('safetyToggle').addEventListener('change', (e) => { state.safetyMode = e.target.checked ? 'multihop' : 'onehop'; });
 
 // Visually mark toggle rows whose effect is gated on V2V being on. The rows
 // stay functional — users can still set them up while V2V is off and they'll
