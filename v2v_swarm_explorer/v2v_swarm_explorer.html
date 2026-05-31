@@ -119,6 +119,8 @@ aside { grid-area: aside; }
       "canvas"
       "presetsArea"
       "runArea"
+      "visualizationArea"
+      "behaviorArea"
       "paramsArea"
       "hesitationArea"
       "refuelerArea"
@@ -133,6 +135,8 @@ aside { grid-area: aside; }
   #paramsPanel   { grid-area: paramsArea; }
   #hesitationPanel { grid-area: hesitationArea; }
   #refuelerPanel { grid-area: refuelerArea; }
+  #visualizationPanel { grid-area: visualizationArea; }
+  #behaviorPanel { grid-area: behaviorArea; }
   #socPanel      { grid-area: socArea; }
   #legendPanel   { grid-area: legendArea; }
   #refimplPanel  { grid-area: refimplArea; }
@@ -749,18 +753,18 @@ input[type="range"] {
           <button id="btnStep">Step</button>
           <button id="btnReset">Reset</button>
         </div>
+        <div class="slider-row">
+          <label title="Number of robots in the swarm. Changes take effect immediately and reinitialize the swarm. A minimum of 1 isolates a single robot to show the direct-safe (solo-reach) condition on its own.">Number of robots <span class="val" id="nVal">12</span></label>
+          <input type="range" id="nSlider" min="1" max="30" value="12" step="1">
+        </div>
         <div class="toggle-row">
           <label for="coldStartToggle" title="On the next reset, all robots start at the depot with full SoC and radiate outward. Default is a warm-start ring with random SoC values consistent with already having walked out from the depot.">Cold-start from depot (on reset)</label>
           <input type="checkbox" id="coldStartToggle" class="checkbox">
         </div>
-        <div class="toggle-row">
-          <label for="immobilizeToggle" title="When on, a robot whose SoC reaches 0 is immobilized where it stands (a real depletion failure) and counts as 'lost' until a passing robot with surplus revives it on contact. When off, depleted robots keep gliding to the depot for free (a forgiving visualization). With a correct safety filter the lost count should stay 0.">Immobilize on depletion (SoC = 0)</label>
-          <input type="checkbox" id="immobilizeToggle" class="checkbox" checked>
-        </div>
-        <div class="toggle-row">
-          <label for="sepToggle" title="Soft separation: in wander/forage movement, robots bias their heading away from nearby robots so they don't navigate onto one another's centers. Overlap is still allowed (e.g. while charging at the depot), and V2V rendezvous is unaffected — this is a steering bias, not a hard sphere constraint, so no geometric room is needed to charge. Not tied to V2V.">Soft separation (avoid stacking)</label>
-          <input type="checkbox" id="sepToggle" class="checkbox" checked>
-        </div>
+      </div>
+
+      <div class="panel" id="visualizationPanel">
+        <h3>Visualization</h3>
         <div class="toggle-row">
           <label for="showDisks" title="For each robot, draw the disk of all positions it could physically drive to on its current battery (radius = SoC / α).">Reachable disks</label>
           <input type="checkbox" id="showDisks" class="checkbox" checked>
@@ -772,18 +776,6 @@ input[type="range"] {
         <div class="toggle-row">
           <label for="showSoloReach" title="Dashed reference ring around the depot at radius 1/(2α): the largest disk inside which a fully-charged robot can patrol solo and still return.">Solo-reach radius (1 / 2α)</label>
           <input type="checkbox" id="showSoloReach" class="checkbox" checked>
-        </div>
-        <div class="toggle-row">
-          <label for="v2vToggle" title="When on, any worker robot (non-refueler) can serve as a V2V helper for another. Independent of the refueler role.">Worker-to-worker V2V</label>
-          <input type="checkbox" id="v2vToggle" class="checkbox" checked>
-        </div>
-        <div class="toggle-row" data-v2v="dependent">
-          <label for="safetyToggle" title="When on, the multi-hop (chained) safety filter is used: a robot counts as safe if it can chain back to the depot through any number of V2V helpers (the BFS safety depth). When off, a one-hop filter is used instead — a robot is safe only if it can reach the depot directly, or via a single helper from which it can then reach the depot directly. The one-hop rule is the pairwise filter the GAML/NetLogo/Python reference implementations compute; it is more conservative and avoids over-hesitating on long chains whose own links sit near the safety barrier.">Use multi-hop safety filter</label>
-          <input type="checkbox" id="safetyToggle" class="checkbox" checked>
-        </div>
-        <div class="toggle-row" data-v2v="dependent">
-          <label for="ferryToggle" title="When a V2V transfer completes, the helper accompanies the receiver back to the depot rather than staying on station.">Helper ferries home with receiver</label>
-          <input type="checkbox" id="ferryToggle" class="checkbox">
         </div>
         <div class="toggle-row" data-v2v="dependent">
           <label for="showReachability" title="Draw an edge from j to i whenever i could physically drive to j on current battery (ignoring whether j has surplus to donate).">Reachability edges (i can reach j)</label>
@@ -803,12 +795,32 @@ input[type="range"] {
         </div>
       </div>
 
-      <div class="panel" id="paramsPanel">
-        <h3>Parameters</h3>
-        <div class="slider-row">
-          <label title="Number of robots in the swarm. Changes take effect immediately and reinitialize the swarm. A minimum of 1 isolates a single robot to show the direct-safe (solo-reach) condition on its own.">Number of robots <span class="val" id="nVal">12</span></label>
-          <input type="range" id="nSlider" min="1" max="30" value="12" step="1">
+      <div class="panel" id="behaviorPanel">
+        <h3>Behavioral switches</h3>
+        <div class="toggle-row">
+          <label for="v2vToggle" title="When on, any worker robot (non-refueler) can serve as a V2V helper for another. Independent of the refueler role.">Worker-to-worker V2V</label>
+          <input type="checkbox" id="v2vToggle" class="checkbox" checked>
         </div>
+        <div class="toggle-row" data-v2v="dependent">
+          <label for="safetyToggle" title="When on, the multi-hop (chained) safety filter is used: a robot counts as safe if it can chain back to the depot through any number of V2V helpers (the BFS safety depth). When off, a one-hop filter is used instead — a robot is safe only if it can reach the depot directly, or via a single helper from which it can then reach the depot directly. The one-hop rule is the pairwise filter the GAML/NetLogo/Python reference implementations compute; it is more conservative and avoids over-hesitating on long chains whose own links sit near the safety barrier.">Use multi-hop safety filter</label>
+          <input type="checkbox" id="safetyToggle" class="checkbox" checked>
+        </div>
+        <div class="toggle-row" data-v2v="dependent">
+          <label for="ferryToggle" title="When a V2V transfer completes, the helper accompanies the receiver back to the depot rather than staying on station.">Helper ferries home with receiver</label>
+          <input type="checkbox" id="ferryToggle" class="checkbox">
+        </div>
+        <div class="toggle-row">
+          <label for="sepToggle" title="Soft separation: in wander/forage movement, robots bias their heading away from nearby robots so they don't navigate onto one another's centers. Overlap is still allowed (e.g. while charging at the depot), and V2V rendezvous is unaffected — this is a steering bias, not a hard sphere constraint, so no geometric room is needed to charge. Not tied to V2V.">Soft separation (avoid stacking)</label>
+          <input type="checkbox" id="sepToggle" class="checkbox" checked>
+        </div>
+        <div class="toggle-row">
+          <label for="immobilizeToggle" title="When on, a robot whose SoC reaches 0 is immobilized where it stands (a real depletion failure) and counts as 'lost' until a passing robot with surplus revives it on contact. When off, depleted robots keep gliding to the depot for free (a forgiving visualization). With a correct safety filter the lost count should stay 0.">Immobilize on depletion (SoC = 0)</label>
+          <input type="checkbox" id="immobilizeToggle" class="checkbox" checked>
+        </div>
+      </div>
+
+      <div class="panel" id="paramsPanel">
+        <h3>Behavioral parameters</h3>
         <div class="slider-row">
           <label title="Energy consumption rate per unit distance. Solo-reach radius = 1 / (2α). Higher α → smaller individual range. Endurance shown is the time a fully-charged robot can travel at base speed before depleting.">Battery cost α &nbsp;·&nbsp; endurance <span class="val" id="aVal">0.0024 · ~5.0 min</span></label>
           <input type="range" id="aSlider" min="5" max="80" value="24" step="1">
@@ -875,23 +887,23 @@ input[type="range"] {
         <div class="select-row" data-ref="dependent">
           <label for="shellModeSelect" title="Radii at which refuelers hold station, measured as fractions of solo-reach. Single shell = one ring of refuelers. Double = inner ring (closer to depot) plus outer ring; refuelers split evenly.">Shell positions</label>
           <select id="shellModeSelect">
-            <option value="single">Single shell at 0.50× solo-reach</option>
-            <option value="double33">Double shells at 0.33× and 0.67×</option>
+          <option value="single">Single shell at 0.50× solo-reach</option>
+          <option value="double33">Double shells at 0.33× and 0.67×</option>
           </select>
         </div>
         <div class="select-row" data-ref="dependent">
           <label for="refuelerMotionSelect" title="How refuelers behave at station. Static: hold position exactly. Orbit: tangential drift around the shell at constant angular rate, no task engagement. Search on leash: roam within ~10% solo-reach of station and engage tasks within that leash.">Refueler motion</label>
           <select id="refuelerMotionSelect">
-            <option value="static">Static (hold station)</option>
-            <option value="orbit">Orbit (tangential drift, no tasks)</option>
-            <option value="search">Search on leash (engage tasks within leash)</option>
+          <option value="static">Static (hold station)</option>
+          <option value="orbit">Orbit (tangential drift, no tasks)</option>
+          <option value="search">Search on leash (engage tasks within leash)</option>
           </select>
         </div>
         <div class="select-row" data-ref="dependent">
           <label for="refuelerLogisticsSelect" title="How refuelers replenish. Self-resupply: a depleted refueler goes inward and pulls charge from the nearest refueler closer to the depot (or the depot). Bucket brigade: with two shells, the inner refuelers become dedicated couriers that shuttle depot → nearest needy outer refueler → depot, holding the outer shell topped so it never leaves station. In brigade mode inner couriers do NOT serve workers; with a single shell there are no couriers and it behaves like self-resupply.">Refueler logistics</label>
           <select id="refuelerLogisticsSelect">
-            <option value="self">Self-resupply (outer pulls inward)</option>
-            <option value="brigade">Bucket brigade (inner couriers push out)</option>
+          <option value="self">Self-resupply (outer pulls inward)</option>
+          <option value="brigade">Bucket brigade (inner couriers push out)</option>
           </select>
         </div>
         <div class="toggle-row" data-ref="dependent">
@@ -903,7 +915,6 @@ input[type="range"] {
           <input type="checkbox" id="showShellsToggle" class="checkbox" checked>
         </div>
       </div>
-
 
       <div class="panel" id="legendPanel">
         <h3>Legend</h3>
@@ -3762,6 +3773,7 @@ $('rtsSlider').addEventListener('input', (e) => {
 });
 const TR_MIN = 0.0005, TR_MAX = 0.004;   // SoC per sim-step (1 step = 1 simulated s): full-charge 33min..4.2min
 const trRateFromPos = (pos) => TR_MIN * Math.pow(TR_MAX / TR_MIN, pos / 100);
+const trPosFromRate = (r) => Math.max(0, Math.min(100, Math.round(100 * Math.log(r / TR_MIN) / Math.log(TR_MAX / TR_MIN))));
 const trNum = (x) => x >= 10 ? x.toFixed(0) : x >= 1 ? x.toFixed(1) : x >= 0.1 ? x.toFixed(2) : x >= 0.01 ? x.toFixed(3) : x.toFixed(4);
 const trLabel = (r) => {
   const perSec = r / SIM_DT;          // SoC per simulated second
@@ -3794,6 +3806,21 @@ $('tpSlider').addEventListener('input', (e) => {
 // Each preset is a partial state diff. Only listed fields get changed —
 // unlisted fields are left at whatever the user had them at, so you can layer
 // a preset on top of your own visualization-toggle preferences.
+// Canonical defaults for every robot-behavior control. A preset is a partial
+// override layered on top of these, so applying ANY preset (including
+// 'default') fully determines robot behavior — nothing silently carries over
+// from a prior configuration. Visualization controls are deliberately omitted:
+// presets never touch what is drawn, only how the robots behave.
+const BEHAVIOR_DEFAULTS = {
+  n: 12, alpha: 0.0024, taskRate: 0.06, taskEnergyCost: 0.18,
+  lowSocThreshold: 0.25, transferRate: 0.002,
+  v2v: true, safetyMode: 'multihop', ferryHome: false,
+  softSeparation: true, immobilizeOnEmpty: true, coldStart: false,
+  hesitationDrift: false, bridgeMode: false, bridgeRule: 'difference', bridgeStrength: 1.0,
+  refuelerEnabled: false, refuelerFrac: 0.30, shellMode: 'single',
+  refuelerMotion: 'static', refuelerLogistics: 'self', stayInFieldAfterRefuel: true,
+};
+
 const PRESETS = {
   'default': {
     n: 12, alpha: 0.0024, taskRate: 0.06, taskEnergyCost: 0.18,
@@ -3828,78 +3855,60 @@ const PRESETS = {
 };
 
 function applyPreset(name) {
-  const p = PRESETS[name];
-  if (!p) return;
-  // Numeric scalars with corresponding sliders / display elements.
-  if (p.alpha !== undefined) {
-    state.alpha = p.alpha;
-    $('aSlider').value = Math.round(p.alpha * 10000);
-    const endurance = SIM_DT / (p.alpha * state.baseStep);
-    $('aVal').textContent = p.alpha.toFixed(4) + ' · ~' + fmtTime(endurance);
-  }
-  if (p.taskRate !== undefined) {
-    state.taskRate = p.taskRate;
-    $('rSlider').value = Math.round(p.taskRate * 100);
-    $('rVal').textContent = p.taskRate.toFixed(2);
-  }
-  if (p.taskEnergyCost !== undefined) {
-    state.taskEnergyCost = p.taskEnergyCost;
-    $('tmSlider').value = Math.round(p.taskEnergyCost * 100);
-    $('tmVal').textContent = p.taskEnergyCost.toFixed(2);
-  }
-  if (p.lowSocThreshold !== undefined) {
-    state.lowSocThreshold = p.lowSocThreshold;
-    $('rtsSlider').value = Math.round(p.lowSocThreshold * 100);
-    $('rtsVal').textContent = Math.round(p.lowSocThreshold * 100) + '%';
-  }
-  if (p.refuelerFrac !== undefined) {
-    state.refuelerFrac = p.refuelerFrac;
-    $('refFracSlider').value = Math.round(p.refuelerFrac * 100);
-    $('refFracVal').textContent = Math.round(p.refuelerFrac * 100) + '%';
-  }
-  // Selects.
-  if (p.shellMode !== undefined) {
-    state.shellMode = p.shellMode;
-    $('shellModeSelect').value = p.shellMode;
-  }
-  if (p.refuelerMotion !== undefined) {
-    state.refuelerMotion = p.refuelerMotion;
-    $('refuelerMotionSelect').value = p.refuelerMotion;
-  }
-  if (p.refuelerLogistics !== undefined) {
-    state.refuelerLogistics = p.refuelerLogistics;
-    $('refuelerLogisticsSelect').value = p.refuelerLogistics;
-  }
-  // Booleans.
-  if (p.v2v !== undefined) {
-    state.v2v = p.v2v;
-    $('v2vToggle').checked = p.v2v;
-    const b = $('modeBadge');
-    b.textContent = p.v2v ? 'Worker V2V on' : 'Worker V2V off';
-    b.className = 'badge ' + (p.v2v ? 'on' : 'off');
-  }
-  if (p.refuelerEnabled !== undefined) {
-    state.refuelerEnabled = p.refuelerEnabled;
-    $('refuelerToggle').checked = p.refuelerEnabled;
-  }
-  if (p.ferryHome !== undefined) {
-    state.ferryHome = p.ferryHome;
-    $('ferryToggle').checked = p.ferryHome;
-  }
-  if (p.coldStart !== undefined) {
-    state.coldStart = p.coldStart;
-    $('coldStartToggle').checked = p.coldStart;
-  }
-  // Robot count + reset. Done last so initRobots sees the updated state.
-  const newN = p.n !== undefined ? p.n : state.robots.length;
-  $('nSlider').value = newN;
-  $('nVal').textContent = newN;
-  // Refresh dependent-row styling for both toggle families.
+  const base = PRESETS[name];
+  if (!base) return;
+  // Layer the preset over the canonical defaults so EVERY behavior field is set
+  // explicitly — anything the preset omits reverts to its default rather than
+  // carrying over from the previous configuration.
+  const p = { ...BEHAVIOR_DEFAULTS, ...base };
+  // ── Numeric scalars + their sliders/readouts ──
+  state.alpha = p.alpha;
+  $('aSlider').value = Math.round(p.alpha * 10000);
+  $('aVal').textContent = p.alpha.toFixed(4) + ' · ~' + fmtTime(SIM_DT / (p.alpha * state.baseStep));
+  state.taskRate = p.taskRate;
+  $('rSlider').value = Math.round(p.taskRate * 100);
+  $('rVal').textContent = p.taskRate.toFixed(2);
+  state.taskEnergyCost = p.taskEnergyCost;
+  $('tmSlider').value = Math.round(p.taskEnergyCost * 100);
+  $('tmVal').textContent = p.taskEnergyCost.toFixed(2);
+  state.lowSocThreshold = p.lowSocThreshold;
+  $('rtsSlider').value = Math.round(p.lowSocThreshold * 100);
+  $('rtsVal').textContent = Math.round(p.lowSocThreshold * 100) + '%';
+  state.transferRate = p.transferRate;
+  $('trSlider').value = trPosFromRate(p.transferRate);
+  $('trVal').textContent = trLabel(p.transferRate);
+  state.refuelerFrac = p.refuelerFrac;
+  $('refFracSlider').value = Math.round(p.refuelerFrac * 100);
+  $('refFracVal').textContent = Math.round(p.refuelerFrac * 100) + '%';
+  state.bridgeStrength = p.bridgeStrength;
+  $('bridgeStrengthSlider').value = Math.round(p.bridgeStrength * 10);
+  $('bridgeStrengthVal').textContent = p.bridgeStrength.toFixed(1);
+  // ── Selects ──
+  state.shellMode = p.shellMode;             $('shellModeSelect').value = p.shellMode;
+  state.refuelerMotion = p.refuelerMotion;   $('refuelerMotionSelect').value = p.refuelerMotion;
+  state.refuelerLogistics = p.refuelerLogistics; $('refuelerLogisticsSelect').value = p.refuelerLogistics;
+  state.bridgeRule = p.bridgeRule;           $('bridgeRuleSelect').value = p.bridgeRule;
+  // ── Booleans ──
+  state.v2v = p.v2v;                         $('v2vToggle').checked = p.v2v;
+  const b = $('modeBadge');
+  b.textContent = p.v2v ? 'Worker V2V on' : 'Worker V2V off';
+  b.className = 'badge ' + (p.v2v ? 'on' : 'off');
+  state.refuelerEnabled = p.refuelerEnabled; $('refuelerToggle').checked = p.refuelerEnabled;
+  state.ferryHome = p.ferryHome;             $('ferryToggle').checked = p.ferryHome;
+  state.coldStart = p.coldStart;             $('coldStartToggle').checked = p.coldStart;
+  state.softSeparation = p.softSeparation;   $('sepToggle').checked = p.softSeparation;
+  state.immobilizeOnEmpty = p.immobilizeOnEmpty; $('immobilizeToggle').checked = p.immobilizeOnEmpty;
+  state.stayInFieldAfterRefuel = p.stayInFieldAfterRefuel; $('stayInFieldToggle').checked = p.stayInFieldAfterRefuel;
+  state.hesitationDrift = p.hesitationDrift; $('driftToggle').checked = p.hesitationDrift;
+  state.bridgeMode = p.bridgeMode;           $('bridgeToggle').checked = p.bridgeMode;
+  state.safetyMode = p.safetyMode;           $('safetyToggle').checked = (p.safetyMode === 'multihop');
+  // ── Robot count + reset (last, so initRobots sees the updated state) ──
+  $('nSlider').value = p.n;
+  $('nVal').textContent = p.n;
   updateRefuelerDependentStyling();
   updateV2vDependentStyling();
-  initRobots(newN);
+  initRobots(p.n);
 }
-
 // Per-preset descriptions, shown in the description box under the dropdown.
 // Each one summarizes the configuration AND what to look for, so the user
 // knows which metrics will best reveal the dynamic that preset is showing.
