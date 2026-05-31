@@ -744,7 +744,7 @@ input[type="range"] {
             <option value="refueler">Refueler architecture (external repletes)</option>
           </select>
         </div>
-        <div class="preset-desc" id="presetDesc">Widget defaults: N=12, α=0.0024 (~5 s endurance), worker V2V on, refuelers off, seek-charge threshold 25%. A balanced baseline — not optimized to highlight V2V. Recommended workflow: run ~60 simulated seconds, note the cumulative metrics, then switch to a contrast preset (or toggle Worker-to-worker V2V off) and rerun to see what V2V buys you.</div>
+        <div class="preset-desc" id="presetDesc">Widget defaults: N=12, α=0.0024 (~5.0 min endurance), worker V2V on, refuelers off, seek-charge threshold 25%. A balanced baseline — not optimized to highlight V2V. Recommended workflow: run ~60 simulated seconds, note the cumulative metrics, then switch to a contrast preset (or toggle Worker-to-worker V2V off) and rerun to see what V2V buys you.</div>
       </div>
       <div class="panel" id="runPanel">
         <h3>Run</h3>
@@ -3913,8 +3913,8 @@ function applyPreset(name) {
 // Each one summarizes the configuration AND what to look for, so the user
 // knows which metrics will best reveal the dynamic that preset is showing.
 const PRESET_DESCRIPTIONS = {
-  'default': 'Widget defaults: N=12, α=0.0024 (~5 s endurance), worker V2V on, refuelers off, seek-charge threshold 25%. A balanced baseline — not optimized to highlight V2V. Recommended workflow: run ~60 simulated seconds, note the cumulative metrics, then switch to a contrast preset (or toggle Worker-to-worker V2V off) and rerun to see what V2V buys you.',
-  'range-ext': 'N=20, α=0.0040 (~3 s endurance; solo-reach ≈ 125 px), worker V2V on, refuelers off, seek-charge threshold 25%. Solo-reach is tight enough that ~73% of tasks now spawn beyond it — V2V is doing real work as a safe-return net (peers give only enough to get home). Contrast: turn worker V2V off and rerun; watch Tasks done, Peak reach, and Tasks expired diverge.',
+  'default': 'Widget defaults: N=12, α=0.0024 (~5.0 min endurance), worker V2V on, refuelers off, seek-charge threshold 25%. A balanced baseline — not optimized to highlight V2V. Recommended workflow: run ~60 simulated seconds, note the cumulative metrics, then switch to a contrast preset (or toggle Worker-to-worker V2V off) and rerun to see what V2V buys you.',
+  'range-ext': 'N=20, α=0.0040 (~3.0 min endurance; solo-reach ≈ 125 px), worker V2V on, refuelers off, seek-charge threshold 25%. Solo-reach is tight enough that ~73% of tasks now spawn beyond it — V2V is doing real work as a safe-return net (peers give only enough to get home). Contrast: turn worker V2V off and rerun; watch Tasks done, Peak reach, and Tasks expired diverge.',
   'field-stay': 'N=18, α=0.0040, worker V2V on (safe-return net) plus a single refueler shell at 0.5× solo-reach with stay-in-field on. Field presence here is provided by the gas-station shell, not by peer top-ups — a worker that tops up at a refueler keeps working instead of returning. Contrast: toggle "Stay in field after refueler recharge" off and watch Time at outer 80% drop.',
   'refueler': 'N=20, α=0.0040, worker-to-worker V2V off, refueler role on with 30% of swarm at double shells 0.33× and 0.67× (static), self-resupply logistics. The cleanest external-repletes demo — only refuelers can give V2V. Switch Refueler logistics to "Bucket brigade" to see inner refuelers turn into couriers that feed the outer shell in place. Turn on Help-feasibility edges; watch Mean reach and Time at outer 80%.',
 };
