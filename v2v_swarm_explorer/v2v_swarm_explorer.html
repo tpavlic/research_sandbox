@@ -757,6 +757,10 @@ input[type="range"] {
           <label title="Number of robots in the swarm. Changes take effect immediately and reinitialize the swarm. A minimum of 1 isolates a single robot to show the direct-safe (solo-reach) condition on its own.">Number of robots <span class="val" id="nVal">12</span></label>
           <input type="range" id="nSlider" min="1" max="30" value="12" step="1">
         </div>
+        <div class="slider-row">
+          <label title="Bernoulli probability per frame of a new task spawning uniformly in an annulus around the depot (radii 70 to ~275 px).">Task spawn rate <span class="val" id="rVal">0.06</span></label>
+          <input type="range" id="rSlider" min="0" max="20" value="6" step="1">
+        </div>
         <div class="toggle-row">
           <label for="coldStartToggle" title="On the next reset, all robots start at the depot with full SoC and radiate outward. Default is a warm-start ring with random SoC values consistent with already having walked out from the depot.">Cold-start from depot (on reset)</label>
           <input type="checkbox" id="coldStartToggle" class="checkbox">
@@ -765,6 +769,14 @@ input[type="range"] {
 
       <div class="panel" id="visualizationPanel">
         <h3>Visualization</h3>
+        <div class="slider-row">
+          <label title="Multiplier on how many simulation steps run per rendered frame. Each step is one simulated second, so at 1x the clock advances about 60 simulated seconds per real second (a time-lapse); higher values fast-forward further. The visualization frame rate itself is unchanged.">Sim speed <span class="val" id="sVal">1.0×</span></label>
+          <input type="range" id="sSlider" min="2" max="40" value="10" step="1">
+        </div>
+        <div class="slider-row">
+          <label title="How long the swept coverage paint each robot leaves behind lingers. 0% = no trails. 100% = trails never fade (permanent coverage map).">Trail persistence <span class="val" id="tpVal">0%</span></label>
+          <input type="range" id="tpSlider" min="0" max="100" value="0" step="1">
+        </div>
         <div class="toggle-row">
           <label for="showDisks" title="For each robot, draw the disk of all positions it could physically drive to on its current battery (radius = SoC / α).">Reachable disks</label>
           <input type="checkbox" id="showDisks" class="checkbox" checked>
@@ -820,14 +832,10 @@ input[type="range"] {
       </div>
 
       <div class="panel" id="paramsPanel">
-        <h3>Behavioral parameters</h3>
+        <h3>Robot parameters</h3>
         <div class="slider-row">
           <label title="Energy consumption rate per unit distance. Solo-reach radius = 1 / (2α). Higher α → smaller individual range. Endurance shown is the time a fully-charged robot can travel at base speed before depleting.">Battery cost α &nbsp;·&nbsp; endurance <span class="val" id="aVal">0.0024 · ~5.0 min</span></label>
           <input type="range" id="aSlider" min="5" max="80" value="24" step="1">
-        </div>
-        <div class="slider-row">
-          <label title="Bernoulli probability per frame of a new task spawning uniformly in an annulus around the depot (radii 70 to ~275 px).">Task spawn rate <span class="val" id="rVal">0.06</span></label>
-          <input type="range" id="rSlider" min="0" max="20" value="6" step="1">
         </div>
         <div class="slider-row">
           <label title="SoC deducted from a robot when it engages a task. The safety filter rejects engagement if the post-task state would be unsafe; rejections show up as Safety vetoes.">Task energy cost <span class="val" id="tmVal">0.18</span></label>
@@ -840,14 +848,6 @@ input[type="range"] {
         <div class="slider-row">
           <label title="How fast charge flows during a V2V transfer (peer-to-peer, refueler-to-worker, or courier-to-refueler). One simulation step is one simulated second, so this is shown as charge speed in SoC per second, with the time to charge a robot from empty to full at that speed. Transfers are metered over successive steps while the two robots stay in contact, so a slow rate keeps a helper occupied longer. Logarithmic scale: full-charge time runs from about 4 minutes at the fast end to roughly 33 minutes at the slow end, modeling inductive (Qi-style) coupling rather than a fast wired link. For comparison, crossing the solo-reach radius takes on the order of a minute or two, so a transfer routinely outlasts a sortie — which is exactly when a helper gets pinned and a robot can be left waiting mid-charge. The fixed depot recharges at its own (slower) rate.">V2V transfer rate <span class="val" id="trVal">0.0020 SoC/s · full ≈ 8.3 min</span></label>
           <input type="range" id="trSlider" min="0" max="100" value="67" step="1">
-        </div>
-        <div class="slider-row">
-          <label title="Multiplier on how many simulation steps run per rendered frame. Each step is one simulated second, so at 1x the clock advances about 60 simulated seconds per real second (a time-lapse); higher values fast-forward further. The visualization frame rate itself is unchanged.">Sim speed <span class="val" id="sVal">1.0×</span></label>
-          <input type="range" id="sSlider" min="2" max="40" value="10" step="1">
-        </div>
-        <div class="slider-row">
-          <label title="How long the swept coverage paint each robot leaves behind lingers. 0% = no trails. 100% = trails never fade (permanent coverage map).">Trail persistence <span class="val" id="tpVal">0%</span></label>
-          <input type="range" id="tpSlider" min="0" max="100" value="0" step="1">
         </div>
       </div>
 
