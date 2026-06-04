@@ -1327,6 +1327,42 @@ input[type="range"] {
             </div>
 
             <div class="ref-section">
+              <h4>Rescue behavior in social insects</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Nowbahari, E., Scohier, A., Durand, J.-L., &amp; Hollis, K. L. (2009). Ants, <em>Cataglyphis cursor</em>, use precisely directed rescue behavior to free entrapped relatives. <em>PLoS ONE</em>, 4(8), e6573. <a href="https://doi.org/10.1371/journal.pone.0006573" target="_blank" rel="noopener">doi:10.1371/journal.pone.0006573</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>First experimental demonstration that desert ants (then <em>Cataglyphis cursor</em>, now <em>C. piliscapa</em>) free trapped nestmates with a precisely targeted behavioral sequence — sand digging, limb pulling, and biting at the nylon snare itself — and discriminate sharply, offering aid only to nestmates and not to heterocolonial, heterospecific, or motionless test stimuli.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>Establishes rescue as a real, distinct, and discriminative form of altruism in social insects — structurally separate from foraging or defense. The biological precedent for a dedicated rescue layer in the swarm control stack, in which a stranded robot is retrieved rather than abandoned when V2V chain safety has already failed.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Hollis, K. L., &amp; Nowbahari, E. (2022). Cause, development, function, and evolution: Toward a behavioral ecology of rescue behavior in ants. <em>Learning &amp; Behavior</em>, 50(3), 329–338. <a href="https://doi.org/10.3758/s13420-022-00515-7" target="_blank" rel="noopener">doi:10.3758/s13420-022-00515-7</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Tinbergen-four-questions synthesis of two decades of rescue research in <em>C. piliscapa</em>, integrating the precise behavioral sequence, when in an ant's life rescue capability emerges, the survival benefit measured at the colony level, and the heritability and patriline structure that make rescue a specialized first-responder role rather than a generic helping behavior.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>Frames rescue as a heritable specialization with its own developmental schedule, not a side-effect of being available. Directly motivates the design choice between assigning a rescue role in advance and letting it emerge as a learned specialization in a heterogeneous swarm — the same question that arises for the refueler caste here.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Frank, E. T., Schmitt, T., Hovestadt, T., Mitesser, O., Stiegler, J., &amp; Linsenmair, K. E. (2017). Saving the injured: Rescue behavior in the termite-hunting ant <em>Megaponera analis</em>. <em>Science Advances</em>, 3(4), e1602187. <a href="https://doi.org/10.1126/sciadv.1602187" target="_blank" rel="noopener">doi:10.1126/sciadv.1602187</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Field study showing that <em>M. analis</em> workers injured during termite raids — typically having lost an extremity or with termites clinging to them — are carried back to the nest by nestmates and recover; two mandibular-gland compounds (dimethyl disulfide and dimethyl trisulfide) released by the injured ant trigger retrieval, and a model estimates the behavior sustains a ~29% larger colony.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>A structurally different rescue regime from <em>Cataglyphis</em>: not extraction from a trap but retrieval of a depleted or disabled worker from the field, initiated by a chemical signal from the patient. The closer biological analog to a stranded robot, and a template for patient-initiated rescue routed through broadcast advertising rather than relying on V2V as the sole survival mode.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Frank, E. T., Wehrhahn, M., &amp; Linsenmair, K. E. (2018). Wound treatment and selective help in a termite-hunting ant. <em>Proceedings of the Royal Society B</em>, 285(1872), 20172457. <a href="https://doi.org/10.1098/rspb.2017.2457" target="_blank" rel="noopener">doi:10.1098/rspb.2017.2457</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Extends the <em>M. analis</em> rescue picture with triage and post-rescue care: lightly injured workers are retrieved and then receive intense allogrooming at the wound (which cuts 24-hour mortality from ~80% to ~10%), whereas heavily injured workers (five or more extremities lost) are not rescued — and the decision is regulated not by the helper but by the injured ant's own unresponsiveness, so the patient effectively self-selects.</div>
+                <div class="annot"><span class="tag tag-bio">Inspiration</span>Establishes the bounded-rescue half of the design space: not every depleted agent must be saved. Rescue is governed by a patient-side cost-benefit signal, making it tractable as feedback-controlled service rather than a hard safety invariant — the empirical foundation for the weaker "eventually rescued within bounded time" framing of battery safety, as a counterpart to the chain-safe-at-all-times invariant the V2V filter enforces today.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
               <h4>Central-place foraging theory</h4>
 
               <div class="ref">
@@ -1397,6 +1433,34 @@ input[type="range"] {
             </div>
 
             <div class="ref-section">
+              <h4>High-order, adaptive, and event-triggered control barrier functions</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Xiao, W., &amp; Belta, C. (2022). High-order control barrier functions. <em>IEEE Transactions on Automatic Control</em>, 67(7), 3655–3662. <a href="https://doi.org/10.1109/TAC.2021.3105491" target="_blank" rel="noopener">doi:10.1109/TAC.2021.3105491</a> &middot; <a href="https://arxiv.org/abs/1903.04706" target="_blank" rel="noopener">arXiv:1903.04706</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Generalizes the standard CBF construction to safety constraints of arbitrary relative degree by recursively defining auxiliary barrier functions whose forward invariance implies the original constraint, with penalty and parameterization methods to maintain QP feasibility under tight control bounds.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Single-agent and unstructured at the swarm level. Invariants that depend on a third location (the depot) or on the existence of a feasible help relation between robots fall outside the construction without an explicit network extension.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Xiao, W., Belta, C., &amp; Cassandras, C. G. (2022). Adaptive control barrier functions. <em>IEEE Transactions on Automatic Control</em>, 67(5), 2267–2281. <a href="https://doi.org/10.1109/TAC.2021.3074895" target="_blank" rel="noopener">doi:10.1109/TAC.2021.3074895</a> &middot; <a href="https://arxiv.org/abs/2002.04577" target="_blank" rel="noopener">arXiv:2002.04577</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Adds time-varying penalty and relaxation functions inside the HOCBF construction so the QP remains feasible under time-varying control bounds and noisy dynamics, with the penalty functions themselves stabilized by control Lyapunov functions on auxiliary states.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Addresses feasibility under disturbed dynamics for a single robot's own safety set. The network of who-can-help-whom that V2V introduces, and the feasibility of donor surplus as a controlled invariant, are not in the formulation.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Xiao, W., Belta, C., &amp; Cassandras, C. G. (2023). Event-triggered control for safety-critical systems with unknown dynamics. <em>IEEE Transactions on Automatic Control</em>, 68(7), 4143–4158. <a href="https://doi.org/10.1109/TAC.2022.3202088" target="_blank" rel="noopener">doi:10.1109/TAC.2022.3202088</a> &middot; <a href="https://arxiv.org/abs/2103.15874" target="_blank" rel="noopener">arXiv:2103.15874</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Reformulates the safety-critical QP as an event-triggered scheme in which the controller is updated only at events defined by sensed error states relative to adaptive affine dynamics, with explicit conditions guaranteeing the CBF constraint between events — eliminating the need for continuous online model identification while preserving safety.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The closest methodological precedent for a hybrid V2V setting, since charging is discrete and rendezvous-triggered. But the events here are dynamics-error events for a single robot's own safety, not network events such as "a feasible helper has entered range" — the swarm-level safety set the V2V filter defends is not yet inside this framework.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
               <h4>Persistent monitoring with battery / refueling constraints</h4>
 
               <div class="ref">
@@ -1437,6 +1501,30 @@ input[type="range"] {
                 </div>
                 <div class="annot"><span class="tag tag-what">What</span>A distributed, energy-conscious task-allocation scheme for continuous (unlimited-foraging) missions that schedules exploration, collection, and trips to a fixed charging station to keep robots alive while maximizing resources returned to a collection bin.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>Survivability comes from who-does-what-and-when scheduling against fixed charging infrastructure, not from peer transfer; workers cannot extend one another's range and there is no closed-loop motion-safety invariant — though the foraging-with-a-home framing is the same one used here.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Cassandras, C. G., Lin, X., &amp; Ding, X. (2013). An optimal control approach to the multi-agent persistent monitoring problem. <em>IEEE Transactions on Automatic Control</em>, 58(4), 947–961. <a href="https://doi.org/10.1109/TAC.2012.2225539" target="_blank" rel="noopener">doi:10.1109/TAC.2012.2225539</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Foundational multi-agent persistent monitoring: cooperating agents control their motion to minimize an uncertainty metric over a mission space; in 1D the optimum reduces to a sequence of switching points and dwell times, analyzed as a hybrid system via Infinitesimal Perturbation Analysis (IPA) for on-line gradient-based optimization.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Agents are assumed inexhaustible, so the depot-return constraint and any notion of helper-extended reachability are outside the framework. Included here as the IPA-on-hybrid-systems backbone on which the energy-aware extensions in this subsection build.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Pourazarm, S., Cassandras, C. G., &amp; Wang, T. (2016). Optimal routing and charging of energy-limited vehicles in traffic networks. <em>International Journal of Robust and Nonlinear Control</em>, 26(6), 1325–1350. <a href="https://doi.org/10.1002/rnc.3409" target="_blank" rel="noopener">doi:10.1002/rnc.3409</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Routes energy-constrained vehicles through a network of charging nodes to minimize total elapsed (travel + charging) time, decomposing the single-vehicle mixed-integer nonlinear program into tractable sub-problems and extending to multi-vehicle congestion via flow-based formulations.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Energy lives on a road graph with discrete recharging at fixed nodes; there is no peer-to-peer transfer, no continuous-state robot pose, and no closed-loop motion-safety invariant. The recharging decision is a planned route stop, not a real-time donation between agents that can each choose to be helper or helped.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Bullo, F., Frazzoli, E., Pavone, M., Savla, K., &amp; Smith, S. L. (2011). Dynamic vehicle routing for robotic systems. <em>Proceedings of the IEEE</em>, 99(9), 1482–1504. <a href="https://doi.org/10.1109/JPROC.2011.2158181" target="_blank" rel="noopener">doi:10.1109/JPROC.2011.2158181</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Canonical survey of Dynamic Vehicle Routing (DVR) for robotic systems: stochastic-demand spatial queueing, scaling laws for vehicle count and wait time, single- and multi-vehicle policies, and decentralized variants.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>At this level of abstraction vehicles are available-on-demand servers without intrinsic energy state — demand is exogenous and the vehicle is the resource, not vice versa. Refueling and helper-mediated reachability are absent by design; included as the upstream methodological foundation on which the Cassandras and Smith energy-aware extensions build.</div>
               </div>
             </div>
 
