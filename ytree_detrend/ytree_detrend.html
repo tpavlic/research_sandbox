@@ -471,8 +471,11 @@ a { color: var(--accent); }
         <div class="viz-wrap" id="treeWrap-1"></div>
         <div class="viz-cap">
           Brown trunk and branches are the underlying tree; orange dots are samples from one video,
-          confined to the tree surface. The lateral coordinate follows an AR(1) random walk, with an
-          elevated wobble in a window around <code>t = 0.5</code> (the &ldquo;deliberation&rdquo; signal).
+          confined to the tree surface. Here <code>t</code> is the normalized trajectory parameter:
+          <code>t&nbsp;=&nbsp;0</code> at the base of the trunk, <code>t&nbsp;=&nbsp;1</code> at the
+          tip of the right branch, and <code>t&nbsp;=&nbsp;0.5</code> at the fork.
+          The lateral coordinate follows an AR(1) random walk, with an elevated wobble in a window
+          around <code>t&nbsp;=&nbsp;0.5</code> (the &ldquo;deliberation&rdquo; signal).
           Green curve is the cubic B-spline fitted to the samples via least squares.
           Red lines are perpendicular deviations <code>d<sub>i</sub></code> from each sample to its closest point on the spline.
         </div>
@@ -490,7 +493,7 @@ a { color: var(--accent); }
           </div>
           <div class="ctrl">
             <label>Branch angle <span class="v" id="v-theta">35&deg;</span></label>
-            <input type="range" id="theta" min="15" max="75" value="35">
+            <input type="range" id="theta" min="15" max="65" value="35">
           </div>
 
           <div class="ctrl">
@@ -503,7 +506,7 @@ a { color: var(--accent); }
           </div>
 
           <div class="ctrl">
-            <label>Baseline <span class="greek">&sigma;</span> <span class="v" id="v-sbase">0.030</span></label>
+            <label><span>Baseline <span class="greek">&sigma;</span></span><span class="v" id="v-sbase">0.030</span></label>
             <input type="range" id="sbase" min="2" max="40" value="30">
           </div>
           <div class="ctrl">
@@ -522,10 +525,13 @@ a { color: var(--accent); }
         <div class="sec-divider"></div>
         <p style="font-size:0.78rem; color:var(--muted); margin:0 0 10px; line-height:1.55;">
           <b style="color:var(--text);">What is DF?</b> Degrees of freedom = number of B-spline basis
-          functions. For cubic splines (degree&nbsp;3): interior&nbsp;knots = DF&nbsp;&minus;&nbsp;4,
-          so DF&nbsp;=&nbsp;4 is a single polynomial with no interior knots; DF&nbsp;=&nbsp;6 has
-          2&nbsp;interior knots; DF&nbsp;=&nbsp;14 has 10.
-          Toggle <em>Spline knots</em> below to see them marked on the curve.
+          functions. A single cubic (degree&nbsp;3) polynomial has <b style="color:var(--text);">4</b>
+          free parameters (the coefficients of 1, <em>t</em>, <em>t</em>&sup2;, <em>t</em>&sup3;),
+          so DF&nbsp;=&nbsp;4 corresponds to zero interior knots &mdash; one unbroken polynomial
+          spanning the whole trajectory.
+          Interior knots = DF&nbsp;&minus;&nbsp;4 &nbsp;(i.e.&nbsp;DF&nbsp;&minus;&nbsp;(degree&nbsp;+&nbsp;1)),
+          so DF&nbsp;=&nbsp;5 has 1&nbsp;knot; DF&nbsp;=&nbsp;6 has 2; DF&nbsp;=&nbsp;14 has 10.
+          Toggle <em>Spline knots</em> to see them marked.
         </p>
         <div class="toggles">
           <label class="toggle"><input type="checkbox" id="tg-skel"   checked> Tree skeleton</label>
@@ -761,22 +767,28 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
       </p>
 
       <p><b>1. Find the foot.</b> The nearest point on the curve is</p>
-      <span class="formula">t<sub>i</sub><sup>&#8727;</sup> &nbsp;=&nbsp; argmin<sub>t&isin;[0,1]</sub> &nbsp; &Vert; p<sub>i</sub> &minus; r(t) &Vert;.</span>
+      <span class="formula">t<sub>i</sub><sup>&#8727;</sup> &nbsp;=&nbsp; argmin<sub>t&isin;[0,1]</sub> &nbsp; &Vert; p<sub>i</sub> &minus; r(t) &Vert;</span>
+      <p style="font-size:0.88em; color:var(--muted); margin-top:3px;">
+        where &Vert;&thinsp;&middot;&thinsp;&Vert; is the Euclidean distance &mdash;
+        the ordinary straight-line distance
+        &radic;[(x<sub>1</sub>&minus;x<sub>2</sub>)&sup2; + (y<sub>1</sub>&minus;y<sub>2</sub>)&sup2;].
+      </p>
       <p>
         In practice we evaluate <code>r(t)</code> on a dense <code>t</code>-grid (a few hundred points
         is plenty) and pick the index where the squared distance is minimized.
       </p>
 
       <p><b>2. Sign the distance.</b> The deviation is given the sign of the projection onto the unit normal at the foot,</p>
-      <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; (p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)) &middot; n&#770;(t<sub>i</sub><sup>&#8727;</sup>),</span>
+      <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; (p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)) &middot; n&#770;(t<sub>i</sub><sup>&#8727;</sup>)</span>
       <p>
-        where the unit tangent is <code>t&#770;(t) = r&prime;(t) / &Vert;r&prime;(t)&Vert;</code> and the unit normal
-        is its 90&deg; rotation. The sign convention is arbitrary but consistent &mdash; positive on one
+        where the unit normal n&#770;(t) is obtained by rotating the unit tangent
+        r&prime;(t)&thinsp;/&thinsp;&Vert;r&prime;(t)&Vert; by 90&deg;.
+        The sign convention is arbitrary but consistent &mdash; positive on one
         side of the curve, negative on the other.
       </p>
 
       <p><b>3. Tag with arc length.</b> The companion coordinate is</p>
-      <span class="formula">s<sub>i</sub> &nbsp;=&nbsp; &int;<sub>0</sub><sup>t<sub>i</sub><sup>&#8727;</sup></sup> &Vert; r&prime;(u) &Vert; du,</span>
+      <span class="formula">s<sub>i</sub> &nbsp;=&nbsp; &int;<sub>0</sub><sup>t<sub>i</sub><sup>&#8727;</sup></sup> &Vert; r&prime;(u) &Vert; du</span>
       <p>
         computed numerically as a cumulative sum of segment lengths along the dense <code>t</code>-grid.
         Plotting <code>d<sub>i</sub></code> against <code>s<sub>i</sub></code> gives the residual signal
@@ -855,60 +867,84 @@ resid <- ants |>
 
     <div class="explainer" style="margin-top:0;">
       <h4>The model-selection problem</h4>
+
       <p>
-        How many basis functions <code>df</code> should the spline use? Too few and the spline cuts
-        across the bend, contaminating the residual with tree shape. Too many and it threads through
-        the deliberation noise, hiding the very signal you wanted to measure.
+        <b>DF and smoothness &lambda; &mdash; two sides of the same coin.</b>
+        Ordinary least-squares fitting (used here and in <code>splines::bs()</code>&thinsp;+&thinsp;<code>lm()</code>)
+        specifies <b>DF</b>, the number of basis functions, which directly fixes the number of
+        interior knots and the flexibility of the curve.
+        Penalized splines (e.g.&nbsp;<code>mgcv::gam</code>) instead start from a large fixed basis
+        and add a wiggliness penalty &lambda;&thinsp;&middot;&thinsp;&int;|f&prime;&prime;(t)|&sup2;&thinsp;dt.
+        Large &lambda; suppresses oscillations (low effective DF); small &lambda; allows high
+        flexibility (high effective DF). Increasing DF &hArr; decreasing &lambda;. The rest
+        of this tab discusses DF-based selection; identical logic applies to &lambda;.
       </p>
+
       <p>
         Define the <b>residual sum of squares</b> between two parametric curves sampled at
-        <code>N</code> common parameter values as
+        N common parameter values as
       </p>
-      <span class="formula">RSS(A, B) &nbsp;&triangleq;&nbsp; &sum;<sub>k=1</sub><sup>N</sup> &Vert; A<sub>k</sub> &minus; B<sub>k</sub> &Vert;<sup>2</sup>.</span>
+      <span class="formula">RSS(A, B) &nbsp;&triangleq;&nbsp; &sum;<sub>k=1</sub><sup>N</sup> &Vert; A<sub>k</sub> &minus; B<sub>k</sub> &Vert;<sup>2</sup></span>
+
       <p>
-        Both quantities in the plot below compare the <em>fitted spline</em> to a reference set of
-        N&nbsp;points evaluated at the same parameter values:
-      </p>
-      <p>
-        &bull;&nbsp;<b>RSS(spline, data)</b> &mdash; each spline point vs. the
-        <em>corresponding sample position</em>. This is the in-sample fit residual. It decreases
-        monotonically with&nbsp;df (more flexibility = closer fit), and reaches zero when
-        df&nbsp;&ge;&nbsp;N, so it cannot be used to choose df by itself.
+        Both quantities in the plot below compare the <em>fitted spline</em> to a reference set
+        of N points evaluated at the same parameter values:
       </p>
       <p>
-        &bull;&nbsp;<b>RSS(spline, tree)</b> &mdash; each spline point vs. the
-        <em>true tree-centerline position</em> at the same parameter value. This is an oracle
-        benchmark: it measures how well the spline recovers the underlying tree shape, regardless
-        of the trajectory noise. It is U-shaped: too-low df misses the tree shape
-        (underfitting), too-high df tracks the noise away from the tree (overfitting). The minimum
-        at df&nbsp;= df&ast; is the ideal smoothing level.
+        &bull;&nbsp;<b>RSS(spline, data)</b> &mdash; spline points vs.&nbsp;<em>sample
+        positions</em>. Decreases monotonically with DF (more flexibility always reduces
+        in-sample error, reaching zero when DF &ge; N). It has <em>no minimum</em>, so it
+        cannot choose DF on its own. RSS(spline,&nbsp;data) is shown not because it picks DF,
+        but as a foil: its relentless decrease illustrates why a monotone fit criterion is
+        insufficient and a complexity penalty is needed.
       </p>
       <p>
-        <b>Can you get the tree skeleton from real video?</b> Yes &mdash; the trunk centerline can
-        be estimated by image segmentation of the tree in each frame, or via a one-time registration
-        of the video frame to a known tree model. In practice it requires extra processing, but
-        RSS(spline,&nbsp;tree) then becomes available as a real selection criterion, not just an
-        oracle.
+        &bull;&nbsp;<b>RSS(spline, tree)</b> &mdash; spline points vs.&nbsp;<em>true
+        tree-centerline positions</em> (oracle). It is U-shaped: at low DF the spline
+        cannot follow the tree geometry (underfitting); at high DF it chases trajectory noise
+        away from the true shape (overfitting). The minimum df&ast; is the ideal smoothing level.
+      </p>
+
+      <p>
+        <b>How to use both curves together.</b>
+        The two curves diverge as DF grows: RSS(spline,&nbsp;data) keeps falling while
+        RSS(spline,&nbsp;tree) passes its minimum and starts to rise.
+        The onset of this divergence marks the overfitting threshold &mdash; at that DF, the spline
+        begins fitting behavioral noise rather than tree geometry. Practically, choose DF in the
+        neighborhood of df&ast; (or slightly to its left for a conservative smoothing). The widening
+        gap between the two curves tells you how much of the fit improvement is noise-fitting rather
+        than tree-shape recovery: a narrow gap means most of the fit gain is genuinely structural;
+        a wide gap means the spline is mostly chasing noise.
+      </p>
+
+      <p>
+        <b>Can you get the tree skeleton from real video?</b> Yes &mdash; the trunk centerline can be
+        extracted by image segmentation or frame-to-tree registration.
+        When that is possible, RSS(spline,&nbsp;tree) is directly usable, not just an oracle.
+        When it is not available, AIC, BIC, and GCV replace the oracle: instead of measuring
+        how far the spline is from the true skeleton, they penalize the in-sample RSS by the
+        number of parameters, discouraging the spline from chasing noise.
       </p>
       <p>
-        <b>Practical model selection without the tree skeleton.</b> In-sample
-        RSS(spline,&nbsp;data) always decreases, so it does not distinguish over- from underfitting.
-        The solution is to <em>penalize</em> model complexity. Three practical criteria:
+        &bull;&nbsp;AIC = N&thinsp;log(RSS/N) + 2&thinsp;DF
+        (Akaike &mdash; lighter penalty, slightly favors richer models).<br>
+        &bull;&nbsp;BIC = N&thinsp;log(RSS/N) + log(N)&thinsp;DF
+        (heavier penalty, sparser; usually preferable for large N).<br>
+        Both <b>AIC and BIC</b> are minimized over a grid of DF values.
       </p>
       <p>
-        &bull;&nbsp;<b>AIC</b> = N&nbsp;log(RSS/N) + 2&thinsp;df (Akaike &mdash; lighter penalty,
-        favors richer models when N is large).<br>
-        &bull;&nbsp;<b>BIC</b> = N&nbsp;log(RSS/N) + log(N)&thinsp;df (heavier penalty, sparser).
-        Both are minimized over a grid of df values.<br>
-        &bull;&nbsp;<b>GCV</b> from <code>mgcv::gam</code> avoids the grid sweep entirely by
-        fitting a penalized spline and choosing the smoothness &lambda; that minimizes
-        leave-one-out error (approximately). It typically agrees with BIC.
+        &bull;&nbsp;<b>GCV</b> from <code>mgcv::gam</code> works in the &lambda; domain rather
+        than the DF domain: it fits a penalized spline and automatically chooses the smoothness
+        &lambda; to minimize an approximation of leave-one-out prediction error. Because &lambda;
+        and DF are equivalent parameterizations of the same flexibility/smoothness trade-off, GCV
+        is solving the same model-selection problem as an AIC/BIC sweep &mdash; just without the
+        grid search.
       </p>
       <p style="font-size:0.88em; color:var(--muted);">
-        All three penalize complexity for the same reason: a spline with enough df can pass
-        through every sample (RSS&nbsp;=&nbsp;0), but that spline is useless &mdash; it captures
-        noise, not tree shape. The penalty term forces a trade-off that mimics the U-shape of
-        RSS(spline,&nbsp;tree) without needing the true skeleton.
+        All three criteria enforce complexity penalties for the same reason: a spline with enough DF
+        can pass through every sample (RSS&nbsp;=&nbsp;0), but that spline is useless &mdash; it
+        captures noise, not tree shape. The penalty mimics the U-shape of RSS(spline,&nbsp;tree)
+        without needing the true skeleton.
       </p>
     </div>
 
@@ -1405,11 +1441,16 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           if (lat < -halfW) lat = -halfW;
 
           const c = treeCenterline(t, theta, treeType);
-          const nx = -c.ty, ny = c.tx;            // unit normal to centerline
+          // Displace horizontally (global x-axis) rather than in the local
+          // branch-perpendicular direction.  For a vertical trunk the two
+          // directions coincide.  For angled branches the perpendicular has a
+          // large vertical component that makes samples appear to float above or
+          // below the branch.  Horizontal displacement keeps every sample within
+          // the visual silhouette of the tree regardless of branch angle.
           out[i] = {
             t,
-            x: c.x + lat * nx,
-            y: c.y + lat * ny,
+            x: c.x + lat,
+            y: c.y,
             lat: lat
           };
         }
@@ -1923,12 +1964,17 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         const wrap = document.getElementById('treeWrap-4');
         if (!wrap) return;
         const svgW = 200, svgH = 540;
-        // Override layout: this tree is narrower so use a wider tx range to keep
-        // the trunk aspect right.
+        // Compute the horizontal extent of the tree at the current branch angle so
+        // the SVG layout never clips the branches, even at large angles.
+        const sinTr = Math.sin(S.branchAngle * Math.PI / 180);
+        const branchXMax = skel.rightBranch
+          ? sinTr * BRANCH_LEN + TRUNK_THICK / 2 + 0.06
+          : TRUNK_THICK / 2 + 0.06;
+        const txBound = Math.max(0.25, branchXMax);
         const L = {
           svgW, svgH,
           padL: 12, padR: 12, padT: 18, padB: 28,
-          txMin: -0.55, txMax: 0.55, tyMin: -0.05, tyMax: 1.80
+          txMin: -txBound, txMax: txBound, tyMin: -0.05, tyMax: 1.80
         };
         function toSVG(tx, ty) {
           return {
@@ -2051,12 +2097,14 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         }
 
         // ─── Canvas: vertical = z, horizontal = f ───
-        const cssW = 540, cssH = 540;
-        const padL = 64, padR = 28, padT = 22, padB = 52;
+        // Portrait aspect (narrower than tall) — the z-axis is the main visual
+        // dimension and should be tall; frequency axis does not need much width.
+        const cssW = 360, cssH = 520;
+        const padL = 58, padR = 20, padT = 22, padB = 48;
         const plotW = cssW - padL - padR, plotH = cssH - padT - padB;
         const dpr = window.devicePixelRatio || 1;
 
-        wftWrap.innerHTML = `<canvas id="wftCanvas" style="width:100%;height:auto;display:block;"></canvas>`;
+        wftWrap.innerHTML = `<canvas id="wftCanvas" style="display:block;max-width:${cssW}px;width:100%;height:auto;margin:0 auto;"></canvas>`;
         const canvas = document.getElementById('wftCanvas');
         canvas.style.aspectRatio = `${cssW} / ${cssH}`;
         canvas.width = cssW * dpr;
