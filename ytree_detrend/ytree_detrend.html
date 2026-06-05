@@ -1,0 +1,2310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Y-Tree Trajectory Detrending &amp; Spectral Analysis</title>
+<style>
+:root {
+  --green-dark: #2f6b4a;
+  --green-mid:  #4a8c69;
+  --green-pale: #e6f0ea;
+  --green-tint: #d4e6dc;
+  --orange:     #d97842;
+  --orange-mid: #e3925f;
+  --orange-pale:#fbe8d8;
+  --orange-deep:#c34a2e;
+  --bark:       #6b4a2a;
+  --bark-light: #8a6843;
+  --bark-pale:  #c4a78a;
+  --text:       #222;
+  --muted:      #666;
+  --tiny:       #888;
+  --surface:    #fcfaf6;
+  --bg:         #ffffff;
+  --border:     #d8d8d4;
+  --border-strong:#b8b8b2;
+  --accent:     #2a5a8c;
+  --code-bg:    #f4f1ea;
+  --mono:       'IBM Plex Mono', 'SF Mono', Consolas, Menlo, monospace;
+  --sans:       -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --r: 6px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.5;
+  font-size: 15px;
+}
+a { color: var(--accent); }
+
+.widget {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 22px 22px 44px;
+}
+
+.phdr {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+}
+.phdr h1 {
+  font-size: 1.5rem;
+  margin: 0 0 4px;
+  color: var(--green-dark);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.phdr .sub {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0 0 10px;
+  font-style: italic;
+}
+.phdr .lede {
+  font-size: 0.95rem;
+  color: var(--text);
+  margin: 0 0 8px;
+  max-width: 880px;
+}
+.phdr .lede code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: var(--green-pale);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--green-dark);
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 16px;
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--green-dark); background: var(--green-pale); }
+.tab.active {
+  color: var(--green-dark);
+  border-bottom-color: var(--green-dark);
+  font-weight: 600;
+}
+
+.tabs-select-wrap { display: none; margin-bottom: 16px; }
+.tabs-select {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--green-dark);
+  background: var(--green-pale);
+  border: 1px solid var(--green-mid);
+  border-radius: var(--r);
+  cursor: pointer;
+}
+
+.tabpane { display: none; }
+.tabpane.active { display: block; }
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+.tab4-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.40fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+  min-width: 0;
+}
+.panel h3 {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--green-dark);
+  font-weight: 600;
+}
+.panel h3 .ann {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.92em;
+  margin-left: 5px;
+}
+
+.ctrls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+.ctrl { display: flex; flex-direction: column; gap: 4px; }
+.ctrl label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.ctrl label .v {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--green-dark);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+/* Greek letters must not be uppercased */
+.ctrl label .nocaps,
+.ctrl label .greek {
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--mono);
+  font-style: normal;
+}
+.ctrl input[type=range] {
+  width: 100%;
+  accent-color: var(--green-dark);
+  margin: 0;
+}
+.ctrl select {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  padding: 5px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: white;
+}
+.ctrl-row {
+  display: flex; gap: 8px; align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.btn {
+  background: var(--green-dark);
+  border: 1px solid var(--green-dark);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: all 0.13s;
+}
+.btn:hover { background: var(--green-mid); border-color: var(--green-mid); }
+.btn.sec {
+  background: transparent;
+  color: var(--green-dark);
+}
+.btn.sec:hover { background: var(--green-pale); }
+
+.toggles {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  margin-top: 6px;
+}
+.toggle {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.82rem; color: var(--text);
+  cursor: pointer; user-select: none;
+}
+.toggle input { margin: 0; accent-color: var(--green-dark); }
+
+.sec-divider {
+  border-top: 1px dashed var(--border);
+  margin: 14px 0 12px;
+}
+
+.viz-wrap {
+  width: 100%;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.viz-wrap svg, .viz-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.viz-cap {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.viz-cap b { color: var(--text); }
+.viz-cap code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--green-dark);
+  background: var(--green-pale);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.explainer {
+  background: var(--surface);
+  border-left: 3px solid var(--green-mid);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding: 14px 18px;
+  margin: 18px 0;
+  font-size: 0.93rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+.explainer h4 {
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--green-dark);
+  font-weight: 600;
+}
+.explainer p { margin: 0 0 8px; }
+.explainer p:last-child { margin-bottom: 0; }
+.explainer code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--green-pale);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--green-dark);
+}
+.explainer .formula {
+  display: block;
+  font-family: var(--mono);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 0.95rem;
+  overflow-x: auto;
+}
+
+.rblock {
+  margin-top: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--code-bg);
+  overflow: hidden;
+}
+.rblock-hdr {
+  background: var(--green-dark);
+  color: white;
+  padding: 8px 14px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.rblock-hdr .lab-r {
+  font-family: var(--mono);
+  text-transform: none;
+  letter-spacing: 0;
+  background: rgba(255,255,255,0.18);
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+.rtabs {
+  display: flex; gap: 0;
+  background: white;
+  border-bottom: 1px solid var(--border);
+}
+.rtab {
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid transparent;
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.13s;
+}
+.rtab:hover { background: var(--green-pale); color: var(--green-dark); }
+.rtab.active {
+  color: var(--green-dark);
+  border-bottom-color: var(--green-dark);
+  font-weight: 600;
+  background: var(--code-bg);
+}
+.rtabs-select-wrap { display: none; padding: 8px 10px; background: white; border-bottom: 1px solid var(--border); }
+.rtabs-select {
+  width: 100%;
+  padding: 6px 8px;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--green-dark);
+  background: var(--green-pale);
+  border: 1px solid var(--green-mid);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.rpane { display: none; }
+.rpane.active { display: block; }
+.rblock pre {
+  margin: 0;
+  padding: 14px 16px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.foot {
+  border-top: 1px solid var(--border);
+  margin-top: 36px;
+  padding-top: 12px;
+  font-size: 0.74rem;
+  color: var(--tiny);
+  text-align: right;
+  font-family: var(--mono);
+}
+.foot a { color: var(--tiny); text-decoration: underline; }
+.footer-sep { display: inline; }
+.footer-lic { display: inline; }
+
+@media (max-width: 880px) {
+  .grid { grid-template-columns: 1fr; }
+  .tab4-grid { grid-template-columns: 1fr; }
+  /* Cap tree SVG width so height stays roughly constant when the 2-column
+     grid reflws to 1 column.  At the breakpoint the tree panel is ~450 px
+     wide in wide-screen mode; capping at 460 px here keeps the height
+     nearly unchanged as the viewport narrows through that transition. */
+  #treeWrap-1, #treeWrap-3 { max-width: 460px; margin-left: auto; margin-right: auto; }
+  /* Tab 4 tree has a narrow viewBox (200×540); cap at its natural max width. */
+  #treeWrap-4 { max-width: 220px; margin-left: auto; margin-right: auto; }
+}
+
+@media (max-width: 600px) {
+  .widget { padding: 18px 14px 36px; }
+  .phdr h1 { font-size: 1.3rem; }
+  .tabs { display: none; }
+  .tabs-select-wrap { display: block; }
+  .rtabs { display: none; }
+  .rtabs-select-wrap { display: block; }
+  .ctrls { grid-template-columns: 1fr; }
+  .footer-sep { display: none; }
+  .footer-lic { display: block; margin-top: 3px; }
+}
+</style>
+</head>
+<body>
+<div class="widget">
+
+  <div class="phdr">
+    <h1>Y-Tree Trajectory Detrending &amp; Spectral Analysis</h1>
+    <p class="sub">Interactive companion for fitting splines to load trajectories, projecting samples, and reading windowed Fourier transforms</p>
+    <p class="lede">
+      A load carried up a curved tree leaves a trajectory whose shape is dominated by the tree itself.
+      To detect anything <em>behavioral</em> riding on top of that shape &mdash; pre-fork hesitation, side-to-side
+      deliberation, drift &mdash; one first needs to subtract the trend. This widget illustrates two complementary
+      ways to do it: (1) fit a smooth spline to the trajectory and study the perpendicular residuals
+      <code>d(s)</code>, or (2) compute a windowed Fourier transform of lateral position
+      <code>x(z)</code> along the trunk and treat low spatial frequencies as the trend.
+    </p>
+    <p class="lede" style="font-size: 0.85rem; color: var(--muted);">
+      The trajectory is modeled as an autocorrelated random walk along the centerline, clipped to the trunk
+      surface &mdash; every sample sits on the tree, mimicking samples from a single video of a load being
+      cooperatively transported.
+    </p>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="0">Detrending overview</button>
+    <button class="tab"        data-tab="1">Perpendicular projection</button>
+    <button class="tab"        data-tab="2">Choosing the DF</button>
+    <button class="tab"        data-tab="3">Windowed Fourier transform</button>
+  </div>
+  <div class="tabs-select-wrap">
+    <select class="tabs-select" id="mainTabSelect">
+      <option value="0">1. Detrending overview</option>
+      <option value="1">2. Perpendicular projection</option>
+      <option value="2">3. Choosing the DF</option>
+      <option value="3">4. Windowed Fourier transform</option>
+    </select>
+  </div>
+
+  <!-- ═════════════════ TAB 1: Detrending overview ═════════════════ -->
+  <div class="tabpane active" data-pane="0">
+
+    <div class="grid">
+      <div class="panel">
+        <h3>Trajectory, fitted spline, perpendicular deviations</h3>
+        <div class="viz-wrap" id="treeWrap-1"></div>
+        <div class="viz-cap">
+          Brown trunk and branches are the underlying tree; orange dots are samples from one video,
+          confined to the tree surface. The lateral coordinate follows an AR(1) random walk, with an
+          elevated wobble in a window around <code>t = 0.5</code> (the &ldquo;deliberation&rdquo; signal).
+          Green curve is the cubic B-spline fitted to the samples via least squares.
+          Red lines are perpendicular deviations <code>d<sub>i</sub></code> from each sample to its closest point on the spline.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controls</h3>
+        <div class="ctrls">
+          <div class="ctrl">
+            <label>Tree type <span class="v" id="v-treeType">Y</span></label>
+            <select id="treeType">
+              <option value="Y" selected>Y &mdash; forked</option>
+              <option value="I">I &mdash; straight</option>
+            </select>
+          </div>
+          <div class="ctrl">
+            <label>Branch angle <span class="v" id="v-theta">35&deg;</span></label>
+            <input type="range" id="theta" min="15" max="75" value="35">
+          </div>
+
+          <div class="ctrl">
+            <label>Samples N <span class="v" id="v-N">100</span></label>
+            <input type="range" id="N" min="40" max="240" value="100">
+          </div>
+          <div class="ctrl">
+            <label>Spline DF (cubic) <span class="v" id="v-df">6</span></label>
+            <input type="range" id="df" min="4" max="14" value="6">
+          </div>
+
+          <div class="ctrl">
+            <label>Baseline <span class="greek">&sigma;</span> <span class="v" id="v-sbase">0.030</span></label>
+            <input type="range" id="sbase" min="2" max="40" value="30">
+          </div>
+          <div class="ctrl">
+            <label>Pre-fork deliberation <span class="v" id="v-sdel">0.080</span></label>
+            <input type="range" id="sdel" min="0" max="150" value="80">
+          </div>
+
+          <div class="ctrl" style="grid-column: 1 / -1;">
+            <div class="ctrl-row" style="margin-top: 2px;">
+              <button class="btn" id="btn-resim">New realization</button>
+              <span style="font-size:0.78rem; color:var(--muted);">draws a fresh AR(1) noise realization</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec-divider"></div>
+        <p style="font-size:0.78rem; color:var(--muted); margin:0 0 10px; line-height:1.55;">
+          <b style="color:var(--text);">What is DF?</b> Degrees of freedom = number of B-spline basis
+          functions. For cubic splines (degree&nbsp;3): interior&nbsp;knots = DF&nbsp;&minus;&nbsp;4,
+          so DF&nbsp;=&nbsp;4 is a single polynomial with no interior knots; DF&nbsp;=&nbsp;6 has
+          2&nbsp;interior knots; DF&nbsp;=&nbsp;14 has 10.
+          Toggle <em>Spline knots</em> below to see them marked on the curve.
+        </p>
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" id="tg-skel"   checked> Tree skeleton</label>
+          <label class="toggle"><input type="checkbox" id="tg-spline" checked> Fitted spline</label>
+          <label class="toggle"><input type="checkbox" id="tg-knots"> Spline knots</label>
+          <label class="toggle"><input type="checkbox" id="tg-devs"   checked> Deviation lines</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <h3>Perpendicular residuals <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">d(s)</span> along the fitted spline</h3>
+      <div class="viz-wrap" id="residWrap-1"></div>
+      <div class="viz-cap">
+        Signed perpendicular distance <code>d<sub>i</sub></code> against arc length <code>s<sub>i</sub></code>
+        of the foot on the spline. For a Y-tree, the vertical orange line marks the arc-length location of the
+        <b>tree's fork projected onto the fitted spline</b>. The tree's fork is at a fixed geometric
+        point, but its arc-length coordinate along the spline shifts slightly with each refit because
+        the spline itself shifts. Dashed gray lines indicate &plusmn;1<span style="font-family:var(--mono);">&sigma;</span>
+        of the residual estimated away from the deliberation window.
+      </div>
+    </div>
+
+    <div class="explainer">
+      <h4>What the residual is telling us</h4>
+      <p>
+        If the spline captures the <em>tree's shape</em> &mdash; the smooth path the trajectory would
+        follow without behavior &mdash; the residuals <code>d(s)</code> contain everything else:
+        autocorrelated noise, drift, hesitation. Pre-fork wobble shows up as elevated residual variance
+        around the fork.
+      </p>
+      <p>
+        The smoothing is a Goldilocks choice: too few degrees of freedom and the spline cuts across
+        the bend, dumping tree shape into the residual; too many and it threads through the
+        deliberation, hiding the signal. See the <b>Choosing the DF</b> tab.
+      </p>
+      <p style="font-size:0.88em; color:var(--muted);">
+        <b>On the smoothing parameter.</b> For an ordinary least-squares fit to a cubic B-spline basis
+        (what you get from <code>splines::bs(t, df = k, degree = 3)</code> followed by <code>lm()</code>),
+        DF is the only knob &mdash; it sets the number of basis functions. <em>Smoothing</em> splines
+        (e.g.&nbsp;<code>mgcv::gam(y &sim; s(t))</code>) take a different route: a large fixed basis
+        plus a wiggliness penalty <span class="greek">&lambda;</span> chosen by GCV or REML.
+        DF and <span class="greek">&lambda;</span> are two parameterizations of the same trade-off.
+      </p>
+    </div>
+
+    <div class="rblock">
+      <div class="rblock-hdr">Detrending in <span class="lab-r">R</span></div>
+      <div class="rtabs">
+        <button class="rtab active" data-rtab="t0-base">Base R</button>
+        <button class="rtab"        data-rtab="t0-tidy">Tidyverse</button>
+      </div>
+      <div class="rtabs-select-wrap">
+        <select class="rtabs-select" data-rselect="t0">
+          <option value="t0-base" selected>Base R</option>
+          <option value="t0-tidy">Tidyverse</option>
+        </select>
+      </div>
+      <div class="rpane active" data-rpane="t0-base"><pre>library(splines)
+
+# `ants` columns: t (parameter), x, y (load position).
+# Fit cubic B-splines to x and y independently as functions of t.
+df <- 6
+fit_x <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
+fit_y <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
+
+# Dense evaluation of the curve r(t) = (x_hat, y_hat)
+t_grid <- seq(min(ants$t), max(ants$t), length.out = 600)
+curve  <- data.frame(
+  t = t_grid,
+  x = predict(fit_x, newdata = data.frame(t = t_grid)),
+  y = predict(fit_y, newdata = data.frame(t = t_grid))
+)
+
+# Cumulative arc length along the curve
+ds        <- sqrt(diff(curve$x)^2 + diff(curve$y)^2)
+curve$s   <- c(0, cumsum(ds))</pre></div>
+      <div class="rpane" data-rpane="t0-tidy"><pre>library(splines)
+library(dplyr)
+library(tibble)
+
+df <- 6
+fit_x <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
+fit_y <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
+
+curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
+  mutate(
+    x = predict(fit_x, newdata = pick(t)),
+    y = predict(fit_y, newdata = pick(t))
+  ) |>
+  mutate(
+    dx = x - lag(x, default = first(x)),
+    dy = y - lag(y, default = first(y)),
+    s  = cumsum(sqrt(dx^2 + dy^2))
+  ) |>
+  select(-dx, -dy)</pre></div>
+    </div>
+
+  </div>
+
+  <!-- ═════════════════ TAB 2: Perpendicular projection ═════════════════ -->
+  <div class="tabpane" data-pane="1">
+
+    <div class="panel">
+      <h3>Geometry of the projection</h3>
+      <div class="viz-wrap">
+        <svg viewBox="0 0 920 480" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <pattern id="proj-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#eee" stroke-width="0.5"/>
+            </pattern>
+            <marker id="proj-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#666"/>
+            </marker>
+            <marker id="proj-arrow-acc" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#2a5a8c"/>
+            </marker>
+          </defs>
+          <rect width="920" height="480" fill="white"/>
+          <rect width="920" height="480" fill="url(#proj-grid)" opacity="0.6"/>
+
+          <!-- Cubic Bezier curve: M(60,380) C(240,120) (500,220) (860,200) -->
+          <path d="M 60 380 C 240 120, 500 220, 860 200"
+                fill="none" stroke="#2f6b4a" stroke-width="3.5"/>
+
+          <!-- Curve label, positioned away from the curve, inside viewBox -->
+          <text x="550" y="305" font-family="IBM Plex Mono, monospace" font-size="19" fill="#2f6b4a" font-weight="600">
+            r(t) = (x&#770;(t), y&#770;(t))
+          </text>
+
+          <!-- ───── Primary annotated sample at curve t = 0.30 ──────
+               foot = (244.1, 230.2)
+               unit tangent  = (0.935, -0.355)
+               unit normal n (toward sample side)  = (-0.355, -0.935)
+               sample p_i along +n at distance 110: (205.0, 127.2) -->
+
+          <!-- d_i dashed line from sample to foot -->
+          <line x1="205.0" y1="127.2" x2="244.1" y2="230.2"
+                stroke="#c34a2e" stroke-width="2.5" stroke-dasharray="6,4"/>
+
+          <!-- Sample dot p_i  (drawn AFTER dashed line so endpoint is clean) -->
+          <circle cx="205.0" cy="127.2" r="9" fill="#d97842" stroke="#8a3a1c" stroke-width="1.5"/>
+
+          <!-- Tangent arrow t̂  (from foot, length 90, direction (0.935, -0.355)) -->
+          <line x1="244.1" y1="230.2" x2="328.3" y2="198.3"
+                stroke="#2a5a8c" stroke-width="2"
+                marker-end="url(#proj-arrow-acc)"/>
+          <text x="338" y="200" font-family="IBM Plex Mono, monospace" font-size="17" fill="#2a5a8c">
+            t&#770;(t<tspan font-size="12" baseline-shift="sub">i</tspan><tspan font-size="13" baseline-shift="super">&#8727;</tspan>)
+          </text>
+
+          <!-- Normal arrow n̂  (from foot, length 60, direction (-0.355, -0.935) toward sample) -->
+          <line x1="244.1" y1="230.2" x2="222.8" y2="174.1"
+                stroke="#888" stroke-width="2"
+                marker-end="url(#proj-arrow)"/>
+          <text x="178" y="173" font-family="IBM Plex Mono, monospace" font-size="17" fill="#666">
+            n&#770;(t<tspan font-size="12" baseline-shift="sub">i</tspan><tspan font-size="13" baseline-shift="super">&#8727;</tspan>)
+          </text>
+
+          <!-- Foot marker (open square) drawn LAST so its border is on top -->
+          <rect x="237" y="223" width="14" height="14"
+                fill="white" stroke="#2f6b4a" stroke-width="2.5"/>
+
+          <!-- Label: p_i -->
+          <text x="220" y="118" font-family="IBM Plex Mono, monospace" font-size="22" fill="#8a3a1c" font-weight="600">
+            p<tspan font-size="14" baseline-shift="sub">i</tspan>
+          </text>
+
+          <!-- Label: r(t_i*) -->
+          <line x1="160" y1="262" x2="237" y2="234" stroke="#999" stroke-width="0.8"/>
+          <text x="42" y="270" font-family="IBM Plex Mono, monospace" font-size="19" fill="#2f6b4a" font-weight="600">
+            r(t<tspan font-size="13" baseline-shift="sub">i</tspan><tspan font-size="14" baseline-shift="super">&#8727;</tspan>)
+          </text>
+
+          <!-- Label: d_i along the dashed line -->
+          <line x1="155" y1="175" x2="220" y2="180" stroke="#999" stroke-width="0.8"/>
+          <text x="115" y="180" font-family="IBM Plex Mono, monospace" font-size="20" fill="#c34a2e" font-weight="600">
+            d<tspan font-size="14" baseline-shift="sub">i</tspan>
+          </text>
+
+          <!-- ───── Secondary sample 2 at curve t = 0.55 ──────
+               foot = (433.0, 197.8)
+               unit tangent  = (0.999, -0.034)
+               unit normal n = (0.034, 0.999)
+               sample at foot + 130*n = (437.4, 327.7), BELOW curve  -->
+          <line x1="437.4" y1="327.7" x2="433.0" y2="197.8"
+                stroke="#c34a2e" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.75"/>
+          <circle cx="437.4" cy="327.7" r="7" fill="#d97842" stroke="#8a3a1c" stroke-width="1" opacity="0.9"/>
+          <rect x="426" y="191" width="14" height="14" fill="white" stroke="#2f6b4a" stroke-width="2" opacity="0.88"/>
+
+          <!-- ───── Secondary sample 3 at curve t = 0.80 ──────
+               foot = (655.8, 201.4)
+               unit tangent  = (1.000,  0.027)
+               unit normal n = (-0.027, 1.000)
+               sample at foot - 120*n = (659.0, 81.4), ABOVE curve  -->
+          <line x1="659.0" y1="81.4" x2="655.8" y2="201.4"
+                stroke="#c34a2e" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.75"/>
+          <circle cx="659.0" cy="81.4" r="7" fill="#d97842" stroke="#8a3a1c" stroke-width="1" opacity="0.9"/>
+          <rect x="649" y="194" width="14" height="14" fill="white" stroke="#2f6b4a" stroke-width="2" opacity="0.88"/>
+
+          <!-- Legend strip along the bottom -->
+          <g transform="translate(60, 425)">
+            <circle cx="10" cy="10" r="7" fill="#d97842" stroke="#8a3a1c" stroke-width="1.2"/>
+            <text x="26" y="15" font-family="-apple-system, sans-serif" font-size="15" fill="#222">
+              sample p<tspan font-size="11" baseline-shift="sub">i</tspan>
+            </text>
+
+            <rect x="155" y="3" width="14" height="14" fill="white" stroke="#2f6b4a" stroke-width="2"/>
+            <text x="178" y="15" font-family="-apple-system, sans-serif" font-size="15" fill="#222">
+              foot r(t<tspan font-size="11" baseline-shift="sub">i</tspan><tspan font-size="12" baseline-shift="super">&#8727;</tspan>)
+            </text>
+
+            <line x1="320" y1="10" x2="360" y2="10" stroke="#c34a2e" stroke-width="2.5" stroke-dasharray="6,4"/>
+            <text x="370" y="15" font-family="-apple-system, sans-serif" font-size="15" fill="#222">
+              signed deviation d<tspan font-size="11" baseline-shift="sub">i</tspan>
+            </text>
+
+            <line x1="565" y1="10" x2="605" y2="10" stroke="#2f6b4a" stroke-width="3.5"/>
+            <text x="615" y="15" font-family="-apple-system, sans-serif" font-size="15" fill="#222">
+              fitted spline r(t)
+            </text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="explainer">
+      <h4>The three computations</h4>
+      <p>
+        Each sample <code>p<sub>i</sub> = (x<sub>i</sub>, y<sub>i</sub>)</code> is mapped to two scalars:
+        a signed deviation <code>d<sub>i</sub></code> from the fitted curve and an arc length
+        <code>s<sub>i</sub></code> giving its position along the curve.
+      </p>
+
+      <p><b>1. Find the foot.</b> The nearest point on the curve is</p>
+      <span class="formula">t<sub>i</sub><sup>&#8727;</sup> &nbsp;=&nbsp; argmin<sub>t&isin;[0,1]</sub> &nbsp; &Vert; p<sub>i</sub> &minus; r(t) &Vert;.</span>
+      <p>
+        In practice we evaluate <code>r(t)</code> on a dense <code>t</code>-grid (a few hundred points
+        is plenty) and pick the index where the squared distance is minimized.
+      </p>
+
+      <p><b>2. Sign the distance.</b> The deviation is given the sign of the projection onto the unit normal at the foot,</p>
+      <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; (p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)) &middot; n&#770;(t<sub>i</sub><sup>&#8727;</sup>),</span>
+      <p>
+        where the unit tangent is <code>t&#770;(t) = r&prime;(t) / &Vert;r&prime;(t)&Vert;</code> and the unit normal
+        is its 90&deg; rotation. The sign convention is arbitrary but consistent &mdash; positive on one
+        side of the curve, negative on the other.
+      </p>
+
+      <p><b>3. Tag with arc length.</b> The companion coordinate is</p>
+      <span class="formula">s<sub>i</sub> &nbsp;=&nbsp; &int;<sub>0</sub><sup>t<sub>i</sub><sup>&#8727;</sup></sup> &Vert; r&prime;(u) &Vert; du,</span>
+      <p>
+        computed numerically as a cumulative sum of segment lengths along the dense <code>t</code>-grid.
+        Plotting <code>d<sub>i</sub></code> against <code>s<sub>i</sub></code> gives the residual signal
+        used in the first tab.
+      </p>
+    </div>
+
+    <div class="rblock">
+      <div class="rblock-hdr">Projection in <span class="lab-r">R</span></div>
+      <div class="rtabs">
+        <button class="rtab active" data-rtab="t1-base">Base R</button>
+        <button class="rtab"        data-rtab="t1-tidy">Tidyverse</button>
+      </div>
+      <div class="rtabs-select-wrap">
+        <select class="rtabs-select" data-rselect="t1">
+          <option value="t1-base" selected>Base R</option>
+          <option value="t1-tidy">Tidyverse</option>
+        </select>
+      </div>
+      <div class="rpane active" data-rpane="t1-base"><pre># Project samples (x, y) onto a dense evaluation of the fitted
+# spline (curve$x, curve$y) and compute (d_i, s_i).
+
+K <- nrow(curve)
+
+# Unit tangent and unit normal at each curve point (central diff)
+i_prev <- pmax(seq_len(K) - 1, 1)
+i_next <- pmin(seq_len(K) + 1, K)
+tx <- curve$x[i_next] - curve$x[i_prev]
+ty <- curve$y[i_next] - curve$y[i_prev]
+mag <- sqrt(tx^2 + ty^2)
+tx <- tx / mag;  ty <- ty / mag
+nx <- -ty;       ny <- tx        # rotate tangent 90 deg -> unit normal
+
+# For each sample, find nearest curve index (foot)
+project_one <- function(px, py) {
+  d2 <- (curve$x - px)^2 + (curve$y - py)^2
+  which.min(d2)
+}
+i_foot <- mapply(project_one, ants$x, ants$y)
+
+# Signed perpendicular distance and arc-length coordinate
+d_i <- (ants$x - curve$x[i_foot]) * nx[i_foot] +
+       (ants$y - curve$y[i_foot]) * ny[i_foot]
+s_i <- curve$s[i_foot]
+
+resid <- data.frame(s = s_i, d = d_i)</pre></div>
+      <div class="rpane" data-rpane="t1-tidy"><pre>library(dplyr)
+library(purrr)
+
+# Add tangent and normal columns to the curve tibble
+curve <- curve |>
+  mutate(
+    tx = lead(x, default = last(x)) - lag(x, default = first(x)),
+    ty = lead(y, default = last(y)) - lag(y, default = first(y)),
+    mag = sqrt(tx^2 + ty^2),
+    tx  = tx / mag,
+    ty  = ty / mag,
+    nx  = -ty,
+    ny  =  tx
+  )
+
+# Project each sample onto the curve
+resid <- ants |>
+  mutate(
+    i_foot = map2_int(x, y, ~ which.min((curve$x - .x)^2 + (curve$y - .y)^2)),
+    d      = (x - curve$x[i_foot]) * curve$nx[i_foot] +
+             (y - curve$y[i_foot]) * curve$ny[i_foot],
+    s      = curve$s[i_foot]
+  )</pre></div>
+    </div>
+
+  </div>
+
+  <!-- ═════════════════ TAB 3: Choosing the DF ═════════════════ -->
+  <div class="tabpane" data-pane="2">
+
+    <div class="explainer" style="margin-top:0;">
+      <h4>The model-selection problem</h4>
+      <p>
+        How many basis functions <code>df</code> should the spline use? Too few and the spline cuts
+        across the bend, contaminating the residual with tree shape. Too many and it threads through
+        the deliberation noise, hiding the very signal you wanted to measure.
+      </p>
+      <p>
+        Define the <b>residual sum of squares</b> between two parametric curves sampled at
+        <code>N</code> common parameter values as
+      </p>
+      <span class="formula">RSS(A, B) &nbsp;&triangleq;&nbsp; &sum;<sub>k=1</sub><sup>N</sup> &Vert; A<sub>k</sub> &minus; B<sub>k</sub> &Vert;<sup>2</sup>.</span>
+      <p>
+        Both quantities in the plot below compare the <em>fitted spline</em> to a reference set of
+        N&nbsp;points evaluated at the same parameter values:
+      </p>
+      <p>
+        &bull;&nbsp;<b>RSS(spline, data)</b> &mdash; each spline point vs. the
+        <em>corresponding sample position</em>. This is the in-sample fit residual. It decreases
+        monotonically with&nbsp;df (more flexibility = closer fit), and reaches zero when
+        df&nbsp;&ge;&nbsp;N, so it cannot be used to choose df by itself.
+      </p>
+      <p>
+        &bull;&nbsp;<b>RSS(spline, tree)</b> &mdash; each spline point vs. the
+        <em>true tree-centerline position</em> at the same parameter value. This is an oracle
+        benchmark: it measures how well the spline recovers the underlying tree shape, regardless
+        of the trajectory noise. It is U-shaped: too-low df misses the tree shape
+        (underfitting), too-high df tracks the noise away from the tree (overfitting). The minimum
+        at df&nbsp;= df&ast; is the ideal smoothing level.
+      </p>
+      <p>
+        <b>Can you get the tree skeleton from real video?</b> Yes &mdash; the trunk centerline can
+        be estimated by image segmentation of the tree in each frame, or via a one-time registration
+        of the video frame to a known tree model. In practice it requires extra processing, but
+        RSS(spline,&nbsp;tree) then becomes available as a real selection criterion, not just an
+        oracle.
+      </p>
+      <p>
+        <b>Practical model selection without the tree skeleton.</b> In-sample
+        RSS(spline,&nbsp;data) always decreases, so it does not distinguish over- from underfitting.
+        The solution is to <em>penalize</em> model complexity. Three practical criteria:
+      </p>
+      <p>
+        &bull;&nbsp;<b>AIC</b> = N&nbsp;log(RSS/N) + 2&thinsp;df (Akaike &mdash; lighter penalty,
+        favors richer models when N is large).<br>
+        &bull;&nbsp;<b>BIC</b> = N&nbsp;log(RSS/N) + log(N)&thinsp;df (heavier penalty, sparser).
+        Both are minimized over a grid of df values.<br>
+        &bull;&nbsp;<b>GCV</b> from <code>mgcv::gam</code> avoids the grid sweep entirely by
+        fitting a penalized spline and choosing the smoothness &lambda; that minimizes
+        leave-one-out error (approximately). It typically agrees with BIC.
+      </p>
+      <p style="font-size:0.88em; color:var(--muted);">
+        All three penalize complexity for the same reason: a spline with enough df can pass
+        through every sample (RSS&nbsp;=&nbsp;0), but that spline is useless &mdash; it captures
+        noise, not tree shape. The penalty term forces a trade-off that mimics the U-shape of
+        RSS(spline,&nbsp;tree) without needing the true skeleton.
+      </p>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h3>Spline overlay at multiple <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">df</span></h3>
+        <div class="viz-wrap" id="treeWrap-3"></div>
+        <div class="viz-cap">
+          Splines fitted at several values of <code>df</code> overlaid on the same trajectory. The
+          current <code>df</code> (from Tab 1's slider) is drawn in orange. The brown tree skeleton
+          is the ground truth used to compute <code>RSS(spline,&nbsp;tree)</code>.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>RSS vs <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">df</span></h3>
+        <div class="viz-wrap" id="rssWrap-3"></div>
+        <div class="viz-cap">
+          Both curves are normalized to their own maximum so they share the y-axis.
+          The dashed orange vertical line marks the current <code>df</code>; the dotted green line
+          marks <code>df*</code> = argmin <code>RSS(spline,&nbsp;tree)</code>. Hit
+          <b>Average over 30 seeds</b> to smooth the noise realizations and see the underlying
+          U-shape clearly.
+        </div>
+        <div class="ctrl-row" style="margin-top:14px;">
+          <button class="btn"     id="btn-avg30">Average over 30 realizations</button>
+          <button class="btn sec" id="btn-avg1">Single realization</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rblock">
+      <div class="rblock-hdr">Practical DF selection in <span class="lab-r">R</span></div>
+      <div class="rtabs">
+        <button class="rtab active" data-rtab="t2-base">Base R</button>
+        <button class="rtab"        data-rtab="t2-tidy">Tidyverse</button>
+      </div>
+      <div class="rtabs-select-wrap">
+        <select class="rtabs-select" data-rselect="t2">
+          <option value="t2-base" selected>Base R</option>
+          <option value="t2-tidy">Tidyverse</option>
+        </select>
+      </div>
+      <div class="rpane active" data-rpane="t2-base"><pre>library(splines)
+library(mgcv)
+
+# Option 1: sweep DF, pick by AIC or BIC
+df_grid <- 4:20
+ic <- sapply(df_grid, function(df) {
+  fx <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
+  fy <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
+  c(aic = AIC(fx) + AIC(fy),
+    bic = BIC(fx) + BIC(fy))
+})
+df_aic <- df_grid[which.min(ic["aic", ])]
+df_bic <- df_grid[which.min(ic["bic", ])]
+
+# Option 2: penalized cubic regression spline, smoothness by GCV
+gx <- gam(x ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
+gy <- gam(y ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
+edf <- gx$edf + gy$edf   # effective DF from GCV</pre></div>
+      <div class="rpane" data-rpane="t2-tidy"><pre>library(splines)
+library(mgcv)
+library(dplyr)
+library(purrr)
+library(tidyr)
+
+# Sweep DF, pick by AIC / BIC
+ic <- tibble(df = 4:20) |>
+  mutate(
+    fit_x = map(df, ~ lm(x ~ bs(t, df = .x, degree = 3), data = ants)),
+    fit_y = map(df, ~ lm(y ~ bs(t, df = .x, degree = 3), data = ants)),
+    aic   = map2_dbl(fit_x, fit_y, ~ AIC(.x) + AIC(.y)),
+    bic   = map2_dbl(fit_x, fit_y, ~ BIC(.x) + BIC(.y))
+  )
+
+df_aic <- ic |> slice_min(aic) |> pull(df)
+df_bic <- ic |> slice_min(bic) |> pull(df)
+
+# Or use mgcv::gam with GCV-chosen smoothness
+gx  <- gam(x ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
+gy  <- gam(y ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
+edf <- gx$edf + gy$edf</pre></div>
+    </div>
+
+  </div>
+
+  <!-- ═════════════════ TAB 4: Windowed Fourier transform ═════════════════ -->
+  <div class="tabpane" data-pane="3">
+
+    <div class="explainer" style="margin-top:0;">
+      <h4>Spectral detrending as an alternative</h4>
+      <p>
+        Instead of fitting a spline and subtracting it, we can move directly into the spatial-frequency
+        domain. Let <code>d&perp;(z)</code> be the perpendicular deviation from the tree centerline
+        as a function of arc-length height <code>z</code>, resampled onto a uniform grid.
+        (Using the raw <em>x</em> coordinate instead would mix in the lateral trend of the branch,
+        creating a large DC component at branch heights &mdash; the perpendicular deviation is
+        zero-mean by construction.)
+        The trunk&rsquo;s gentle curvature and the trajectory&rsquo;s slow drift contribute power
+        at <em>low</em> spatial frequencies; pre-fork deliberation contributes power at
+        <em>higher</em> frequencies localized near the fork. A windowed Fourier transform of
+        <code>d&perp;(z)</code> exposes both at once.
+      </p>
+      <p>
+        The slow trajectory shape has some characteristic length scale <code>L<sub>bend</sub></code>.
+        A cutoff at spatial frequency <code>f<sub>cut</sub> = 1 / L<sub>bend</sub></code>
+        plays the same role as a spline detrend: power below the cutoff is &ldquo;trend&rdquo;
+        and is ignored; power above the cutoff is candidate behavioral structure. Drag the
+        <code>L<sub>bend</sub></code> slider to move the cutoff.
+      </p>
+      <p style="font-size:0.88em; color:var(--muted);">
+        <b>Why vertical = z.</b> The spectrogram is plotted with the same vertical axis as the tree
+        on the left, so you can read frequencies at any height by sliding your eye up the column.
+      </p>
+    </div>
+
+    <div class="tab4-grid">
+      <div class="panel">
+        <h3>Tree with samples</h3>
+        <div class="viz-wrap" id="treeWrap-4"></div>
+        <div class="viz-cap">
+          The current trajectory drawn on the tree. The lateral position <code>x(z)</code> used
+          by the spectrogram on the right is the horizontal coordinate of these samples.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Spectrogram of <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">d&perp;(z)</span> &mdash; lateral deviation</h3>
+        <div class="viz-wrap" id="wftWrap-4"></div>
+        <div class="viz-cap">
+          Magnitude of the windowed Fourier transform of the perpendicular deviation
+          <code>d&perp;(z)</code> from the tree centerline, as a function of arc-length height&nbsp;<code>z</code>.
+          Using the perpendicular deviation (rather than raw&nbsp;<em>x</em>) removes the systematic
+          lateral trend from the angled branch, leaving only the behavioral wobble.
+          Vertical axis is height <code>z</code> (aligned to the tree on the left); horizontal axis
+          is spatial frequency. The horizontal orange line marks <code>z</code> at the fork.
+          The dashed white vertical line is the detrending cutoff
+          <code>f<sub>cut</sub> = 1/L<sub>bend</sub></code>; power to its left is treated as trend.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <h3>Controls</h3>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label>Window length W <span class="v" id="v-W">32</span></label>
+          <input type="range" id="W" min="8" max="64" step="2" value="32">
+        </div>
+        <div class="ctrl">
+          <label>Hop <span class="v" id="v-hop">4</span></label>
+          <input type="range" id="hop" min="1" max="16" value="4">
+        </div>
+
+        <div class="ctrl">
+          <label>Window type <span class="v" id="v-win">Hann</span></label>
+          <select id="win">
+            <option value="hann" selected>Hann</option>
+            <option value="hamming">Hamming</option>
+            <option value="rect">Rectangular</option>
+            <option value="gaussian">Gaussian</option>
+          </select>
+        </div>
+        <div class="ctrl">
+          <label>Colormap <span class="v" id="v-cmap">viridis</span></label>
+          <select id="cmap">
+            <option value="viridis" selected>viridis</option>
+            <option value="magma">magma</option>
+            <option value="gray">gray</option>
+          </select>
+        </div>
+
+        <div class="ctrl" style="grid-column: 1 / -1;">
+          <label>Bend length scale L<sub>bend</sub> &nbsp;<span class="v" id="v-Lbend">0.150</span> &nbsp;&middot;&nbsp; cutoff f<sub>cut</sub> = <span class="v" id="v-fcut">6.67</span></label>
+          <input type="range" id="Lbend" min="5" max="60" value="15">
+        </div>
+      </div>
+
+      <div class="sec-divider"></div>
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" id="tg-log"> log magnitude</label>
+        <label class="toggle"><input type="checkbox" id="tg-perCol"> per-slice normalization</label>
+      </div>
+    </div>
+
+    <div class="explainer">
+      <h4>What the controls do</h4>
+      <p>
+        <b>Window length W</b> &mdash; number of samples in each STFT slice. Larger <code>W</code>
+        gives better frequency resolution but coarser localization in <code>z</code>; a Heisenberg-style
+        trade-off. With <code>K&nbsp;=&nbsp;256</code> uniform <code>z</code> samples and
+        <code>W&nbsp;=&nbsp;32</code>, each slice spans roughly 12% of the trunk.
+      </p>
+      <p>
+        <b>Hop</b> &mdash; shift between consecutive windows. Smaller hop means more overlap (smoother
+        spectrogram, more compute). Default <code>hop&nbsp;=&nbsp;4</code> with
+        <code>W&nbsp;=&nbsp;32</code> gives 87.5% overlap.
+      </p>
+      <p>
+        <b>Window type</b> &mdash;
+        <em>Hann</em> and <em>Hamming</em> taper smoothly to (near) zero at the edges, suppressing
+        spectral leakage from window boundaries; their side-lobe behavior differs slightly.
+        <em>Rectangular</em> applies no taper &mdash; sharp edges leak energy across frequencies.
+        <em>Gaussian</em> tapers smoothly and is optimal in the joint time-frequency uncertainty sense
+        (Gabor's bound).
+      </p>
+      <p>
+        <b>L<sub>bend</sub></b> &mdash; characteristic length scale of slow trajectory shape (the trunk's
+        bend, an ant's drift toward one side, anything you want to call &ldquo;trend&rdquo;).
+        The cutoff <code>f<sub>cut</sub> = 1/L<sub>bend</sub></code> partitions the spectrum:
+        below is trend, above is candidate signal.
+      </p>
+      <p>
+        <b>log magnitude</b> &mdash; switch from linear to <code>log<sub>10</sub>(1+9v)</code> scaling
+        of the spectrogram so weaker components become visible.
+        <b>Per-slice normalization</b> &mdash; rescale each <code>z</code>-slice to its own max,
+        useful when overall power varies along the trunk.
+      </p>
+    </div>
+
+    <div class="rblock">
+      <div class="rblock-hdr">Windowed Fourier transform in <span class="lab-r">R</span></div>
+      <div class="rtabs">
+        <button class="rtab active" data-rtab="t3-base">Base R</button>
+        <button class="rtab"        data-rtab="t3-tidy">Tidyverse</button>
+      </div>
+      <div class="rtabs-select-wrap">
+        <select class="rtabs-select" data-rselect="t3">
+          <option value="t3-base" selected>Base R</option>
+          <option value="t3-tidy">Tidyverse</option>
+        </select>
+      </div>
+      <div class="rpane active" data-rpane="t3-base"><pre>library(signal)
+
+# Resample x as a function of height z onto a uniform grid.
+# (y from the trajectory plays the role of trunk-aligned height.)
+z_grid <- seq(min(ants$y), max(ants$y), length.out = 256)
+xz     <- approx(ants$y, ants$x, xout = z_grid)$y
+dz     <- diff(z_grid)[1]
+
+# Windowed Fourier transform: Hann window, hop = W - overlap
+W   <- 32
+hop <- 4
+spec <- specgram(xz, n = W, Fs = 1/dz,
+                 window = hanning(W),
+                 overlap = W - hop)
+
+# Mark the fork height and the spatial-scale cutoff
+z_fork <- 1                    # height of the geometric fork
+L_bend <- 0.15                 # estimated bend length scale
+f_cut  <- 1 / L_bend           # detrending cutoff in 1/length
+
+# Plot with VERTICAL = z (transpose so z runs up the y-axis):
+image(x = spec$f, y = spec$t, z = abs(spec$S),
+      col   = hcl.colors(64, "viridis"),
+      xlab  = "spatial frequency  (1/length)",
+      ylab  = "height z")
+abline(h = z_fork, col = "darkorange", lwd = 2)
+abline(v = f_cut,  col = "white", lty = 2, lwd = 1.5)</pre></div>
+      <div class="rpane" data-rpane="t3-tidy"><pre>library(signal)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+z_grid <- seq(min(ants$y), max(ants$y), length.out = 256)
+xz     <- approx(ants$y, ants$x, xout = z_grid)$y
+dz     <- diff(z_grid)[1]
+
+spec <- specgram(xz, n = 32, Fs = 1/dz,
+                 window = hanning(32), overlap = 28)
+
+spec_df <- expand_grid(
+  z = spec$t,
+  f = spec$f
+) |>
+  mutate(magnitude = as.numeric(abs(spec$S)))
+
+# Vertical axis = z, horizontal axis = spatial frequency
+ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
+  geom_raster() +
+  geom_hline(yintercept = 1,        color = "darkorange", linewidth = 1.2) +
+  geom_vline(xintercept = 1 / 0.15, color = "white",      linetype  = "dashed") +
+  scale_fill_viridis_c() +
+  labs(x = "spatial freq  (1/length)", y = "height z") +
+  theme_minimal()</pre></div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    &copy; 2026 Theodore P. Pavlic<span class="footer-sep">&nbsp;&middot;&nbsp;</span><a class="footer-lic" href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT&nbsp;License</a>
+  </div>
+</div>
+
+<script>
+    (function() {
+      'use strict';
+
+      // ─── State ──────────────────────────────────────────
+      const S = {
+        internalSeed: 42,
+        N: 100,
+        treeType: 'Y',
+        branchAngle: 35,
+        df: 6,
+        sBase: 0.030,
+        sDel: 0.100,
+        delibWidth: 0.12,
+        showSkel: true,
+        showSpline: true,
+        showKnots: false,
+        showDevs: true,
+        avgMode: 'single',
+        W: 32, hop: 4, win: 'hann', cmap: 'viridis',
+        Lbend: 0.150, logMag: false, perCol: false,
+        mainTab: 0,
+        rTab: {t0: 't0-base', t1: 't1-base', t2: 't2-base', t3: 't3-base'}
+      };
+
+      // ─── Tree geometry constants ────────────────────────
+      const TRUNK_LEN = 1.0;
+      const BRANCH_LEN = 0.7;
+      const TRUNK_THICK = 0.18;         // wider trunk — samples live inside this width
+      const I_TOTAL_LEN = TRUNK_LEN + BRANCH_LEN;
+
+      // ─── PRNG ───────────────────────────────────────────
+      function makePRNG(seed) {
+        let a = seed >>> 0;
+        return function() {
+          a |= 0; a = (a + 0x6D2B79F5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      function makeGauss(prng) {
+        return function() {
+          let u = 0, v = 0;
+          while (u === 0) u = prng();
+          while (v === 0) v = prng();
+          return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+        };
+      }
+
+      // ─── B-spline (Cox–de Boor) ─────────────────────────
+      function makeKnots(tMin, tMax, df, degree) {
+        const nInterior = df - degree - 1;
+        const knots = [];
+        for (let i = 0; i <= degree; i++) knots.push(tMin);
+        for (let i = 1; i <= nInterior; i++) {
+          knots.push(tMin + (tMax - tMin) * i / (nInterior + 1));
+        }
+        for (let i = 0; i <= degree; i++) knots.push(tMax);
+        return knots;
+      }
+      function coxDeBoor(t, k, degree, knots) {
+        if (degree === 0) {
+          if (k === knots.length - 2) {
+            return (t >= knots[k] && t <= knots[k+1]) ? 1 : 0;
+          }
+          return (t >= knots[k] && t < knots[k+1]) ? 1 : 0;
+        }
+        let a = 0, b = 0;
+        const d1 = knots[k + degree] - knots[k];
+        const d2 = knots[k + degree + 1] - knots[k + 1];
+        if (d1 > 1e-15) a = (t - knots[k]) / d1 * coxDeBoor(t, k, degree - 1, knots);
+        if (d2 > 1e-15) b = (knots[k + degree + 1] - t) / d2 * coxDeBoor(t, k + 1, degree - 1, knots);
+        return a + b;
+      }
+      function bsplineDesign(ts, knots, degree, df) {
+        const n = ts.length;
+        const X = new Array(n);
+        // At t = knots[last] exactly, the Cox-de Boor recursion has 0/0 terms that
+        // (under the "skip → 0" convention) zero out every basis function,
+        // breaking partition-of-unity at the right boundary. Nudge t inward by a
+        // tiny amount so we sit on the left side of the last knot interval.
+        const tMax = knots[knots.length - 1];
+        const tMin = knots[0];
+        const nudge = Math.max(1e-12, 1e-12 * (tMax - tMin));
+        for (let i = 0; i < n; i++) {
+          let t = ts[i];
+          if (t >= tMax) t = tMax - nudge;
+          if (t < tMin) t = tMin;
+          X[i] = new Array(df);
+          for (let k = 0; k < df; k++) X[i][k] = coxDeBoor(t, k, degree, knots);
+        }
+        return X;
+      }
+      function solveRidge(X, y, lambda) {
+        const n = X.length, p = X[0].length;
+        const A = new Array(p);
+        for (let i = 0; i < p; i++) {
+          A[i] = new Array(p);
+          for (let j = 0; j < p; j++) {
+            let s = 0;
+            for (let k = 0; k < n; k++) s += X[k][i] * X[k][j];
+            A[i][j] = s + (i === j ? lambda : 0);
+          }
+        }
+        const b = new Array(p);
+        for (let i = 0; i < p; i++) {
+          let s = 0;
+          for (let k = 0; k < n; k++) s += X[k][i] * y[k];
+          b[i] = s;
+        }
+        const M = new Array(p);
+        for (let i = 0; i < p; i++) { M[i] = A[i].slice(); M[i].push(b[i]); }
+        for (let i = 0; i < p; i++) {
+          let maxRow = i, maxVal = Math.abs(M[i][i]);
+          for (let r = i + 1; r < p; r++) {
+            if (Math.abs(M[r][i]) > maxVal) { maxVal = Math.abs(M[r][i]); maxRow = r; }
+          }
+          if (maxRow !== i) { const tmp = M[i]; M[i] = M[maxRow]; M[maxRow] = tmp; }
+          const piv = M[i][i];
+          if (Math.abs(piv) < 1e-15) continue;
+          for (let j = i; j <= p; j++) M[i][j] /= piv;
+          for (let r = 0; r < p; r++) {
+            if (r === i) continue;
+            const f = M[r][i];
+            if (f === 0) continue;
+            for (let j = i; j <= p; j++) M[r][j] -= f * M[i][j];
+          }
+        }
+        return M.map(row => row[p]);
+      }
+
+      // ─── Tree geometry ──────────────────────────────────
+      function treeSkeleton(treeType, theta) {
+        if (treeType === 'I') {
+          const top = {x: 0, y: I_TOTAL_LEN};
+          return {
+            trunk: [{x: 0, y: 0}, top],
+            rightBranch: null,
+            leftBranch: null,
+            fork: null,
+            rightEnd: top
+          };
+        }
+        const tr = theta * Math.PI / 180;
+        const fork = {x: 0, y: TRUNK_LEN};
+        const rightEnd = {x: Math.sin(tr) * BRANCH_LEN, y: TRUNK_LEN + Math.cos(tr) * BRANCH_LEN};
+        const leftEnd  = {x: -Math.sin(tr) * BRANCH_LEN, y: TRUNK_LEN + Math.cos(tr) * BRANCH_LEN};
+        return {
+          trunk: [{x: 0, y: 0}, fork],
+          rightBranch: [fork, rightEnd],
+          leftBranch: [fork, leftEnd],
+          fork: fork,
+          rightEnd: rightEnd
+        };
+      }
+
+      function treeCenterline(t, theta, treeType) {
+        if (treeType === 'I') {
+          return {x: 0, y: t * I_TOTAL_LEN, tx: 0, ty: 1};
+        }
+        const tr = theta * Math.PI / 180;
+        if (t < 0.5) {
+          return {x: 0, y: 2 * t * TRUNK_LEN, tx: 0, ty: 1};
+        }
+        const u = 2 * (t - 0.5);
+        return {
+          x: Math.sin(tr) * u * BRANCH_LEN,
+          y: TRUNK_LEN + Math.cos(tr) * u * BRANCH_LEN,
+          tx: Math.sin(tr), ty: Math.cos(tr)
+        };
+      }
+
+      // ─── Trajectory generation: AR(1) lateral, clipped to trunk surface ─────
+      //
+      // The load is one video frame at a time. Lateral position (perpendicular to
+      // the centerline) is modeled as a stationary AR(1) process so consecutive
+      // samples are strongly correlated. The stationary std is `tgtStd`; the
+      // window around t=0.5 raises it from sBase to sBase+sDel (deliberation).
+      // Hard-reflect at ±halfW so every sample sits on the tree.
+      function generateTrajectory(N, treeType, theta, sBase, sDel, delibWidth, prng) {
+        const gauss = makeGauss(prng);
+        const halfW = TRUNK_THICK / 2;
+        const alpha = 0.92;                       // AR(1) coefficient (high → strongly correlated)
+        const out = new Array(N);
+        let lat = 0;
+        for (let i = 0; i < N; i++) {
+          const t = (i + 0.5) / N;
+          const d = Math.abs(t - 0.5);
+          const w = (d < delibWidth) ? (1 - d / delibWidth) : 0;
+          const tgtStd = sBase + sDel * w;
+          const sigE = tgtStd * Math.sqrt(1 - alpha * alpha);   // excitation σ
+          lat = alpha * lat + sigE * gauss();
+          // reflect once at each boundary, then hard clamp as a safety net
+          if (lat >  halfW) lat =  2 * halfW - lat;
+          if (lat < -halfW) lat = -2 * halfW - lat;
+          if (lat >  halfW) lat =  halfW;
+          if (lat < -halfW) lat = -halfW;
+
+          const c = treeCenterline(t, theta, treeType);
+          const nx = -c.ty, ny = c.tx;            // unit normal to centerline
+          out[i] = {
+            t,
+            x: c.x + lat * nx,
+            y: c.y + lat * ny,
+            lat: lat
+          };
+        }
+        return out;
+      }
+
+      // ─── Spline fit + dense eval + projection ───────────
+      function fitSpline(samples, df) {
+        const ts = samples.map(s => s.t);
+        const tMin = ts[0], tMax = ts[ts.length - 1];
+        const knots = makeKnots(tMin, tMax, df, 3);
+        const X = bsplineDesign(ts, knots, 3, df);
+        const betaX = solveRidge(X, samples.map(s => s.x), 1e-8);
+        const betaY = solveRidge(X, samples.map(s => s.y), 1e-8);
+        return {knots, betaX, betaY, df, tMin, tMax};
+      }
+      function evalSpline(t, fit) {
+        // Same right-boundary nudge as bsplineDesign — see comment there.
+        const nudge = Math.max(1e-12, 1e-12 * (fit.tMax - fit.tMin));
+        if (t >= fit.tMax) t = fit.tMax - nudge;
+        if (t < fit.tMin) t = fit.tMin;
+        let x = 0, y = 0;
+        for (let k = 0; k < fit.df; k++) {
+          const b = coxDeBoor(t, k, 3, fit.knots);
+          x += b * fit.betaX[k]; y += b * fit.betaY[k];
+        }
+        return {x, y};
+      }
+      function denseCurve(fit, K) {
+        K = K || 600;
+        const pts = new Array(K);
+        for (let i = 0; i < K; i++) {
+          const t = fit.tMin + (fit.tMax - fit.tMin) * i / (K - 1);
+          const p = evalSpline(t, fit);
+          pts[i] = {t, x: p.x, y: p.y, s: 0, tx: 0, ty: 1, nx: -1, ny: 0};
+        }
+        for (let i = 0; i < K; i++) {
+          const i0 = Math.max(0, i - 1), i1 = Math.min(K - 1, i + 1);
+          let dx = pts[i1].x - pts[i0].x, dy = pts[i1].y - pts[i0].y;
+          const nrm = Math.sqrt(dx*dx + dy*dy);
+          if (nrm > 1e-12) { dx /= nrm; dy /= nrm; }
+          pts[i].tx = dx; pts[i].ty = dy;
+          pts[i].nx = -dy; pts[i].ny = dx;
+        }
+        let s = 0;
+        pts[0].s = 0;
+        for (let i = 1; i < K; i++) {
+          const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+          s += Math.sqrt(dx*dx + dy*dy);
+          pts[i].s = s;
+        }
+        return pts;
+      }
+      function projectPoint(p, dense) {
+        let bestI = 0, bestD = Infinity;
+        for (let i = 0; i < dense.length; i++) {
+          const dx = p.x - dense[i].x, dy = p.y - dense[i].y;
+          const d2 = dx*dx + dy*dy;
+          if (d2 < bestD) { bestD = d2; bestI = i; }
+        }
+        const c = dense[bestI];
+        const dx = p.x - c.x, dy = p.y - c.y;
+        return {i: bestI, t: c.t, s: c.s, d: dx * c.nx + dy * c.ny, foot: {x: c.x, y: c.y}};
+      }
+
+      // ─── Tree → SVG mapping ─────────────────────────────
+      function makeTreeLayout(svgW, svgH) {
+        return {
+          svgW, svgH,
+          padL: 30, padR: 30, padT: 25, padB: 35,
+          txMin: -0.85, txMax: 0.85, tyMin: -0.05, tyMax: 1.80
+        };
+      }
+      function treeToSVG(tx, ty, L) {
+        return {
+          sx: L.padL + (tx - L.txMin) / (L.txMax - L.txMin) * (L.svgW - L.padL - L.padR),
+          sy: L.padT + (1 - (ty - L.tyMin) / (L.tyMax - L.tyMin)) * (L.svgH - L.padT - L.padB)
+        };
+      }
+
+      // Right-pointing triangle marker. With orient="auto" the marker rotates so
+      // that its local +x axis aligns with the line direction; the triangle then
+      // points along the line. (Old bug: a triangle pointing in marker-local +y
+      // became a left-pointing arrow for a line going up.)
+      function arrowMarkerDef(id, color) {
+        return `<marker id="${id}" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">`
+             + `<path d="M0,0 L8,4 L0,8 z" fill="${color}"/>`
+             + `</marker>`;
+      }
+
+      // ─── Tab 1: tree + samples + spline + perpendicular residuals ──────────
+      function renderTab1() {
+        const wrap = document.getElementById('treeWrap-1');
+        if (!wrap) return;
+        const svgW = 480, svgH = 540;
+        const L = makeTreeLayout(svgW, svgH);
+        const hasFork = (S.treeType === 'Y');
+
+        const skel = treeSkeleton(S.treeType, S.branchAngle);
+        const prng = makePRNG(S.internalSeed);
+        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, prng);
+        const fit = fitSpline(samples, S.df);
+        const dense = denseCurve(fit, 600);
+        const projs = samples.map(s => projectPoint(s, dense));
+        const forkProj = hasFork ? projectPoint(skel.fork, dense) : null;
+        const forkS = hasFork ? forkProj.s : 0;
+        const totalS = dense[dense.length - 1].s;
+        const window = 0.12 * totalS;
+
+        // Background σ: variance of d_i away from the fork window (or all
+        // samples on an I-tree, where there is no fork).
+        let bgSum = 0, bgN = 0, peakDelib = 0, peakDelibIdx = -1;
+        for (let i = 0; i < projs.length; i++) {
+          const inFork = hasFork && Math.abs(projs[i].s - forkS) < window;
+          if (!inFork) {
+            bgSum += projs[i].d * projs[i].d; bgN++;
+          } else {
+            if (Math.abs(projs[i].d) > peakDelib) {
+              peakDelib = Math.abs(projs[i].d);
+              peakDelibIdx = i;
+            }
+          }
+        }
+        const sigmaBg = bgN > 0 ? Math.sqrt(bgSum / bgN) : 1e-6;
+
+        // ─── Build tree SVG ───────────────────────────────
+        const trunkPx = (TRUNK_THICK / (L.txMax - L.txMin)) * (svgW - L.padL - L.padR);
+        let svg = `<svg viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
+        svg += `<defs>${arrowMarkerDef('arrUp-1', '#bbb')}</defs>`;
+        svg += `<rect width="${svgW}" height="${svgH}" fill="white"/>`;
+
+        if (S.showSkel) {
+          const tt = treeToSVG(skel.trunk[0].x, skel.trunk[0].y, L);
+          const tb = treeToSVG(skel.trunk[1].x, skel.trunk[1].y, L);
+          svg += `<line x1="${tt.sx}" y1="${tt.sy}" x2="${tb.sx}" y2="${tb.sy}" stroke="#6b4a2a" stroke-width="${trunkPx}" stroke-linecap="round" opacity="0.92"/>`;
+          if (skel.rightBranch) {
+            const rb0 = treeToSVG(skel.rightBranch[0].x, skel.rightBranch[0].y, L);
+            const rb1 = treeToSVG(skel.rightBranch[1].x, skel.rightBranch[1].y, L);
+            svg += `<line x1="${rb0.sx}" y1="${rb0.sy}" x2="${rb1.sx}" y2="${rb1.sy}" stroke="#6b4a2a" stroke-width="${trunkPx * 0.86}" stroke-linecap="round" opacity="0.92"/>`;
+          }
+          if (skel.leftBranch) {
+            const lb0 = treeToSVG(skel.leftBranch[0].x, skel.leftBranch[0].y, L);
+            const lb1 = treeToSVG(skel.leftBranch[1].x, skel.leftBranch[1].y, L);
+            svg += `<line x1="${lb0.sx}" y1="${lb0.sy}" x2="${lb1.sx}" y2="${lb1.sy}" stroke="#8a6843" stroke-width="${trunkPx * 0.78}" stroke-linecap="round" opacity="0.55" stroke-dasharray="3 4"/>`;
+          }
+          if (skel.fork) {
+            const fpt = treeToSVG(skel.fork.x, skel.fork.y, L);
+            svg += `<text x="${fpt.sx + trunkPx*0.55 + 4}" y="${fpt.sy + 4}" font-family="IBM Plex Mono, monospace" font-size="13" fill="#666">fork</text>`;
+          }
+        }
+
+        if (S.showDevs) {
+          for (let i = 0; i < samples.length; i++) {
+            const sp = treeToSVG(samples[i].x, samples[i].y, L);
+            const fp = treeToSVG(projs[i].foot.x, projs[i].foot.y, L);
+            const inFork = hasFork && Math.abs(projs[i].s - forkS) < window;
+            const col = inFork ? '#c34a2e' : '#d99280';
+            const opa = inFork ? 0.85 : 0.55;
+            svg += `<line x1="${sp.sx}" y1="${sp.sy}" x2="${fp.sx}" y2="${fp.sy}" stroke="${col}" stroke-width="0.9" opacity="${opa}"/>`;
+          }
+        }
+
+        // Sample dots drawn BEFORE the spline so the spline renders on top
+        for (let i = 0; i < samples.length; i++) {
+          const sp = treeToSVG(samples[i].x, samples[i].y, L);
+          svg += `<circle cx="${sp.sx}" cy="${sp.sy}" r="2.6" fill="#d97842" stroke="#fff" stroke-width="0.5"/>`;
+        }
+
+        if (S.showSpline) {
+          let path = '';
+          for (let i = 0; i < dense.length; i++) {
+            const p = treeToSVG(dense[i].x, dense[i].y, L);
+            path += (i === 0 ? 'M' : 'L') + p.sx.toFixed(1) + ' ' + p.sy.toFixed(1) + ' ';
+          }
+          // White halo first so the line is legible on the dark brown trunk
+          svg += `<path d="${path}" stroke="rgba(255,255,255,0.72)" stroke-width="5.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+          svg += `<path d="${path}" stroke="#2f6b4a" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+        }
+
+        if (S.showKnots && fit.knots && fit.knots.length > 8) {
+          // interior knots: skip 4 boundary repeats at each end
+          const interior = fit.knots.slice(4, fit.knots.length - 4);
+          for (const tk of interior) {
+            const p = evalSpline(tk, fit);
+            const sp = treeToSVG(p.x, p.y, L);
+            svg += `<rect x="${sp.sx - 5}" y="${sp.sy - 5}" width="10" height="10" fill="#fff" stroke="#2f6b4a" stroke-width="1.8"/>`;
+          }
+        }
+
+        // "up the tree" arrow — vertical, point at top
+        const ax = svgW - 22;
+        svg += `<line x1="${ax}" y1="${svgH - 36}" x2="${ax}" y2="42" stroke="#bbb" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrUp-1)"/>`;
+        svg += `<text x="${ax - 8}" y="${svgH/2}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#999" text-anchor="middle" transform="rotate(-90 ${ax-8} ${svgH/2})">up the tree</text>`;
+
+        svg += '</svg>';
+        wrap.innerHTML = svg;
+
+        renderResid1(samples, projs, dense, forkS, sigmaBg, hasFork, peakDelib, peakDelibIdx);
+      }
+
+      function renderResid1(samples, projs, dense, forkS, sigmaBg, hasFork, peakDelib, peakDelibIdx) {
+        const wrap = document.getElementById('residWrap-1');
+        if (!wrap) return;
+        const svgW = 1080, svgH = 240;
+        const padL = 72, padR = 28, padT = 24, padB = 52;
+        const plotW = svgW - padL - padR, plotH = svgH - padT - padB;
+
+        const sMax = dense[dense.length - 1].s;
+        let dMax = sigmaBg * 4;
+        for (let i = 0; i < projs.length; i++) dMax = Math.max(dMax, Math.abs(projs[i].d));
+        dMax *= 1.15;
+        if (dMax < 1e-5) dMax = 0.01;
+
+        function sx(s) { return padL + (s / sMax) * plotW; }
+        function sy(d) { return padT + plotH/2 - (d / dMax) * (plotH/2); }
+
+        let svg = `<svg viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
+        svg += `<rect width="${svgW}" height="${svgH}" fill="white"/>`;
+        svg += `<line x1="${padL}" y1="${sy(0)}" x2="${svgW-padR}" y2="${sy(0)}" stroke="#ccc" stroke-width="1"/>`;
+        svg += `<line x1="${padL}" y1="${sy(sigmaBg)}" x2="${svgW-padR}" y2="${sy(sigmaBg)}" stroke="#999" stroke-width="1" stroke-dasharray="4 4"/>`;
+        svg += `<line x1="${padL}" y1="${sy(-sigmaBg)}" x2="${svgW-padR}" y2="${sy(-sigmaBg)}" stroke="#999" stroke-width="1" stroke-dasharray="4 4"/>`;
+        svg += `<text x="${svgW-padR+4}" y="${sy(sigmaBg)+4}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888">+σ</text>`;
+        svg += `<text x="${svgW-padR+4}" y="${sy(-sigmaBg)+4}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#888">−σ</text>`;
+
+        if (hasFork) {
+          svg += `<line x1="${sx(forkS)}" y1="${padT}" x2="${sx(forkS)}" y2="${svgH-padB}" stroke="#d97842" stroke-width="1.6" stroke-dasharray="6 4"/>`;
+          // Fork label sits at the BOTTOM of the plot, well clear of any peak annotation
+          svg += `<text x="${sx(forkS) + 6}" y="${svgH - padB - 8}" font-family="IBM Plex Mono, monospace" font-size="13" fill="#d97842">fork (projected)</text>`;
+        }
+
+        // Axes
+        svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${svgH-padB}" stroke="#222" stroke-width="1.2"/>`;
+        svg += `<line x1="${padL}" y1="${svgH-padB}" x2="${svgW-padR}" y2="${svgH-padB}" stroke="#222" stroke-width="1.2"/>`;
+
+        // Ticks
+        const xTicks = 8;
+        for (let i = 0; i <= xTicks; i++) {
+          const s = sMax * i / xTicks;
+          const px = sx(s);
+          svg += `<line x1="${px}" y1="${svgH-padB}" x2="${px}" y2="${svgH-padB+5}" stroke="#222" stroke-width="1"/>`;
+          svg += `<text x="${px}" y="${svgH-padB+20}" font-family="IBM Plex Mono, monospace" font-size="12" fill="#444" text-anchor="middle">${s.toFixed(2)}</text>`;
+        }
+        const yTickVals = [-0.66, -0.33, 0, 0.33, 0.66].map(v => v * dMax);
+        for (const v of yTickVals) {
+          const py = sy(v);
+          svg += `<line x1="${padL-5}" y1="${py}" x2="${padL}" y2="${py}" stroke="#222" stroke-width="1"/>`;
+          svg += `<text x="${padL-8}" y="${py + 4}" font-family="IBM Plex Mono, monospace" font-size="12" fill="#444" text-anchor="end">${v >= 0 ? '+' : ''}${v.toFixed(3)}</text>`;
+        }
+        svg += `<text x="${padL + plotW/2}" y="${svgH - 10}" font-family="IBM Plex Mono, monospace" font-size="14" fill="#222" text-anchor="middle">arc length  s  along fitted spline</text>`;
+        svg += `<text x="22" y="${padT + plotH/2}" font-family="IBM Plex Mono, monospace" font-size="14" fill="#222" text-anchor="middle" transform="rotate(-90 22 ${padT + plotH/2})">residual  d(s)</text>`;
+
+        // Connect-the-dots polyline
+        const sorted = projs.map(p => ({s: p.s, d: p.d, idx: p.i})).sort((a, b) => a.s - b.s);
+        let path = '';
+        for (let i = 0; i < sorted.length; i++) {
+          const p = sorted[i];
+          path += (i === 0 ? 'M' : 'L') + sx(p.s).toFixed(1) + ' ' + sy(p.d).toFixed(1) + ' ';
+        }
+        svg += `<path d="${path}" stroke="#d99280" stroke-width="1" fill="none" opacity="0.5"/>`;
+
+        // Sample dots
+        for (let i = 0; i < projs.length; i++) {
+          const p = projs[i];
+          const inFork = hasFork && Math.abs(p.s - forkS) < 0.12 * sMax;
+          const fillCol = inFork ? '#c34a2e' : '#d97842';
+          svg += `<circle cx="${sx(p.s)}" cy="${sy(p.d)}" r="2.4" fill="${fillCol}" stroke="#fff" stroke-width="0.4"/>`;
+        }
+
+        // Annotate peak |d| near fork ON the residual plot (no separate stat)
+        if (hasFork && peakDelibIdx >= 0) {
+          const pk = projs[peakDelibIdx];
+          const px = sx(pk.s), py = sy(pk.d);
+          svg += `<circle cx="${px}" cy="${py}" r="6" fill="none" stroke="#c34a2e" stroke-width="1.6"/>`;
+          // Put label on the side of the peak dot OPPOSITE to the fork line so it
+          // never overlaps the "fork (projected)" text.
+          const peakRightOfFork = px >= sx(forkS);
+          const lblX = peakRightOfFork ? px + 8 : px - 8;
+          const anchor = peakRightOfFork ? 'start' : 'end';
+          const lblY = pk.d >= 0 ? Math.min(py - 10, padT + plotH - 6) : Math.max(py + 18, padT + 6);
+          svg += `<text x="${lblX}" y="${lblY}" font-family="IBM Plex Mono, monospace" font-size="12" fill="#c34a2e" font-weight="600" text-anchor="${anchor}">peak |d| = ${peakDelib.toFixed(4)}</text>`;
+        }
+
+        svg += '</svg>';
+        wrap.innerHTML = svg;
+      }
+
+      // ─── Tab 3 renders ──────────────────────────────────
+      function renderMultiDF() {
+        const wrap = document.getElementById('treeWrap-3');
+        if (!wrap) return;
+        const svgW = 480, svgH = 540;
+        const L = makeTreeLayout(svgW, svgH);
+
+        const skel = treeSkeleton(S.treeType, S.branchAngle);
+        const prng = makePRNG(S.internalSeed);
+        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, prng);
+        const trunkPx = (TRUNK_THICK / (L.txMax - L.txMin)) * (svgW - L.padL - L.padR);
+
+        let svg = `<svg viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
+        svg += `<rect width="${svgW}" height="${svgH}" fill="white"/>`;
+
+        // Light tree skeleton
+        const tt = treeToSVG(skel.trunk[0].x, skel.trunk[0].y, L);
+        const tb = treeToSVG(skel.trunk[1].x, skel.trunk[1].y, L);
+        svg += `<line x1="${tt.sx}" y1="${tt.sy}" x2="${tb.sx}" y2="${tb.sy}" stroke="#c4a78a" stroke-width="${trunkPx}" stroke-linecap="round" opacity="0.7"/>`;
+        if (skel.rightBranch) {
+          const rb0 = treeToSVG(skel.rightBranch[0].x, skel.rightBranch[0].y, L);
+          const rb1 = treeToSVG(skel.rightBranch[1].x, skel.rightBranch[1].y, L);
+          svg += `<line x1="${rb0.sx}" y1="${rb0.sy}" x2="${rb1.sx}" y2="${rb1.sy}" stroke="#c4a78a" stroke-width="${trunkPx * 0.86}" stroke-linecap="round" opacity="0.7"/>`;
+        }
+
+        for (let i = 0; i < samples.length; i++) {
+          const sp = treeToSVG(samples[i].x, samples[i].y, L);
+          svg += `<circle cx="${sp.sx}" cy="${sp.sy}" r="2.0" fill="#d97842" opacity="0.6"/>`;
+        }
+
+        const dfList = [4, 7, 11, 14];
+        const colors = ['#bcd5c6', '#86b29b', '#5a8c72', '#3e7556'];
+        let legY = 36;
+        for (let k = 0; k < dfList.length; k++) {
+          if (dfList[k] === S.df) continue;
+          try {
+            const fit = fitSpline(samples, dfList[k]);
+            const dense = denseCurve(fit, 400);
+            let path = '';
+            for (let i = 0; i < dense.length; i++) {
+              const p = treeToSVG(dense[i].x, dense[i].y, L);
+              path += (i === 0 ? 'M' : 'L') + p.sx.toFixed(1) + ' ' + p.sy.toFixed(1) + ' ';
+            }
+            svg += `<path d="${path}" stroke="${colors[k]}" stroke-width="1.6" fill="none" opacity="0.85"/>`;
+            svg += `<line x1="22" y1="${legY}" x2="50" y2="${legY}" stroke="${colors[k]}" stroke-width="1.8"/>`;
+            svg += `<text x="55" y="${legY + 4}" font-family="IBM Plex Mono, monospace" font-size="12" fill="${colors[k]}">df = ${dfList[k]}</text>`;
+            legY += 18;
+          } catch(e) {}
+        }
+
+        // Current df: orange, thicker, with optional knot markers
+        try {
+          const fitCur = fitSpline(samples, S.df);
+          const denseCur = denseCurve(fitCur, 500);
+          let path = '';
+          for (let i = 0; i < denseCur.length; i++) {
+            const p = treeToSVG(denseCur[i].x, denseCur[i].y, L);
+            path += (i === 0 ? 'M' : 'L') + p.sx.toFixed(1) + ' ' + p.sy.toFixed(1) + ' ';
+          }
+          svg += `<path d="${path}" stroke="#d97842" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+          svg += `<line x1="22" y1="${legY}" x2="50" y2="${legY}" stroke="#d97842" stroke-width="2.6"/>`;
+          svg += `<text x="55" y="${legY + 4}" font-family="IBM Plex Mono, monospace" font-size="12" fill="#d97842" font-weight="600">df = ${S.df} (current)</text>`;
+        } catch(e) {}
+
+        svg += '</svg>';
+        wrap.innerHTML = svg;
+      }
+
+      function computeRSSCurve(seed) {
+        const prng = makePRNG(seed);
+        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, prng);
+        const skelPts = samples.map(s => {
+          const c = treeCenterline(s.t, S.branchAngle, S.treeType);
+          return {x: c.x, y: c.y};
+        });
+        const dfRange = [];
+        for (let df = 4; df <= 16; df++) dfRange.push(df);
+        const rssData = [], rssTree = [];
+        for (const df of dfRange) {
+          try {
+            const fit = fitSpline(samples, df);
+            let sd = 0, st = 0;
+            for (let i = 0; i < samples.length; i++) {
+              const sp = evalSpline(samples[i].t, fit);
+              const dx1 = sp.x - samples[i].x, dy1 = sp.y - samples[i].y;
+              sd += dx1*dx1 + dy1*dy1;
+              const dx2 = sp.x - skelPts[i].x, dy2 = sp.y - skelPts[i].y;
+              st += dx2*dx2 + dy2*dy2;
+            }
+            rssData.push(sd); rssTree.push(st);
+          } catch(e) { rssData.push(NaN); rssTree.push(NaN); }
+        }
+        return {dfRange, rssData, rssTree};
+      }
+
+      function renderRSS() {
+        const wrap = document.getElementById('rssWrap-3');
+        if (!wrap) return;
+        const svgW = 480, svgH = 380;
+        const padL = 64, padR = 28, padT = 28, padB = 56;
+        const plotW = svgW - padL - padR, plotH = svgH - padT - padB;
+
+        let dfRange, rssData, rssTree;
+        if (S.avgMode === 'avg') {
+          const Ns = 30;
+          let a1 = null, a2 = null;
+          for (let r = 0; r < Ns; r++) {
+            const out = computeRSSCurve(S.internalSeed + 7919 * r + 13);
+            if (!a1) { a1 = out.rssData.slice(); a2 = out.rssTree.slice(); dfRange = out.dfRange; }
+            else for (let i = 0; i < a1.length; i++) { a1[i] += out.rssData[i]; a2[i] += out.rssTree[i]; }
+          }
+          rssData = a1.map(v => v / Ns); rssTree = a2.map(v => v / Ns);
+        } else {
+          const out = computeRSSCurve(S.internalSeed);
+          dfRange = out.dfRange; rssData = out.rssData; rssTree = out.rssTree;
+        }
+
+        const dataMax = Math.max.apply(null, rssData);
+        const treeMax = Math.max.apply(null, rssTree);
+        const dataNorm = rssData.map(v => v / dataMax);
+        const treeNorm = rssTree.map(v => v / treeMax);
+
+        let dfStar = dfRange[0], mn = Infinity;
+        for (let i = 0; i < rssTree.length; i++) {
+          if (rssTree[i] < mn) { mn = rssTree[i]; dfStar = dfRange[i]; }
+        }
+
+        function xx(df) { return padL + (df - dfRange[0]) / (dfRange[dfRange.length-1] - dfRange[0]) * plotW; }
+        function yy(v)  { return padT + plotH - v * plotH; }
+
+        let svg = `<svg viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
+        svg += `<rect width="${svgW}" height="${svgH}" fill="white"/>`;
+        svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${svgH-padB}" stroke="#222" stroke-width="1.2"/>`;
+        svg += `<line x1="${padL}" y1="${svgH-padB}" x2="${svgW-padR}" y2="${svgH-padB}" stroke="#222" stroke-width="1.2"/>`;
+
+        for (const df of dfRange) {
+          if (df % 2 === 0 || df === dfRange[0] || df === dfRange[dfRange.length-1]) {
+            const x = xx(df);
+            svg += `<line x1="${x}" y1="${svgH-padB}" x2="${x}" y2="${svgH-padB+5}" stroke="#222" stroke-width="1"/>`;
+            svg += `<text x="${x}" y="${svgH-padB+20}" font-family="IBM Plex Mono, monospace" font-size="12" fill="#444" text-anchor="middle">${df}</text>`;
+          }
+        }
+        for (const v of [0, 0.25, 0.5, 0.75, 1.0]) {
+          const y = yy(v);
+          svg += `<line x1="${padL-5}" y1="${y}" x2="${padL}" y2="${y}" stroke="#222" stroke-width="1"/>`;
+          svg += `<text x="${padL-8}" y="${y+4}" font-family="IBM Plex Mono, monospace" font-size="12" fill="#444" text-anchor="end">${v.toFixed(2)}</text>`;
+        }
+
+        svg += `<line x1="${xx(dfStar)}" y1="${padT}" x2="${xx(dfStar)}" y2="${svgH-padB}" stroke="#2f6b4a" stroke-width="1.4" stroke-dasharray="2 4"/>`;
+        svg += `<text x="${xx(dfStar) + 5}" y="${padT + 14}" font-family="IBM Plex Mono, monospace" font-size="12" fill="#2f6b4a" font-weight="600">df* = ${dfStar}</text>`;
+        svg += `<line x1="${xx(S.df)}" y1="${padT}" x2="${xx(S.df)}" y2="${svgH-padB}" stroke="#d97842" stroke-width="1.4" stroke-dasharray="6 4"/>`;
+        svg += `<text x="${xx(S.df) + 5}" y="${padT + 30}" font-family="IBM Plex Mono, monospace" font-size="12" fill="#d97842" font-weight="600">df = ${S.df}</text>`;
+
+        let pD = '';
+        for (let i = 0; i < dfRange.length; i++) pD += (i === 0 ? 'M' : 'L') + xx(dfRange[i]).toFixed(1) + ' ' + yy(dataNorm[i]).toFixed(1) + ' ';
+        svg += `<path d="${pD}" stroke="#d97842" stroke-width="2.2" fill="none"/>`;
+        for (let i = 0; i < dfRange.length; i++) svg += `<circle cx="${xx(dfRange[i])}" cy="${yy(dataNorm[i])}" r="2.6" fill="#d97842"/>`;
+
+        let pT = '';
+        for (let i = 0; i < dfRange.length; i++) pT += (i === 0 ? 'M' : 'L') + xx(dfRange[i]).toFixed(1) + ' ' + yy(treeNorm[i]).toFixed(1) + ' ';
+        svg += `<path d="${pT}" stroke="#2f6b4a" stroke-width="2.2" fill="none"/>`;
+        for (let i = 0; i < dfRange.length; i++) svg += `<circle cx="${xx(dfRange[i])}" cy="${yy(treeNorm[i])}" r="2.6" fill="#2f6b4a"/>`;
+
+        const lx = svgW - 188;
+        svg += `<rect x="${lx}" y="${padT + 4}" width="170" height="46" fill="white" stroke="#ddd" stroke-width="0.8" rx="3"/>`;
+        svg += `<line x1="${lx+10}" y1="${padT + 18}" x2="${lx+38}" y2="${padT + 18}" stroke="#d97842" stroke-width="2.2"/>`;
+        svg += `<text x="${lx+44}" y="${padT + 22}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#444">RSS(spline, data)</text>`;
+        svg += `<line x1="${lx+10}" y1="${padT + 38}" x2="${lx+38}" y2="${padT + 38}" stroke="#2f6b4a" stroke-width="2.2"/>`;
+        svg += `<text x="${lx+44}" y="${padT + 42}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#444">RSS(spline, tree)</text>`;
+
+        svg += `<text x="${padL + plotW/2}" y="${svgH - 10}" font-family="IBM Plex Mono, monospace" font-size="14" fill="#222" text-anchor="middle">spline DF</text>`;
+        svg += `<text x="22" y="${padT + plotH/2}" font-family="IBM Plex Mono, monospace" font-size="14" fill="#222" text-anchor="middle" transform="rotate(-90 22 ${padT + plotH/2})">RSS / max(RSS)</text>`;
+
+        svg += '</svg>';
+        wrap.innerHTML = svg;
+
+        const b30 = document.getElementById('btn-avg30');
+        const b1  = document.getElementById('btn-avg1');
+        if (b30 && b1) {
+          if (S.avgMode === 'avg') { b30.classList.remove('sec'); b1.classList.add('sec'); }
+          else { b1.classList.remove('sec'); b30.classList.add('sec'); }
+        }
+      }
+
+      function renderTab3() { renderMultiDF(); renderRSS(); }
+
+      // ─── Tab 4: tree (with samples) + spectrogram (rotated) ───
+      function makeWindow(name, W) {
+        const w = new Array(W);
+        if (name === 'rect') { for (let i = 0; i < W; i++) w[i] = 1; }
+        else if (name === 'hann') { for (let i = 0; i < W; i++) w[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (W - 1)); }
+        else if (name === 'hamming') { for (let i = 0; i < W; i++) w[i] = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (W - 1)); }
+        else if (name === 'gaussian') {
+          const sig = (W - 1) / 6, c = (W - 1) / 2;
+          for (let i = 0; i < W; i++) { const d = (i - c) / sig; w[i] = Math.exp(-0.5 * d * d); }
+        } else { for (let i = 0; i < W; i++) w[i] = 1; }
+        return w;
+      }
+      function getColormap(name) {
+        let stops;
+        if (name === 'viridis') stops = [
+          [0.00, [68, 1, 84]], [0.25, [59, 82, 139]], [0.50, [33, 145, 140]],
+          [0.75, [94, 201, 98]], [1.00, [253, 231, 37]]
+        ];
+        else if (name === 'magma') stops = [
+          [0.00, [0, 0, 4]], [0.25, [80, 18, 123]], [0.50, [183, 55, 121]],
+          [0.75, [251, 136, 97]], [1.00, [252, 253, 191]]
+        ];
+        else stops = [[0.00, [0, 0, 0]], [1.00, [255, 255, 255]]];
+        return v => {
+          v = Math.max(0, Math.min(1, v));
+          let i = 0;
+          while (i < stops.length - 1 && stops[i+1][0] < v) i++;
+          const a = stops[i], b = stops[i+1] || a;
+          const t = (v - a[0]) / Math.max(1e-9, (b[0] - a[0]));
+          const r = Math.round(a[1][0] + t * (b[1][0] - a[1][0]));
+          const g = Math.round(a[1][1] + t * (b[1][1] - a[1][1]));
+          const bl = Math.round(a[1][2] + t * (b[1][2] - a[1][2]));
+          return `rgb(${r},${g},${bl})`;
+        };
+      }
+
+      function renderTreeT4(samples, skel) {
+        const wrap = document.getElementById('treeWrap-4');
+        if (!wrap) return;
+        const svgW = 200, svgH = 540;
+        // Override layout: this tree is narrower so use a wider tx range to keep
+        // the trunk aspect right.
+        const L = {
+          svgW, svgH,
+          padL: 12, padR: 12, padT: 18, padB: 28,
+          txMin: -0.55, txMax: 0.55, tyMin: -0.05, tyMax: 1.80
+        };
+        function toSVG(tx, ty) {
+          return {
+            sx: L.padL + (tx - L.txMin) / (L.txMax - L.txMin) * (svgW - L.padL - L.padR),
+            sy: L.padT + (1 - (ty - L.tyMin) / (L.tyMax - L.tyMin)) * (svgH - L.padT - L.padB)
+          };
+        }
+        const trunkPx = (TRUNK_THICK / (L.txMax - L.txMin)) * (svgW - L.padL - L.padR);
+
+        let svg = `<svg viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
+        svg += `<defs>${arrowMarkerDef('arrUp-4', '#bbb')}</defs>`;
+        svg += `<rect width="${svgW}" height="${svgH}" fill="white"/>`;
+
+        const tt = toSVG(skel.trunk[0].x, skel.trunk[0].y);
+        const tb = toSVG(skel.trunk[1].x, skel.trunk[1].y);
+        svg += `<line x1="${tt.sx}" y1="${tt.sy}" x2="${tb.sx}" y2="${tb.sy}" stroke="#6b4a2a" stroke-width="${trunkPx}" stroke-linecap="round" opacity="0.92"/>`;
+        if (skel.rightBranch) {
+          const rb0 = toSVG(skel.rightBranch[0].x, skel.rightBranch[0].y);
+          const rb1 = toSVG(skel.rightBranch[1].x, skel.rightBranch[1].y);
+          svg += `<line x1="${rb0.sx}" y1="${rb0.sy}" x2="${rb1.sx}" y2="${rb1.sy}" stroke="#6b4a2a" stroke-width="${trunkPx * 0.86}" stroke-linecap="round" opacity="0.92"/>`;
+        }
+        if (skel.leftBranch) {
+          const lb0 = toSVG(skel.leftBranch[0].x, skel.leftBranch[0].y);
+          const lb1 = toSVG(skel.leftBranch[1].x, skel.leftBranch[1].y);
+          svg += `<line x1="${lb0.sx}" y1="${lb0.sy}" x2="${lb1.sx}" y2="${lb1.sy}" stroke="#8a6843" stroke-width="${trunkPx * 0.78}" stroke-linecap="round" opacity="0.55" stroke-dasharray="3 4"/>`;
+        }
+        if (skel.fork) {
+          const fpt = toSVG(skel.fork.x, skel.fork.y);
+          svg += `<text x="${fpt.sx + trunkPx*0.55 + 3}" y="${fpt.sy + 4}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#666">fork</text>`;
+        }
+
+        // Samples on tree
+        for (let i = 0; i < samples.length; i++) {
+          const sp = toSVG(samples[i].x, samples[i].y);
+          svg += `<circle cx="${sp.sx}" cy="${sp.sy}" r="2.2" fill="#d97842" stroke="#fff" stroke-width="0.4"/>`;
+        }
+
+        // "up the tree" arrow
+        const ax = svgW - 12;
+        svg += `<line x1="${ax}" y1="${svgH - 30}" x2="${ax}" y2="36" stroke="#bbb" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrUp-4)"/>`;
+        svg += '</svg>';
+        wrap.innerHTML = svg;
+      }
+
+      function renderTab4() {
+        const wftWrap = document.getElementById('wftWrap-4');
+        if (!wftWrap) return;
+
+        const prng = makePRNG(S.internalSeed);
+        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, prng);
+        const skel = treeSkeleton(S.treeType, S.branchAngle);
+        renderTreeT4(samples, skel);
+
+        // ─── Resample lateral coordinate onto uniform z grid ───
+        // z is cumulative arc length along the trajectory; on the trunk this is
+        // essentially the y coordinate, on the branch it continues smoothly.
+        let pathLen = 0;
+        const zRaw = [0];
+        for (let i = 1; i < samples.length; i++) {
+          const dx = samples[i].x - samples[i-1].x, dy = samples[i].y - samples[i-1].y;
+          pathLen += Math.sqrt(dx*dx + dy*dy);
+          zRaw.push(pathLen);
+        }
+        const hasFork = (S.treeType === 'Y');
+        let zForkIdx = 0;
+        for (let i = 0; i < samples.length; i++) { if (samples[i].t >= 0.5) { zForkIdx = i; break; } }
+        const zFork = hasFork ? zRaw[zForkIdx] : -1;
+
+        const K = 256;
+        const zMax = pathLen;
+        const zGrid = new Array(K), xGrid = new Array(K);
+        for (let i = 0; i < K; i++) zGrid[i] = zMax * i / (K - 1);
+        // Use the perpendicular (lateral) deviation from the tree centerline, NOT
+        // the raw x coordinate. Raw x has a systematic trend on the branch (it
+        // increases as the branch extends sideways) which dominates the spectrum as
+        // DC and low-frequency content, swamping the behavioral signal. The lateral
+        // deviation lat is zero-mean and directly captures wobble regardless of
+        // which segment of the tree the load is on.
+        function interp(z) {
+          if (z <= zRaw[0]) return samples[0].lat;
+          if (z >= zRaw[zRaw.length - 1]) return samples[samples.length - 1].lat;
+          let lo = 0, hi = zRaw.length - 1;
+          while (hi - lo > 1) { const m = (lo + hi) >> 1; if (zRaw[m] <= z) lo = m; else hi = m; }
+          const f = (z - zRaw[lo]) / (zRaw[hi] - zRaw[lo]);
+          return samples[lo].lat * (1 - f) + samples[hi].lat * f;
+        }
+        for (let i = 0; i < K; i++) xGrid[i] = interp(zGrid[i]);
+        const dz = zMax / (K - 1);
+        const Fs = 1 / dz;
+        const nyq = Fs / 2;
+
+        // ─── STFT ───
+        const W = S.W, hop = S.hop;
+        const win = makeWindow(S.win, W);
+        const nCols = Math.max(1, Math.floor((K - W) / hop) + 1);
+        const nFreq = Math.floor(W / 2) + 1;
+        const mag = new Array(nCols);
+        for (let c = 0; c < nCols; c++) {
+          const off = c * hop;
+          const m = new Array(nFreq);
+          for (let k = 0; k < nFreq; k++) {
+            let re = 0, im = 0;
+            for (let n = 0; n < W; n++) {
+              const x = xGrid[off + n] * win[n];
+              const phi = -2 * Math.PI * k * n / W;
+              re += x * Math.cos(phi);
+              im += x * Math.sin(phi);
+            }
+            m[k] = Math.sqrt(re * re + im * im);
+          }
+          mag[c] = m;
+        }
+
+        let gMax = 0;
+        for (let c = 0; c < nCols; c++) for (let k = 0; k < nFreq; k++) if (mag[c][k] > gMax) gMax = mag[c][k];
+        let display = mag;
+        if (S.perCol) {
+          display = mag.map(col => { const m = Math.max.apply(null, col); return col.map(v => m > 0 ? v / m : 0); });
+          gMax = 1;
+        }
+
+        // ─── Canvas: vertical = z, horizontal = f ───
+        const cssW = 540, cssH = 540;
+        const padL = 64, padR = 28, padT = 22, padB = 52;
+        const plotW = cssW - padL - padR, plotH = cssH - padT - padB;
+        const dpr = window.devicePixelRatio || 1;
+
+        wftWrap.innerHTML = `<canvas id="wftCanvas" style="width:100%;height:auto;display:block;"></canvas>`;
+        const canvas = document.getElementById('wftCanvas');
+        canvas.style.aspectRatio = `${cssW} / ${cssH}`;
+        canvas.width = cssW * dpr;
+        canvas.height = cssH * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, cssW, cssH);
+
+        // z increases UPWARD: z=0 at bottom of plot, z=zMax at top
+        function zToPy(z) { return padT + plotH - (z / zMax) * plotH; }
+        function fToPx(f) { return padL + (f / nyq) * plotW; }
+
+        const cmap = getColormap(S.cmap);
+
+        for (let c = 0; c < nCols; c++) {
+          // z extent of this STFT column
+          const zL = (c === 0) ? 0 : ((c * hop + W/2 - hop/2) * dz);
+          const zR = (c === nCols - 1) ? zMax : ((c * hop + W/2 + hop/2) * dz);
+          const yTop = zToPy(zR);                 // larger z → smaller y in SVG
+          const yBot = zToPy(zL);
+          const cellH = Math.max(1.2, yBot - yTop);
+          for (let k = 0; k < nFreq; k++) {
+            const fL = Math.max(0,   (k - 0.5) * Fs / W);
+            const fR = Math.min(nyq, (k + 0.5) * Fs / W);
+            const xL = fToPx(fL), xR = fToPx(fR);
+            let v = display[c][k] / gMax;
+            if (S.logMag) v = Math.log10(1 + 9 * v);
+            v = Math.max(0, Math.min(1, v));
+            ctx.fillStyle = cmap(v);
+            ctx.fillRect(xL, yTop, (xR - xL) + 0.6, cellH + 0.6);
+          }
+        }
+
+        // Frame
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(padL, padT, plotW, plotH);
+
+        // Fork: HORIZONTAL line at z = z_fork
+        if (hasFork && zFork > 0 && zFork <= zMax) {
+          ctx.strokeStyle = '#d97842';
+          ctx.lineWidth = 2.0;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.moveTo(padL, zToPy(zFork));
+          ctx.lineTo(padL + plotW, zToPy(zFork));
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#d97842';
+          ctx.font = '600 12px "IBM Plex Mono", monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText('fork (z)', padL + 6, zToPy(zFork) - 5);
+        }
+
+        // f_cut: VERTICAL line at f = 1/L_bend
+        const fCut = 1 / S.Lbend;
+        if (fCut > 0 && fCut < nyq) {
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 2.0;
+          ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(fToPx(fCut), padT);
+          ctx.lineTo(fToPx(fCut), padT + plotH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.font = '600 11px "IBM Plex Mono", monospace';
+          ctx.textAlign = 'left';
+          ctx.lineWidth = 3.5;
+          ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+          ctx.strokeText('f_cut = 1/L_bend', fToPx(fCut) + 6, padT + 14);
+          ctx.fillStyle = 'white';
+          ctx.fillText('f_cut = 1/L_bend', fToPx(fCut) + 6, padT + 14);
+        }
+
+        // ─── Axis ticks ───
+        ctx.fillStyle = '#444';
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 1;
+        ctx.font = '12px "IBM Plex Mono", monospace';
+
+        // X axis (frequency) — bottom
+        ctx.textAlign = 'center';
+        for (let i = 0; i <= 5; i++) {
+          const f = nyq * i / 5;
+          const px = fToPx(f);
+          ctx.beginPath(); ctx.moveTo(px, padT + plotH); ctx.lineTo(px, padT + plotH + 5); ctx.stroke();
+          ctx.fillText(f.toFixed(1), px, padT + plotH + 19);
+        }
+        // Y axis (z) — left
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 5; i++) {
+          const z = zMax * i / 5;
+          const py = zToPy(z);
+          ctx.beginPath(); ctx.moveTo(padL - 5, py); ctx.lineTo(padL, py); ctx.stroke();
+          ctx.fillText(z.toFixed(2), padL - 8, py + 4);
+        }
+
+        // Axis labels
+        ctx.fillStyle = '#222';
+        ctx.font = '14px "IBM Plex Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('spatial frequency  (1/length)', padL + plotW / 2, cssH - 10);
+        ctx.save();
+        ctx.translate(18, padT + plotH / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center';
+        ctx.fillText('height  z  (arc length up the tree)', 0, 0);
+        ctx.restore();
+
+        document.getElementById('v-fcut').textContent = fCut.toFixed(2);
+      }
+
+      // ─── Dispatch ───────────────────────────────────────
+      function renderCurrent() {
+        switch (+S.mainTab) {
+          case 0: renderTab1(); break;
+          case 1: break;          // Tab 2 is a static SVG
+          case 2: renderTab3(); break;
+          case 3: renderTab4(); break;
+        }
+      }
+      function renderAll() {
+        renderTab1();
+        renderTab3();
+        renderTab4();
+      }
+
+      function setMainTab(idx) {
+        S.mainTab = +idx;
+        document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', String(b.dataset.tab) === String(idx)));
+        document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('active', String(p.dataset.pane) === String(idx)));
+        const sel = document.getElementById('mainTabSelect');
+        if (sel) sel.value = String(idx);
+        renderCurrent();
+      }
+      function setRTab(group, value) {
+        S.rTab[group] = value;
+        document.querySelectorAll(`.rtab[data-rtab^="${group}-"]`).forEach(b => b.classList.toggle('active', b.dataset.rtab === value));
+        document.querySelectorAll(`.rpane[data-rpane^="${group}-"]`).forEach(p => p.classList.toggle('active', p.dataset.rpane === value));
+        const sel = document.querySelector(`.rtabs-select[data-rselect="${group}"]`);
+        if (sel) sel.value = value;
+      }
+
+      function bindControls() {
+        document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setMainTab(b.dataset.tab)));
+        const mts = document.getElementById('mainTabSelect');
+        if (mts) mts.addEventListener('change', e => setMainTab(e.target.value));
+
+        document.querySelectorAll('.rtab').forEach(b => b.addEventListener('click', () => {
+          const v = b.dataset.rtab;
+          setRTab(v.split('-')[0], v);
+        }));
+        document.querySelectorAll('.rtabs-select').forEach(sel => sel.addEventListener('change', e => {
+          setRTab(sel.dataset.rselect, e.target.value);
+        }));
+
+        // Tab 1 controls
+        document.getElementById('treeType').addEventListener('change', e => {
+          S.treeType = e.target.value;
+          document.getElementById('v-treeType').textContent = S.treeType;
+          renderAll();
+        });
+        document.getElementById('theta').addEventListener('input', e => {
+          S.branchAngle = +e.target.value;
+          document.getElementById('v-theta').innerHTML = S.branchAngle + '&deg;';
+          renderAll();
+        });
+        document.getElementById('N').addEventListener('input', e => {
+          S.N = +e.target.value;
+          document.getElementById('v-N').textContent = S.N;
+          renderAll();
+        });
+        document.getElementById('df').addEventListener('input', e => {
+          S.df = +e.target.value;
+          document.getElementById('v-df').textContent = S.df;
+          renderCurrent();
+          // Tab 3's RSS plot also depends on current df marker:
+          if (+S.mainTab !== 2) renderTab3();
+        });
+        document.getElementById('sbase').addEventListener('input', e => {
+          S.sBase = +e.target.value / 1000;
+          document.getElementById('v-sbase').textContent = S.sBase.toFixed(3);
+          renderAll();
+        });
+        document.getElementById('sdel').addEventListener('input', e => {
+          S.sDel = +e.target.value / 1000;
+          document.getElementById('v-sdel').textContent = S.sDel.toFixed(3);
+          renderAll();
+        });
+        document.getElementById('btn-resim').addEventListener('click', () => {
+          S.internalSeed = Math.floor(Math.random() * 99998) + 1;
+          renderAll();
+        });
+
+        document.getElementById('tg-skel').addEventListener('change', e => { S.showSkel = e.target.checked; renderTab1(); });
+        document.getElementById('tg-spline').addEventListener('change', e => { S.showSpline = e.target.checked; renderTab1(); });
+        document.getElementById('tg-knots').addEventListener('change', e => {
+          S.showKnots = e.target.checked;
+          renderTab1();
+          renderMultiDF();
+        });
+        document.getElementById('tg-devs').addEventListener('change', e => { S.showDevs = e.target.checked; renderTab1(); });
+
+        document.getElementById('btn-avg30').addEventListener('click', () => { S.avgMode = 'avg';    renderTab3(); });
+        document.getElementById('btn-avg1').addEventListener('click',  () => { S.avgMode = 'single'; renderTab3(); });
+
+        document.getElementById('W').addEventListener('input', e => {
+          S.W = +e.target.value;
+          document.getElementById('v-W').textContent = S.W;
+          renderTab4();
+        });
+        document.getElementById('hop').addEventListener('input', e => {
+          S.hop = +e.target.value;
+          document.getElementById('v-hop').textContent = S.hop;
+          renderTab4();
+        });
+        document.getElementById('win').addEventListener('change', e => {
+          S.win = e.target.value;
+          const labs = {hann:'Hann', hamming:'Hamming', rect:'Rect', gaussian:'Gaussian'};
+          document.getElementById('v-win').textContent = labs[S.win];
+          renderTab4();
+        });
+        document.getElementById('cmap').addEventListener('change', e => {
+          S.cmap = e.target.value;
+          document.getElementById('v-cmap').textContent = S.cmap;
+          renderTab4();
+        });
+        document.getElementById('Lbend').addEventListener('input', e => {
+          S.Lbend = +e.target.value / 100;
+          document.getElementById('v-Lbend').textContent = S.Lbend.toFixed(3);
+          renderTab4();
+        });
+        document.getElementById('tg-log').addEventListener('change',    e => { S.logMag = e.target.checked; renderTab4(); });
+        document.getElementById('tg-perCol').addEventListener('change', e => { S.perCol = e.target.checked; renderTab4(); });
+      }
+
+      function init() {
+        bindControls();
+        renderAll();
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+
+</script>
+</body>
+</html>
