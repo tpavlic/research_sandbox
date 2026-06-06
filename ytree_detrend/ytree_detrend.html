@@ -670,6 +670,10 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
             <marker id="arr-tan" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
               <path d="M0,0 L10,5 L0,10 z" fill="#2a5a8c"/>
             </marker>
+            <!-- Small arrowhead for the θ_i angle arc (shows CCW = positive direction) -->
+            <marker id="arr-theta" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 z" fill="#555" opacity="0.85"/>
+            </marker>
           </defs>
           <rect width="920" height="480" fill="white"/>
           <rect width="920" height="480" fill="url(#proj-grid)" opacity="0.6"/>
@@ -678,11 +682,12 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
           <path d="M 60 380 C 240 120, 500 220, 860 200"
                 fill="none" stroke="#2f6b4a" stroke-width="3.5"/>
 
-          <!-- d > 0 / d < 0 placed below the d_i label, straddling the green curve
-               at roughly the same x as d_i (≈ 160), near curve height y ≈ 272 -->
-          <text x="118" y="258" font-family="IBM Plex Mono, monospace" font-size="13"
+          <!-- d > 0 / d < 0 along the parallel line through d_i, close to d_i.
+               s=42 → (177,222): well above curve (curve y≈259 at x=177).
+               s=90 → (194,267): clearly below curve (curve y≈258 at x=194). -->
+          <text x="181" y="234" font-family="IBM Plex Mono, monospace" font-size="13"
                 fill="#b34030" font-style="italic" opacity="0.85">d &gt; 0</text>
-          <text x="122" y="292" font-family="IBM Plex Mono, monospace" font-size="13"
+          <text x="193" y="268" font-family="IBM Plex Mono, monospace" font-size="13"
                 fill="#b34030" font-style="italic" opacity="0.85">d &lt; 0</text>
 
           <!-- Curve label -->
@@ -706,12 +711,20 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
           <!-- Foot square -->
           <rect x="237" y="223" width="14" height="14"
                 fill="white" stroke="#2f6b4a" stroke-width="2.5"/>
+          <!-- θ_i arc between τ and the deviation dashed line (CCW = positive direction) -->
+          <path d="M 260.9,223.8 A 18,18 0 0 0 237.7,213.4"
+                fill="none" stroke="#555" stroke-width="1.3" opacity="0.8"
+                marker-end="url(#arr-theta)"/>
+          <text x="257" y="201" font-family="IBM Plex Mono, monospace" font-size="13"
+                fill="#444" font-style="italic" opacity="0.9">
+            &#952;<tspan font-size="10" baseline-shift="sub">i</tspan>
+          </text>
 
-          <!-- Unit tangent τ from foot, length 84 px, direction (0.935, −0.355) -->
-          <line x1="244.1" y1="230.2" x2="322.7" y2="200.4"
+          <!-- Unit tangent τ from foot, length 130 px, direction (0.935, −0.355) -->
+          <line x1="244.1" y1="230.2" x2="365.7" y2="184.1"
                 stroke="#2a5a8c" stroke-width="2"
                 marker-end="url(#arr-tan)"/>
-          <text x="332" y="202" font-family="IBM Plex Mono, monospace" font-size="16" fill="#2a5a8c">
+          <text x="373" y="181" font-family="IBM Plex Mono, monospace" font-size="16" fill="#2a5a8c">
             &tau;(t<tspan font-size="12" baseline-shift="sub">i</tspan><tspan font-size="13" baseline-shift="super">&#8727;</tspan>)
           </text>
 
@@ -735,8 +748,7 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
             p<tspan font-size="14" baseline-shift="sub">i</tspan>
           </text>
 
-          <!-- Label: r(t_i*) with leader line to foot -->
-          <line x1="160" y1="262" x2="237" y2="234" stroke="#999" stroke-width="0.8"/>
+          <!-- Label: r(t_i*) — leader removed (it aligned with the tangent reverse direction) -->
           <text x="42" y="270" font-family="IBM Plex Mono, monospace" font-size="19"
                 fill="#2f6b4a" font-weight="600">
             r(t<tspan font-size="13" baseline-shift="sub">i</tspan><tspan font-size="14" baseline-shift="super">&#8727;</tspan>)
@@ -797,39 +809,45 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
         &radic;[(x<sub>1</sub>&minus;x<sub>2</sub>)&sup2; + (y<sub>1</sub>&minus;y<sub>2</sub>)&sup2;].
       </p>
       <p>
-        In practice we evaluate <code>r(t)</code> on a dense <code>t</code>-grid (a few hundred points
-        is plenty) and pick the index where the squared distance is minimized.
+        In practice we evaluate <code>r(t)</code> at a few hundred equally spaced parameter
+        values and pick the index where the squared distance is minimized.
       </p>
 
       <p><b>2. Compute the signed scalar distance.</b>
-        Let &tau;(t<sub>i</sub><sup>&#8727;</sup>) be the unit tangent at the foot (shown as the blue
-        arrow in the figure), and let &tau;<sub>&perp;</sub>(t<sub>i</sub><sup>&#8727;</sup>) be
-        &tau; rotated 90&deg;. The signed distance is the Euclidean gap (already defined above)
-        multiplied by the sine of the angle &theta;<sub>i</sub> from &tau; to the displacement:
+        Let &tau;(t<sub>i</sub><sup>&#8727;</sup>) be the unit tangent at the foot
+        and &theta;<sub>i</sub> the angle from &tau;(t<sub>i</sub><sup>&#8727;</sup>) to
+        (p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>)),
+        measured counterclockwise as shown in the figure.
+        Define the sign factor sgn(&theta;<sub>i</sub>) by embedding both vectors in 3D
+        (zero z-components) and extracting the z-component of their cross product:
       </p>
-      <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; &#x2016;p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016; &middot; sin(&theta;<sub>i</sub>)</span>
-      <p>
-        Writing sin using dot products over norms, with
-        A&nbsp;=&nbsp;p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>) and
-        B&nbsp;=&nbsp;&tau;<sub>&perp;</sub>(t<sub>i</sub><sup>&#8727;</sup>):
-      </p>
-      <span class="formula">sin(&theta;<sub>i</sub>) &nbsp;=&nbsp;
+      <span class="formula">sgn(&theta;<sub>i</sub>) &nbsp;=&nbsp;
+        (0,0,1) &nbsp;&middot;&nbsp;
         <span style="display:inline-block;vertical-align:middle;text-align:center;line-height:1.6em;">
-          <span style="display:block;border-bottom:1px solid currentColor;padding:0 6px;">A &middot; B</span>
-          <span style="display:block;padding:0 6px;">&#x2016;A&#x2016; &middot; &#x2016;B&#x2016;</span>
+          <span style="display:block;border-bottom:1px solid currentColor;padding:0 6px;">
+            &tau;(t<sub>i</sub><sup>&#8727;</sup>) &times; (p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>))
+          </span>
+          <span style="display:block;padding:0 6px;">
+            &#x2016;&tau;(t<sub>i</sub><sup>&#8727;</sup>)&#x2016;&thinsp;&middot;&thinsp;&#x2016;p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016;
+          </span>
         </span>
       </span>
       <p>
-        Since &#x2016;B&#x2016;&nbsp;=&nbsp;&#x2016;&tau;<sub>&perp;</sub>&#x2016;&nbsp;=&nbsp;1,
-        d<sub>i</sub> simplifies to
-        (p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>))&nbsp;&middot;&nbsp;&tau;<sub>&perp;</sub>(t<sub>i</sub><sup>&#8727;</sup>).
-        Positive on the left of the oriented curve, negative on the right.
+        Because r(t<sub>i</sub><sup>&#8727;</sup>) is the <em>nearest</em> point on the curve to
+        p<sub>i</sub>, the displacement (p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>)) is
+        perpendicular to &tau;(t<sub>i</sub><sup>&#8727;</sup>), so sgn(&theta;<sub>i</sub>)&nbsp;=&nbsp;&plusmn;1 exactly.
+        The signed scalar distance is then:
       </p>
+      <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; &#x2016;p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016; &middot; sgn(&theta;<sub>i</sub>)</span>
+      <p>Positive on the left of the oriented curve, negative on the right &mdash;
+        though this sign convention is arbitrary. Reversing the cross-product order
+        to (p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>))&thinsp;&times;&thinsp;&tau;(t<sub>i</sub><sup>&#8727;</sup>)
+        flips the sign and labels the right side positive instead.</p>
 
       <p><b>3. Tag with arc length.</b> The companion coordinate is</p>
       <span class="formula">s<sub>i</sub> &nbsp;=&nbsp; &int;<sub>0</sub><sup>t<sub>i</sub><sup>&#8727;</sup></sup> &Vert; r&prime;(u) &Vert; du</span>
       <p>
-        computed numerically as a cumulative sum of segment lengths along the dense <code>t</code>-grid.
+        computed numerically as a cumulative sum of chord lengths over the same dense sequence of parameter values.
         Plotting <code>d<sub>i</sub></code> against <code>s<sub>i</sub></code> gives the residual signal
         used in the first tab.
       </p>
