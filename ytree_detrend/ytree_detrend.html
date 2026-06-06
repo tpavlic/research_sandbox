@@ -238,6 +238,7 @@ a { color: var(--accent); }
   cursor: pointer; user-select: none;
 }
 .toggle input { margin: 0; accent-color: var(--green-dark); }
+.toggle-disabled { opacity: 0.35; pointer-events: none; }
 
 .sec-divider {
   border-top: 1px dashed var(--border);
@@ -400,6 +401,23 @@ a { color: var(--accent); }
 .foot a { color: var(--tiny); text-decoration: underline; }
 .footer-sep { display: inline; }
 .footer-lic { display: inline; }
+
+/* Wide-screen Tab 4: fix both panels to the same height so tree and spectrogram are visually aligned */
+@media (min-width: 881px) {
+  #treeWrap-4 svg {
+    width: auto;
+    height: 590px;
+    display: block;
+    margin: 0 auto;
+  }
+  #wftWrap-4 canvas {
+    width: auto !important;
+    height: 590px !important;
+    max-width: 100% !important;
+    display: block;
+    margin: 0 auto;
+  }
+}
 
 @media (max-width: 880px) {
   .grid { grid-template-columns: 1fr; }
@@ -643,112 +661,116 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
             <pattern id="proj-grid" width="40" height="40" patternUnits="userSpaceOnUse">
               <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#eee" stroke-width="0.5"/>
             </pattern>
-            <marker id="proj-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
-              <path d="M0,0 L10,5 L0,10 z" fill="#666"/>
+            <!-- Arrowhead for the positive-direction indicator on the deviation line -->
+            <marker id="arr-dev" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 z" fill="#c34a2e"/>
             </marker>
-            <marker id="proj-arrow-acc" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+            <!-- Arrowhead for the unit tangent vector -->
+            <marker id="arr-tan" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
               <path d="M0,0 L10,5 L0,10 z" fill="#2a5a8c"/>
             </marker>
           </defs>
           <rect width="920" height="480" fill="white"/>
           <rect width="920" height="480" fill="url(#proj-grid)" opacity="0.6"/>
 
-          <!-- Cubic Bezier curve: M(60,380) C(240,120) (500,220) (860,200) -->
+          <!-- The fitted curve r(t) -->
           <path d="M 60 380 C 240 120, 500 220, 860 200"
                 fill="none" stroke="#2f6b4a" stroke-width="3.5"/>
 
-          <!-- Curve label, positioned away from the curve, inside viewBox -->
-          <text x="550" y="305" font-family="IBM Plex Mono, monospace" font-size="19" fill="#2f6b4a" font-weight="600">
+          <!-- d > 0 / d < 0 straddling the curve near t ≈ 0.45 (P ≈ (353,204))
+               "d > 0" just above the curve, "d < 0" just below — close together -->
+          <text x="325" y="191" font-family="IBM Plex Mono, monospace" font-size="13"
+                fill="#b34030" font-style="italic" opacity="0.85">d &gt; 0</text>
+          <text x="356" y="221" font-family="IBM Plex Mono, monospace" font-size="13"
+                fill="#b34030" font-style="italic" opacity="0.85">d &lt; 0</text>
+
+          <!-- Curve label -->
+          <text x="550" y="305" font-family="IBM Plex Mono, monospace" font-size="19"
+                fill="#2f6b4a" font-weight="600">
             r(t) = (x&#770;(t), y&#770;(t))
           </text>
 
-          <!-- ───── Primary annotated sample at curve t = 0.30 ──────
-               foot = (244.1, 230.2)
-               unit tangent  = (0.935, -0.355)
-               unit normal n (toward sample side)  = (-0.355, -0.935)
-               sample p_i along +n at distance 110: (205.0, 127.2) -->
+          <!-- ─── PRIMARY sample (t = 0.30) ───
+               foot=(244.1,230.2)  sample=(205.0,127.2)  |d_i| = 110 px  d_i > 0 -->
 
-          <!-- d_i dashed line from sample to foot -->
-          <line x1="205.0" y1="127.2" x2="244.1" y2="230.2"
-                stroke="#c34a2e" stroke-width="2.5" stroke-dasharray="6,4"/>
+          <!-- Deviation line WITH single arrowhead at the sample end
+               (the arrowhead indicates the positive direction of d_i) -->
+          <line x1="244.1" y1="230.2" x2="205.0" y2="127.2"
+                stroke="#c34a2e" stroke-width="2.5" stroke-dasharray="7,4"
+                marker-end="url(#arr-dev)"/>
 
-          <!-- Sample dot p_i  (drawn AFTER dashed line so endpoint is clean) -->
+          <!-- Sample dot — drawn AFTER the line so the circle outline stays clean -->
           <circle cx="205.0" cy="127.2" r="9" fill="#d97842" stroke="#8a3a1c" stroke-width="1.5"/>
 
-          <!-- Tangent arrow t̂  (from foot, length 90, direction (0.935, -0.355)) -->
-          <line x1="244.1" y1="230.2" x2="328.3" y2="198.3"
-                stroke="#2a5a8c" stroke-width="2"
-                marker-end="url(#proj-arrow-acc)"/>
-          <text x="338" y="200" font-family="IBM Plex Mono, monospace" font-size="17" fill="#2a5a8c">
-            t&#770;(t<tspan font-size="12" baseline-shift="sub">i</tspan><tspan font-size="13" baseline-shift="super">&#8727;</tspan>)
-          </text>
-
-          <!-- Normal arrow n̂  (from foot, length 60, direction (-0.355, -0.935) toward sample) -->
-          <line x1="244.1" y1="230.2" x2="222.8" y2="174.1"
-                stroke="#888" stroke-width="2"
-                marker-end="url(#proj-arrow)"/>
-          <text x="178" y="173" font-family="IBM Plex Mono, monospace" font-size="17" fill="#666">
-            n&#770;(t<tspan font-size="12" baseline-shift="sub">i</tspan><tspan font-size="13" baseline-shift="super">&#8727;</tspan>)
-          </text>
-
-          <!-- Foot marker (open square) drawn LAST so its border is on top -->
+          <!-- Foot square -->
           <rect x="237" y="223" width="14" height="14"
                 fill="white" stroke="#2f6b4a" stroke-width="2.5"/>
 
+          <!-- Unit tangent τ from foot, length 84 px, direction (0.935, −0.355) -->
+          <line x1="244.1" y1="230.2" x2="322.7" y2="200.4"
+                stroke="#2a5a8c" stroke-width="2"
+                marker-end="url(#arr-tan)"/>
+          <text x="332" y="202" font-family="IBM Plex Mono, monospace" font-size="16" fill="#2a5a8c">
+            &tau;(t<tspan font-size="12" baseline-shift="sub">i</tspan><tspan font-size="13" baseline-shift="super">&#8727;</tspan>)
+          </text>
+
+          <!-- d_i label alongside the dashed deviation line, offset to its left.
+               Midpoint of line: (224.5, 178.7).  Offset toward (−0.935, 0.355). -->
+          <text x="162" y="183" font-family="IBM Plex Mono, monospace" font-size="21"
+                fill="#c34a2e" font-weight="600">
+            d<tspan font-size="15" baseline-shift="sub">i</tspan>
+          </text>
+          <!-- Thin leader from the label to the dashed line -->
+          <line x1="193" y1="178" x2="212" y2="170"
+                stroke="#c34a2e" stroke-width="0.9" opacity="0.65"/>
+
+          <!-- "+" next to the arrowhead, confirming positive direction -->
+          <text x="184" y="123" font-family="IBM Plex Mono, monospace" font-size="14"
+                fill="#c34a2e" font-weight="700">+</text>
+
           <!-- Label: p_i -->
-          <text x="220" y="118" font-family="IBM Plex Mono, monospace" font-size="22" fill="#8a3a1c" font-weight="600">
+          <text x="222" y="117" font-family="IBM Plex Mono, monospace" font-size="22"
+                fill="#8a3a1c" font-weight="600">
             p<tspan font-size="14" baseline-shift="sub">i</tspan>
           </text>
 
-          <!-- Label: r(t_i*) -->
+          <!-- Label: r(t_i*) with leader line to foot -->
           <line x1="160" y1="262" x2="237" y2="234" stroke="#999" stroke-width="0.8"/>
-          <text x="42" y="270" font-family="IBM Plex Mono, monospace" font-size="19" fill="#2f6b4a" font-weight="600">
+          <text x="42" y="270" font-family="IBM Plex Mono, monospace" font-size="19"
+                fill="#2f6b4a" font-weight="600">
             r(t<tspan font-size="13" baseline-shift="sub">i</tspan><tspan font-size="14" baseline-shift="super">&#8727;</tspan>)
           </text>
 
-          <!-- Label: d_i along the dashed line -->
-          <line x1="155" y1="175" x2="220" y2="180" stroke="#999" stroke-width="0.8"/>
-          <text x="115" y="180" font-family="IBM Plex Mono, monospace" font-size="20" fill="#c34a2e" font-weight="600">
-            d<tspan font-size="14" baseline-shift="sub">i</tspan>
-          </text>
-
-          <!-- ───── Secondary sample 2 at curve t = 0.55 ──────
-               foot = (433.0, 197.8)
-               unit tangent  = (0.999, -0.034)
-               unit normal n = (0.034, 0.999)
-               sample at foot + 130*n = (437.4, 327.7), BELOW curve  -->
+          <!-- Secondary sample 2 (below curve, t = 0.55): d < 0 -->
           <line x1="437.4" y1="327.7" x2="433.0" y2="197.8"
                 stroke="#c34a2e" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.75"/>
-          <circle cx="437.4" cy="327.7" r="7" fill="#d97842" stroke="#8a3a1c" stroke-width="1" opacity="0.9"/>
-          <rect x="426" y="191" width="14" height="14" fill="white" stroke="#2f6b4a" stroke-width="2" opacity="0.88"/>
+          <circle cx="437.4" cy="327.7" r="7" fill="#d97842" stroke="#8a3a1c"
+                  stroke-width="1" opacity="0.9"/>
+          <rect x="426" y="191" width="14" height="14" fill="white" stroke="#2f6b4a"
+                stroke-width="2" opacity="0.88"/>
 
-          <!-- ───── Secondary sample 3 at curve t = 0.80 ──────
-               foot = (655.8, 201.4)
-               unit tangent  = (1.000,  0.027)
-               unit normal n = (-0.027, 1.000)
-               sample at foot - 120*n = (659.0, 81.4), ABOVE curve  -->
+          <!-- Secondary sample 3 (above curve, t = 0.80): d > 0 -->
           <line x1="659.0" y1="81.4" x2="655.8" y2="201.4"
                 stroke="#c34a2e" stroke-width="1.6" stroke-dasharray="5,3" opacity="0.75"/>
-          <circle cx="659.0" cy="81.4" r="7" fill="#d97842" stroke="#8a3a1c" stroke-width="1" opacity="0.9"/>
-          <rect x="649" y="194" width="14" height="14" fill="white" stroke="#2f6b4a" stroke-width="2" opacity="0.88"/>
+          <circle cx="659.0" cy="81.4" r="7" fill="#d97842" stroke="#8a3a1c"
+                  stroke-width="1" opacity="0.9"/>
+          <rect x="649" y="194" width="14" height="14" fill="white" stroke="#2f6b4a"
+                stroke-width="2" opacity="0.88"/>
 
-          <!-- Legend strip along the bottom -->
+          <!-- Legend -->
           <g transform="translate(60, 425)">
             <circle cx="10" cy="10" r="7" fill="#d97842" stroke="#8a3a1c" stroke-width="1.2"/>
             <text x="26" y="15" font-family="-apple-system, sans-serif" font-size="15" fill="#222">
               sample p<tspan font-size="11" baseline-shift="sub">i</tspan>
             </text>
-
             <rect x="155" y="3" width="14" height="14" fill="white" stroke="#2f6b4a" stroke-width="2"/>
             <text x="178" y="15" font-family="-apple-system, sans-serif" font-size="15" fill="#222">
               foot r(t<tspan font-size="11" baseline-shift="sub">i</tspan><tspan font-size="12" baseline-shift="super">&#8727;</tspan>)
             </text>
-
             <line x1="320" y1="10" x2="360" y2="10" stroke="#c34a2e" stroke-width="2.5" stroke-dasharray="6,4"/>
             <text x="370" y="15" font-family="-apple-system, sans-serif" font-size="15" fill="#222">
-              signed deviation d<tspan font-size="11" baseline-shift="sub">i</tspan>
+              signed scalar d<tspan font-size="11" baseline-shift="sub">i</tspan>
             </text>
-
             <line x1="565" y1="10" x2="605" y2="10" stroke="#2f6b4a" stroke-width="3.5"/>
             <text x="615" y="15" font-family="-apple-system, sans-serif" font-size="15" fill="#222">
               fitted spline r(t)
@@ -778,13 +800,26 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
         is plenty) and pick the index where the squared distance is minimized.
       </p>
 
-      <p><b>2. Sign the distance.</b> The deviation is given the sign of the projection onto the unit normal at the foot,</p>
-      <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; (p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)) &middot; n&#770;(t<sub>i</sub><sup>&#8727;</sup>)</span>
+      <p><b>2. Compute the signed scalar distance.</b>
+        The unsigned gap is &#x2016;p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016;.
+        The sign comes from which side of the curve the sample lies on.
+        Let &tau;(t<sub>i</sub><sup>&#8727;</sup>) be the unit tangent to the curve at the foot
+        and &theta;<sub>i</sub> the signed angle from &tau; to the displacement
+        p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>):
+      </p>
+      <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; &#x2016;p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016; &middot; sin(&theta;<sub>i</sub>)</span>
       <p>
-        where the unit normal n&#770;(t) is obtained by rotating the unit tangent
-        r&prime;(t)&thinsp;/&thinsp;&Vert;r&prime;(t)&Vert; by 90&deg;.
-        The sign convention is arbitrary but consistent &mdash; positive on one
-        side of the curve, negative on the other.
+        Positive when p<sub>i</sub> is to the left of the oriented curve (facing direction of
+        increasing&nbsp;t), negative on the right. By right-triangle geometry,
+        sin(&theta;<sub>i</sub>) = opposite &divide; hypotenuse, where the hypotenuse is
+        &#x2016;p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016;
+        and the opposite is the perpendicular component |d<sub>i</sub>|.
+        In practice avoid computing the angle: d<sub>i</sub> equals the 2D cross product
+        of the unit tangent with the displacement,
+      </p>
+      <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; &tau;<sub>x</sub>(t<sub>i</sub><sup>&#8727;</sup>)&thinsp;&middot;&thinsp;(y<sub>i</sub> &minus; y&#770;(t<sub>i</sub><sup>&#8727;</sup>)) &nbsp;&minus;&nbsp; &tau;<sub>y</sub>(t<sub>i</sub><sup>&#8727;</sup>)&thinsp;&middot;&thinsp;(x<sub>i</sub> &minus; x&#770;(t<sub>i</sub><sup>&#8727;</sup>))</span>
+      <p>
+        In R: <code>d_i&nbsp;&lt;-&nbsp;tx[i_foot]&nbsp;*&nbsp;(ants$y&nbsp;-&nbsp;curve$y[i_foot])&nbsp;-&nbsp;ty[i_foot]&nbsp;*&nbsp;(ants$x&nbsp;-&nbsp;curve$x[i_foot])</code>.
       </p>
 
       <p><b>3. Tag with arc length.</b> The companion coordinate is</p>
@@ -809,54 +844,51 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
         </select>
       </div>
       <div class="rpane active" data-rpane="t1-base"><pre># Project samples (x, y) onto a dense evaluation of the fitted
-# spline (curve$x, curve$y) and compute (d_i, s_i).
+# spline (curve$x, curve$y) and compute the SCALAR d_i and s_i.
 
 K <- nrow(curve)
 
-# Unit tangent and unit normal at each curve point (central diff)
+# Unit tangent tau at each curve point (central difference)
 i_prev <- pmax(seq_len(K) - 1, 1)
 i_next <- pmin(seq_len(K) + 1, K)
 tx <- curve$x[i_next] - curve$x[i_prev]
 ty <- curve$y[i_next] - curve$y[i_prev]
 mag <- sqrt(tx^2 + ty^2)
 tx <- tx / mag;  ty <- ty / mag
-nx <- -ty;       ny <- tx        # rotate tangent 90 deg -> unit normal
 
-# For each sample, find nearest curve index (foot)
-project_one <- function(px, py) {
-  d2 <- (curve$x - px)^2 + (curve$y - py)^2
-  which.min(d2)
-}
+# For each sample, find nearest curve point (foot)
+project_one <- function(px, py) which.min((curve$x - px)^2 + (curve$y - py)^2)
 i_foot <- mapply(project_one, ants$x, ants$y)
 
-# Signed perpendicular distance and arc-length coordinate
-d_i <- (ants$x - curve$x[i_foot]) * nx[i_foot] +
-       (ants$y - curve$y[i_foot]) * ny[i_foot]
+# Signed scalar distance: 2D cross product of unit tangent with gap vector.
+# Equals ||p_i - r(t_i*)|| * sin(theta_i) where theta_i is the signed angle
+# from tau to the displacement.  Positive on the left of the oriented curve.
+d_i <- tx[i_foot] * (ants$y - curve$y[i_foot]) -
+       ty[i_foot] * (ants$x - curve$x[i_foot])
 s_i <- curve$s[i_foot]
 
 resid <- data.frame(s = s_i, d = d_i)</pre></div>
       <div class="rpane" data-rpane="t1-tidy"><pre>library(dplyr)
 library(purrr)
 
-# Add tangent and normal columns to the curve tibble
+# Add unit tangent columns to the curve tibble
 curve <- curve |>
   mutate(
     tx = lead(x, default = last(x)) - lag(x, default = first(x)),
     ty = lead(y, default = last(y)) - lag(y, default = first(y)),
     mag = sqrt(tx^2 + ty^2),
     tx  = tx / mag,
-    ty  = ty / mag,
-    nx  = -ty,
-    ny  =  tx
+    ty  = ty / mag
   )
 
-# Project each sample onto the curve
+# Project each sample; d_i = ||p_i - r(t_i*)|| * sin(theta_i)
+# computed directly as the 2D cross product tau x delta.
 resid <- ants |>
   mutate(
     i_foot = map2_int(x, y, ~ which.min((curve$x - .x)^2 + (curve$y - .y)^2)),
-    d      = (x - curve$x[i_foot]) * curve$nx[i_foot] +
-             (y - curve$y[i_foot]) * curve$ny[i_foot],
-    s      = curve$s[i_foot]
+    d = curve$tx[i_foot] * (y - curve$y[i_foot]) -
+        curve$ty[i_foot] * (x - curve$x[i_foot]),
+    s = curve$s[i_foot]
   )</pre></div>
     </div>
 
@@ -929,16 +961,15 @@ resid <- ants |>
         &bull;&nbsp;AIC = N&thinsp;log(RSS/N) + 2&thinsp;DF
         (Akaike &mdash; lighter penalty, slightly favors richer models).<br>
         &bull;&nbsp;BIC = N&thinsp;log(RSS/N) + log(N)&thinsp;DF
-        (heavier penalty, sparser; usually preferable for large N).<br>
-        Both <b>AIC and BIC</b> are minimized over a grid of DF values.
+        (heavier penalty, sparser; usually preferable for large N).
+        Both AIC and BIC are minimized over a grid of DF values.
       </p>
       <p>
-        &bull;&nbsp;<b>GCV</b> from <code>mgcv::gam</code> works in the &lambda; domain rather
-        than the DF domain: it fits a penalized spline and automatically chooses the smoothness
-        &lambda; to minimize an approximation of leave-one-out prediction error. Because &lambda;
-        and DF are equivalent parameterizations of the same flexibility/smoothness trade-off, GCV
-        is solving the same model-selection problem as an AIC/BIC sweep &mdash; just without the
-        grid search.
+        &bull;&nbsp;<b>GCV</b> from <code>mgcv::gam</code> avoids that grid search entirely by
+        working in the &lambda; domain: it fits a penalized spline and automatically chooses the
+        smoothness &lambda; to minimize an approximation of leave-one-out prediction error. Because
+        &lambda; and DF are equivalent parameterizations of the same flexibility/smoothness
+        trade-off, GCV is solving the same model-selection problem &mdash; just without the sweep.
       </p>
       <p style="font-size:0.88em; color:var(--muted);">
         All three criteria enforce complexity penalties for the same reason: a spline with enough DF
@@ -991,16 +1022,31 @@ resid <- ants |>
       <div class="rpane active" data-rpane="t2-base"><pre>library(splines)
 library(mgcv)
 
+# Option 0: compare RSS(spline, data) vs RSS(spline, tree) across a DF grid.
+# `skel` holds the tree-centerline (x, y) at each sample's t value.
+# RSS(spline, data) always decreases; RSS(spline, tree) is U-shaped.
+rss_df <- function(df) {
+  fit_x <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
+  fit_y <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
+  xh <- predict(fit_x, newdata = ants)
+  yh <- predict(fit_y, newdata = ants)
+  c(data = sum((ants$x - xh)^2 + (ants$y - yh)^2),
+    tree = sum((skel$x  - xh)^2 + (skel$y  - yh)^2))
+}
+rss_mat <- sapply(4:20, rss_df)
+colnames(rss_mat) <- 4:20
+df_star <- as.integer(colnames(rss_mat)[which.min(rss_mat["tree", ])])
+
 # Option 1: sweep DF, pick by AIC or BIC
-df_grid <- 4:20
-ic <- sapply(df_grid, function(df) {
+ic <- sapply(4:20, function(df) {
   fx <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
   fy <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
   c(aic = AIC(fx) + AIC(fy),
     bic = BIC(fx) + BIC(fy))
 })
-df_aic <- df_grid[which.min(ic["aic", ])]
-df_bic <- df_grid[which.min(ic["bic", ])]
+colnames(ic) <- 4:20
+df_aic <- as.integer(colnames(ic)[which.min(ic["aic", ])])
+df_bic <- as.integer(colnames(ic)[which.min(ic["bic", ])])
 
 # Option 2: penalized cubic regression spline, smoothness by GCV
 gx <- gam(x ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
@@ -1010,21 +1056,36 @@ edf <- gx$edf + gy$edf   # effective DF from GCV</pre></div>
 library(mgcv)
 library(dplyr)
 library(purrr)
-library(tidyr)
+library(tibble)
 
-# Sweep DF, pick by AIC / BIC
-ic <- tibble(df = 4:20) |>
+# Option 0: compare RSS(spline, data) vs RSS(spline, tree) across a DF grid.
+rss_sweep <- tibble(df = 4:20) |>
   mutate(
     fit_x = map(df, ~ lm(x ~ bs(t, df = .x, degree = 3), data = ants)),
     fit_y = map(df, ~ lm(y ~ bs(t, df = .x, degree = 3), data = ants)),
-    aic   = map2_dbl(fit_x, fit_y, ~ AIC(.x) + AIC(.y)),
-    bic   = map2_dbl(fit_x, fit_y, ~ BIC(.x) + BIC(.y))
+    rss_data = map2_dbl(fit_x, fit_y, ~ {
+      xh <- predict(.x, newdata = ants)
+      yh <- predict(.y, newdata = ants)
+      sum((ants$x - xh)^2 + (ants$y - yh)^2)
+    }),
+    rss_tree = map2_dbl(fit_x, fit_y, ~ {
+      xh <- predict(.x, newdata = ants)
+      yh <- predict(.y, newdata = ants)
+      sum((skel$x  - xh)^2 + (skel$y  - yh)^2)
+    })
   )
+df_star <- rss_sweep |> slice_min(rss_tree) |> pull(df)
 
+# Option 1: sweep DF, pick by AIC / BIC
+ic <- rss_sweep |>
+  mutate(
+    aic = map2_dbl(fit_x, fit_y, ~ AIC(.x) + AIC(.y)),
+    bic = map2_dbl(fit_x, fit_y, ~ BIC(.x) + BIC(.y))
+  )
 df_aic <- ic |> slice_min(aic) |> pull(df)
 df_bic <- ic |> slice_min(bic) |> pull(df)
 
-# Or use mgcv::gam with GCV-chosen smoothness
+# Option 2: GCV-chosen smoothness via mgcv::gam
 gx  <- gam(x ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
 gy  <- gam(y ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
 edf <- gx$edf + gy$edf</pre></div>
@@ -1607,9 +1668,13 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
             const sp = treeToSVG(samples[i].x, samples[i].y, L);
             const fp = treeToSVG(projs[i].foot.x, projs[i].foot.y, L);
             const inFork = hasFork && Math.abs(projs[i].s - forkS) < window;
-            const col = inFork ? '#c34a2e' : '#d99280';
-            const opa = inFork ? 0.85 : 0.55;
-            svg += `<line x1="${sp.sx}" y1="${sp.sy}" x2="${fp.sx}" y2="${fp.sy}" stroke="${col}" stroke-width="0.9" opacity="${opa}"/>`;
+            // When the tree skeleton is shown the lines sit on a dark brown trunk;
+            // use white/warm-white so they pop off the background.  When the
+            // skeleton is hidden, the background is light, so flip to coloured lines.
+            const col = S.showSkel
+              ? (inFork ? 'rgba(255,200,120,1)' : 'rgba(255,255,255,0.88)')
+              : (inFork ? '#c34a2e' : '#6699bb');
+            svg += `<line x1="${sp.sx}" y1="${sp.sy}" x2="${fp.sx}" y2="${fp.sy}" stroke="${col}" stroke-width="1.2"/>`;
           }
         }
 
@@ -1630,7 +1695,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           svg += `<path d="${path}" stroke="#2f6b4a" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
         }
 
-        if (S.showKnots && fit.knots && fit.knots.length > 8) {
+        if (S.showSpline && S.showKnots && fit.knots && fit.knots.length > 8) {
           // interior knots: skip 4 boundary repeats at each end
           const interior = fit.knots.slice(4, fit.knots.length - 4);
           for (const tk of interior) {
@@ -2301,7 +2366,13 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         });
 
         document.getElementById('tg-skel').addEventListener('change', e => { S.showSkel = e.target.checked; renderTab1(); });
-        document.getElementById('tg-spline').addEventListener('change', e => { S.showSpline = e.target.checked; renderTab1(); });
+        document.getElementById('tg-spline').addEventListener('change', e => {
+          S.showSpline = e.target.checked;
+          // Gray out the knots toggle — knots only make sense when the spline is shown
+          const knotsLbl = document.getElementById('tg-knots')?.closest('label');
+          if (knotsLbl) knotsLbl.classList.toggle('toggle-disabled', !S.showSpline);
+          renderTab1();
+        });
         document.getElementById('tg-knots').addEventListener('change', e => {
           S.showKnots = e.target.checked;
           renderTab1();
