@@ -239,6 +239,7 @@ a { color: var(--accent); }
 }
 .toggle input { margin: 0; accent-color: var(--green-dark); }
 .toggle-disabled { opacity: 0.35; pointer-events: none; }
+.ctrl-disabled   { opacity: 0.35; pointer-events: none; }
 
 .sec-divider {
   border-top: 1px dashed var(--border);
@@ -677,11 +678,11 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
           <path d="M 60 380 C 240 120, 500 220, 860 200"
                 fill="none" stroke="#2f6b4a" stroke-width="3.5"/>
 
-          <!-- d > 0 / d < 0 straddling the curve near t ≈ 0.45 (P ≈ (353,204))
-               "d > 0" just above the curve, "d < 0" just below — close together -->
-          <text x="325" y="191" font-family="IBM Plex Mono, monospace" font-size="13"
+          <!-- d > 0 / d < 0 placed below the d_i label, straddling the green curve
+               at roughly the same x as d_i (≈ 160), near curve height y ≈ 272 -->
+          <text x="118" y="258" font-family="IBM Plex Mono, monospace" font-size="13"
                 fill="#b34030" font-style="italic" opacity="0.85">d &gt; 0</text>
-          <text x="356" y="221" font-family="IBM Plex Mono, monospace" font-size="13"
+          <text x="122" y="292" font-family="IBM Plex Mono, monospace" font-size="13"
                 fill="#b34030" font-style="italic" opacity="0.85">d &lt; 0</text>
 
           <!-- Curve label -->
@@ -801,25 +802,28 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
       </p>
 
       <p><b>2. Compute the signed scalar distance.</b>
-        The unsigned gap is &#x2016;p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016;.
-        The sign comes from which side of the curve the sample lies on.
-        Let &tau;(t<sub>i</sub><sup>&#8727;</sup>) be the unit tangent to the curve at the foot
-        and &theta;<sub>i</sub> the signed angle from &tau; to the displacement
-        p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>):
+        Let &tau;(t<sub>i</sub><sup>&#8727;</sup>) be the unit tangent at the foot (shown as the blue
+        arrow in the figure), and let &tau;<sub>&perp;</sub>(t<sub>i</sub><sup>&#8727;</sup>) be
+        &tau; rotated 90&deg;. The signed distance is the Euclidean gap (already defined above)
+        multiplied by the sine of the angle &theta;<sub>i</sub> from &tau; to the displacement:
       </p>
       <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; &#x2016;p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016; &middot; sin(&theta;<sub>i</sub>)</span>
       <p>
-        Positive when p<sub>i</sub> is to the left of the oriented curve (facing direction of
-        increasing&nbsp;t), negative on the right. By right-triangle geometry,
-        sin(&theta;<sub>i</sub>) = opposite &divide; hypotenuse, where the hypotenuse is
-        &#x2016;p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016;
-        and the opposite is the perpendicular component |d<sub>i</sub>|.
-        In practice avoid computing the angle: d<sub>i</sub> equals the 2D cross product
-        of the unit tangent with the displacement,
+        Writing sin using dot products over norms, with
+        A&nbsp;=&nbsp;p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>) and
+        B&nbsp;=&nbsp;&tau;<sub>&perp;</sub>(t<sub>i</sub><sup>&#8727;</sup>):
       </p>
-      <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; &tau;<sub>x</sub>(t<sub>i</sub><sup>&#8727;</sup>)&thinsp;&middot;&thinsp;(y<sub>i</sub> &minus; y&#770;(t<sub>i</sub><sup>&#8727;</sup>)) &nbsp;&minus;&nbsp; &tau;<sub>y</sub>(t<sub>i</sub><sup>&#8727;</sup>)&thinsp;&middot;&thinsp;(x<sub>i</sub> &minus; x&#770;(t<sub>i</sub><sup>&#8727;</sup>))</span>
+      <span class="formula">sin(&theta;<sub>i</sub>) &nbsp;=&nbsp;
+        <span style="display:inline-block;vertical-align:middle;text-align:center;line-height:1.6em;">
+          <span style="display:block;border-bottom:1px solid currentColor;padding:0 6px;">A &middot; B</span>
+          <span style="display:block;padding:0 6px;">&#x2016;A&#x2016; &middot; &#x2016;B&#x2016;</span>
+        </span>
+      </span>
       <p>
-        In R: <code>d_i&nbsp;&lt;-&nbsp;tx[i_foot]&nbsp;*&nbsp;(ants$y&nbsp;-&nbsp;curve$y[i_foot])&nbsp;-&nbsp;ty[i_foot]&nbsp;*&nbsp;(ants$x&nbsp;-&nbsp;curve$x[i_foot])</code>.
+        Since &#x2016;B&#x2016;&nbsp;=&nbsp;&#x2016;&tau;<sub>&perp;</sub>&#x2016;&nbsp;=&nbsp;1,
+        d<sub>i</sub> simplifies to
+        (p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>))&nbsp;&middot;&nbsp;&tau;<sub>&perp;</sub>(t<sub>i</sub><sup>&#8727;</sup>).
+        Positive on the left of the oriented curve, negative on the right.
       </p>
 
       <p><b>3. Tag with arc length.</b> The companion coordinate is</p>
@@ -2221,8 +2225,8 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           ctx.setLineDash([]);
           ctx.fillStyle = '#d97842';
           ctx.font = '600 12px "IBM Plex Mono", monospace';
-          ctx.textAlign = 'left';
-          ctx.fillText('fork (z)', padL + 6, zToPy(zFork) - 5);
+          ctx.textAlign = 'right';
+          ctx.fillText('fork (z)', padL + plotW - 6, zToPy(zFork) - 5);
         }
 
         // f_cut: VERTICAL line at f = 1/L_bend
@@ -2314,6 +2318,12 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         if (sel) sel.value = value;
       }
 
+      // ─── Helpers for control state ────────────────────────────
+      function updateThetaState() {
+        const thetaCtrl = document.getElementById('theta')?.closest('.ctrl');
+        if (thetaCtrl) thetaCtrl.classList.toggle('ctrl-disabled', S.treeType === 'I');
+      }
+
       function bindControls() {
         document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setMainTab(b.dataset.tab)));
         const mts = document.getElementById('mainTabSelect');
@@ -2331,6 +2341,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         document.getElementById('treeType').addEventListener('change', e => {
           S.treeType = e.target.value;
           document.getElementById('v-treeType').textContent = S.treeType;
+          updateThetaState();
           renderAll();
         });
         document.getElementById('theta').addEventListener('input', e => {
@@ -2415,13 +2426,14 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
 
       function init() {
         bindControls();
+        updateThetaState();   // set initial gray-out state to match defaults
         renderAll();
       }
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-      } else {
-        init();
-      }
+      // Script is at end of <body>: DOM is fully parsed by the time this runs,
+      // whether loaded normally or injected via async document.write() (gisthost).
+      // A DOMContentLoaded guard breaks under document.write() because document.open()
+      // resets readyState to 'loading' but the event may never fire on the new document.
+      init();
     })();
 
 </script>
