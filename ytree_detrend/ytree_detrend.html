@@ -954,9 +954,13 @@ resid <- ants |>
       </p>
       <p>
         &bull;&nbsp;<b>RSS(spline, tree)</b> &mdash; spline points vs.&nbsp;<em>true
-        tree-centerline positions</em> (oracle). It is U-shaped: at low DF the spline
-        cannot follow the tree geometry (underfitting); at high DF it chases trajectory noise
-        away from the true shape (overfitting). The minimum df&ast; is the ideal smoothing level.
+        tree-centerline positions</em> (oracle). For a Y-shaped tree it is U-shaped:
+        at low DF the spline cannot follow the fork geometry (underfitting); at high DF it
+        chases trajectory noise away from the true shape (overfitting), and the minimum
+        df&ast; identifies the ideal smoothing level. For a straight (I-shaped) tree the
+        geometry is linear &mdash; fully captured at df&nbsp;=&nbsp;4 &mdash; so there is
+        no underfitting regime and RSS(spline,&nbsp;tree) rises monotonically: higher DF
+        only lets the spline drift further from the straight backbone.
       </p>
 
       <p>
@@ -997,7 +1001,7 @@ resid <- ants |>
         All three criteria enforce complexity penalties for the same reason: a spline with enough DF
         can pass through every sample (RSS&nbsp;=&nbsp;0), but that spline is useless &mdash; it
         captures noise, not tree shape. The penalty mimics the U-shape of RSS(spline,&nbsp;tree)
-        without needing the true skeleton.
+        that arises for non-straight trees, without needing the true skeleton.
       </p>
     </div>
 
@@ -1007,8 +1011,9 @@ resid <- ants |>
         <div class="viz-wrap" id="treeWrap-3"></div>
         <div class="viz-cap">
           Splines fitted at several values of <code>df</code> overlaid on the same trajectory. The
-          current <code>df</code> (from Tab 1's slider) is drawn in orange. The brown tree skeleton
-          is the ground truth used to compute <code>RSS(spline,&nbsp;tree)</code>.
+          current <code>df</code> (from Tab 1's slider) is drawn in blue; the fixed reference values
+          are gray. The dark-brown centerline running through the tree is the true skeleton backbone
+          used as ground truth for <code>RSS(spline,&nbsp;tree)</code>.
         </div>
       </div>
 
@@ -1041,12 +1046,19 @@ resid <- ants |>
           <option value="t2-tidy">Tidyverse</option>
         </select>
       </div>
-      <div class="rpane active" data-rpane="t2-base"><pre>library(splines)
+      <div class="rpane active" data-rpane="t2-base"><pre>library(splines)  # provides bs()
 library(mgcv)
 
-# Option 0: compare RSS(spline, data) vs RSS(spline, tree) across a DF grid.
+# bs(t, df = k, degree = 3) builds a cubic B-spline design matrix: an n x k
+# matrix whose columns are B-spline basis functions evaluated at each t value.
+# Passing it to lm() fits by OLS over that k-dimensional function space —
+# the same least-squares cubic B-spline with k free parameters used throughout
+# this widget.  Interior knots are placed at equally spaced quantiles of t;
+# df = k = (degree + 1) + number_of_interior_knots = 4 + interior knots.
+
+# Option 1: compare RSS(spline, data) vs RSS(spline, tree) across a DF grid.
 # `skel` holds the tree-centerline (x, y) at each sample's t value.
-# RSS(spline, data) always decreases; RSS(spline, tree) is U-shaped.
+# RSS(spline, data) always decreases; RSS(spline, tree) is U-shaped for Y-trees.
 rss_df <- function(df) {
   fit_x <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
   fit_y <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
@@ -1059,7 +1071,7 @@ rss_mat <- sapply(4:20, rss_df)
 colnames(rss_mat) <- 4:20
 df_star <- as.integer(colnames(rss_mat)[which.min(rss_mat["tree", ])])
 
-# Option 1: sweep DF, pick by AIC or BIC
+# Option 2a: sweep DF, pick by AIC or BIC
 ic <- sapply(4:20, function(df) {
   fx <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
   fy <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
@@ -1070,17 +1082,23 @@ colnames(ic) <- 4:20
 df_aic <- as.integer(colnames(ic)[which.min(ic["aic", ])])
 df_bic <- as.integer(colnames(ic)[which.min(ic["bic", ])])
 
-# Option 2: penalized cubic regression spline, smoothness by GCV
+# Option 2b: penalized cubic regression spline, smoothness by GCV
 gx <- gam(x ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
 gy <- gam(y ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
 edf <- gx$edf + gy$edf   # effective DF from GCV</pre></div>
-      <div class="rpane" data-rpane="t2-tidy"><pre>library(splines)
+      <div class="rpane" data-rpane="t2-tidy"><pre>library(splines)  # provides bs()
 library(mgcv)
 library(dplyr)
 library(purrr)
 library(tibble)
 
-# Option 0: compare RSS(spline, data) vs RSS(spline, tree) across a DF grid.
+# bs(t, df = k, degree = 3) constructs a cubic B-spline design matrix: k basis
+# functions evaluated at each t, used by lm() as predictors for OLS fitting.
+# This produces the same least-squares cubic B-spline (k free parameters) as
+# the widget's interactive spline.  Interior knots fall at t quantiles;
+# df = k = 4 + number_of_interior_knots.
+
+# Option 1: compare RSS(spline, data) vs RSS(spline, tree) across a DF grid.
 rss_sweep <- tibble(df = 4:20) |>
   mutate(
     fit_x = map(df, ~ lm(x ~ bs(t, df = .x, degree = 3), data = ants)),
@@ -1098,7 +1116,7 @@ rss_sweep <- tibble(df = 4:20) |>
   )
 df_star <- rss_sweep |> slice_min(rss_tree) |> pull(df)
 
-# Option 1: sweep DF, pick by AIC / BIC
+# Option 2a: sweep DF, pick by AIC / BIC
 ic <- rss_sweep |>
   mutate(
     aic = map2_dbl(fit_x, fit_y, ~ AIC(.x) + AIC(.y)),
@@ -1107,7 +1125,7 @@ ic <- rss_sweep |>
 df_aic <- ic |> slice_min(aic) |> pull(df)
 df_bic <- ic |> slice_min(bic) |> pull(df)
 
-# Option 2: GCV-chosen smoothness via mgcv::gam
+# Option 2b: GCV-chosen smoothness via mgcv::gam
 gx  <- gam(x ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
 gy  <- gam(y ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
 edf <- gx$edf + gy$edf</pre></div>
@@ -1839,7 +1857,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         let svg = `<svg viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
         svg += `<rect width="${svgW}" height="${svgH}" fill="white"/>`;
 
-        // Light tree skeleton
+        // Wide popsicle-stick trunk/branches (tree shape for context)
         const tt = treeToSVG(skel.trunk[0].x, skel.trunk[0].y, L);
         const tb = treeToSVG(skel.trunk[1].x, skel.trunk[1].y, L);
         svg += `<line x1="${tt.sx}" y1="${tt.sy}" x2="${tb.sx}" y2="${tb.sy}" stroke="#c4a78a" stroke-width="${trunkPx}" stroke-linecap="round" opacity="0.7"/>`;
@@ -1854,8 +1872,10 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           svg += `<circle cx="${sp.sx}" cy="${sp.sy}" r="2.0" fill="#d97842" opacity="0.6"/>`;
         }
 
+        // Reference splines at fixed df values: neutral gray shades (avoids confusion with
+        // the green = RSS(spline,tree) and orange = RSS(spline,data) colors in the RSS plot).
         const dfList = [4, 7, 11, 14];
-        const colors = ['#bcd5c6', '#86b29b', '#5a8c72', '#3e7556'];
+        const colors = ['#d0d0d0', '#aaaaaa', '#808080', '#505050'];
         let legY = 36;
         for (let k = 0; k < dfList.length; k++) {
           if (dfList[k] === S.df) continue;
@@ -1867,14 +1887,15 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
               const p = treeToSVG(dense[i].x, dense[i].y, L);
               path += (i === 0 ? 'M' : 'L') + p.sx.toFixed(1) + ' ' + p.sy.toFixed(1) + ' ';
             }
-            svg += `<path d="${path}" stroke="${colors[k]}" stroke-width="1.6" fill="none" opacity="0.85"/>`;
+            svg += `<path d="${path}" stroke="${colors[k]}" stroke-width="1.6" fill="none" opacity="0.9"/>`;
             svg += `<line x1="22" y1="${legY}" x2="50" y2="${legY}" stroke="${colors[k]}" stroke-width="1.8"/>`;
             svg += `<text x="55" y="${legY + 4}" font-family="IBM Plex Mono, monospace" font-size="12" fill="${colors[k]}">df = ${dfList[k]}</text>`;
             legY += 18;
           } catch(e) {}
         }
 
-        // Current df: orange, thicker, with optional knot markers
+        // Current df: dark blue, thicker — distinct from both orange (RSS data) and green (RSS tree)
+        const CUR_COL = '#2a5a8c';
         try {
           const fitCur = fitSpline(samples, S.df);
           const denseCur = denseCurve(fitCur, 500);
@@ -1883,11 +1904,21 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
             const p = treeToSVG(denseCur[i].x, denseCur[i].y, L);
             path += (i === 0 ? 'M' : 'L') + p.sx.toFixed(1) + ' ' + p.sy.toFixed(1) + ' ';
           }
-          svg += `<path d="${path}" stroke="#d97842" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+          svg += `<path d="${path}" stroke="${CUR_COL}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
 
-          svg += `<line x1="22" y1="${legY}" x2="50" y2="${legY}" stroke="#d97842" stroke-width="2.6"/>`;
-          svg += `<text x="55" y="${legY + 4}" font-family="IBM Plex Mono, monospace" font-size="12" fill="#d97842" font-weight="600">df = ${S.df} (current)</text>`;
+          svg += `<line x1="22" y1="${legY}" x2="50" y2="${legY}" stroke="${CUR_COL}" stroke-width="2.6"/>`;
+          svg += `<text x="55" y="${legY + 4}" font-family="IBM Plex Mono, monospace" font-size="12" fill="${CUR_COL}" font-weight="600">df = ${S.df} (current)</text>`;
         } catch(e) {}
+
+        // True skeleton backbone — thick dashed dark-brown centerline drawn on top of all splines
+        // so it remains legible regardless of which splines are overlapping the tree axis.
+        const SKEL_DASH = '10 7';
+        svg += `<line x1="${tt.sx}" y1="${tt.sy}" x2="${tb.sx}" y2="${tb.sy}" stroke="#7d3c14" stroke-width="4" stroke-dasharray="${SKEL_DASH}" stroke-linecap="butt" opacity="0.72"/>`;
+        if (skel.rightBranch) {
+          const rbs = treeToSVG(skel.rightBranch[0].x, skel.rightBranch[0].y, L);
+          const rbe = treeToSVG(skel.rightBranch[1].x, skel.rightBranch[1].y, L);
+          svg += `<line x1="${rbs.sx}" y1="${rbs.sy}" x2="${rbe.sx}" y2="${rbe.sy}" stroke="#7d3c14" stroke-width="4" stroke-dasharray="${SKEL_DASH}" stroke-linecap="butt" opacity="0.72"/>`;
+        }
 
         svg += '</svg>';
         wrap.innerHTML = svg;
