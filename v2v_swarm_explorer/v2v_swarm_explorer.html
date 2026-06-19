@@ -827,8 +827,12 @@ input[type="range"] {
           <input type="checkbox" id="ferryToggle" class="checkbox">
         </div>
         <div class="toggle-row">
-          <label for="sepToggle" title="Soft separation: in wander/forage movement, robots bias their heading away from nearby robots so they don't navigate onto one another's centers. Overlap is still allowed (e.g. while charging at the depot), and V2V rendezvous is unaffected — this is a steering bias, not a hard sphere constraint, so no geometric room is needed to charge. Not tied to V2V.">Soft separation (avoid stacking)</label>
+          <label for="sepToggle" title="Soft separation: in wander/forage movement, robots bias their heading away from nearby robots so they don't navigate onto one another's centers. Overlap is still allowed (e.g. while charging at the depot), and V2V rendezvous is unaffected — this is a steering bias, not a hard sphere constraint, so no geometric room is needed to charge. Mutually exclusive with hard separation. Not tied to V2V.">Soft separation (avoid stacking)</label>
           <input type="checkbox" id="sepToggle" class="checkbox" checked>
+        </div>
+        <div class="toggle-row">
+          <label for="hardSepToggle" title="Hard-body separation: after each movement step, overlapping field robots are pushed apart to just touching and their headings deflected around each other. Unlike elastic collisions, there is no rebound and no conservation of momentum — robots treat each other as solid obstacles to navigate around. Depot stacking and V2V rendezvous are unaffected (exempt within the recharge zone). Mutually exclusive with soft separation: enabling this disables soft separation, and vice versa. Both can be off simultaneously.">Hard-body separation (solid obstacle)</label>
+          <input type="checkbox" id="hardSepToggle" class="checkbox">
         </div>
         <div class="toggle-row">
           <label for="immobilizeToggle" title="When on, a robot whose SoC reaches 0 is immobilized where it stands (a real depletion failure) and counts as 'lost' until a passing robot with surplus revives it on contact. When off, depleted robots keep gliding to the depot for free (a forgiving visualization). With a correct safety filter the lost count should stay 0.">Immobilize on depletion (SoC = 0)</label>
@@ -1868,6 +1872,11 @@ const state = {
   // still allowed (e.g. while charging at the depot); this is a steering bias,
   // not a hard sphere constraint, so no geometric room is required to charge.
   softSeparation: true,
+  // Hard separation: after each step, overlapping wander-mode robots are pushed
+  // apart to just touching and their along-axis velocity components reflected
+  // (elastic collision). Mutually exclusive with softSeparation in the UI;
+  // both can be false simultaneously.
+  hardSeparation: false,
   // Seek-charge threshold: a foraging robot commits to a return (heading home if
   // it can reach the depot directly, otherwise to the nearest feasible helper)
   // once its SoC falls below this. This is the "when to get charge" decision; the
@@ -2893,6 +2902,55 @@ function moveRobot(r) {
     const nm = Math.hypot(nx, ny);
     if (nm > 1e-6) { ux = nx / nm; uy = ny / nm; }
   }
+  // Hard separation: pre-step heading nudge for a receiver navigating toward
+  // its helper. Avoids all field robots except the target helper itself (we
+  // still need to converge on it). Uses a stronger weight than soft-sep so
+  // the avoidance actually redirects the path rather than just biasing it.
+  // The longer detour may mean the receiver can't afford the trip and dies
+  // en route; if so, the existing death handler releases the pinned helper.
+  if (state.hardSeparation && r.mode === 'helper' && r.helperId !== null) {
+    let sx = 0, sy = 0;
+    const sepR = ROBOT_R * 3;
+    for (const o of state.robots) {
+      if (o.id === r.id || o.id === r.helperId || o.dead || o.mode === 'docked') continue;
+      if (dist(o, DEPOT) < RECHARGE_R) continue;   // depot-zone robots are exempt
+      const ox = r.x - o.x, oy = r.y - o.y;
+      const od = Math.hypot(ox, oy);
+      if (od > 1e-6 && od < sepR) {
+        const wgt = (sepR - od) / sepR;
+        sx += (ox / od) * wgt;
+        sy += (oy / od) * wgt;
+      }
+    }
+    const HSEP = 1.4;  // stronger than soft-sep (0.6) so it actually redirects
+    const hnx = ux + HSEP * sx, hny = uy + HSEP * sy;
+    const hnm = Math.hypot(hnx, hny);
+    if (hnm > 1e-6) { ux = hnx / hnm; uy = hny / hnm; }
+  }
+  // Hard separation: pre-step heading nudge for a robot returning home.
+  // Same logic as the receiver nudge above. A committed return still navigates
+  // around field robots; the depot-zone exemption means avoidance stops once
+  // the robot is close enough that stacking is intentional.
+  if (state.hardSeparation && r.mode === 'home'
+      && dist(r, DEPOT) >= RECHARGE_R) {
+    let sx = 0, sy = 0;
+    const sepR = ROBOT_R * 3;
+    for (const o of state.robots) {
+      if (o.id === r.id || o.dead || o.mode === 'docked') continue;
+      if (dist(o, DEPOT) < RECHARGE_R) continue;
+      const ox = r.x - o.x, oy = r.y - o.y;
+      const od = Math.hypot(ox, oy);
+      if (od > 1e-6 && od < sepR) {
+        const wgt = (sepR - od) / sepR;
+        sx += (ox / od) * wgt;
+        sy += (oy / od) * wgt;
+      }
+    }
+    const HSEP = 1.4;
+    const hnx = ux + HSEP * sx, hny = uy + HSEP * sy;
+    const hnm = Math.hypot(hnx, hny);
+    if (hnm > 1e-6) { ux = hnx / hnm; uy = hny / hnm; }
+  }
   let stepX = ux * step;
   let stepY = uy * step;
 
@@ -2933,6 +2991,38 @@ function moveRobot(r) {
   r.x += stepX;
   r.y += stepY;
   r.soc = Math.max(0, r.soc - state.alpha * step);
+
+  // Hard separation: elastic collision resolution for field-mobile robots.
+  // Eligible: wander, home, and helper modes — anything moving in the field.
+  // Excluded: docked, dead, and any robot within RECHARGE_R of the depot
+  // (depot-area stacking is intentional: parked/docked robots should not
+  // become obstacles, and returning robots converging on the recharge zone
+  // should be free to stack there). Only resolves collisions more than a
+  // diameter away from the depot.
+  if (state.hardSeparation && r.mode !== 'docked' && r.mode !== 'dead'
+      && dist(r, DEPOT) >= RECHARGE_R) {
+    const diam = ROBOT_R * 2;
+    for (const o of state.robots) {
+      if (o.id === r.id || o.dead || o.mode === 'docked') continue;
+      if (dist(o, DEPOT) < RECHARGE_R) continue;   // o is in depot zone
+      const cx = r.x - o.x, cy = r.y - o.y;
+      const cd = Math.hypot(cx, cy);
+      if (cd < 1e-6 || cd >= diam) continue;
+      // Push both apart by half the overlap each
+      const overlap = diam - cd;
+      const nx = cx / cd, ny = cy / cd;   // unit normal from o toward r
+      r.x += nx * overlap * 0.5;
+      r.y += ny * overlap * 0.5;
+      o.x -= nx * overlap * 0.5;
+      o.y -= ny * overlap * 0.5;
+      // Reflect the along-axis step component for r (flip toward o becomes away)
+      const rDot = stepX * nx + stepY * ny;
+      if (rDot < 0) {   // only if r is moving toward o
+        stepX -= 2 * rDot * nx;
+        stepY -= 2 * rDot * ny;
+      }
+    }
+  }
 
   // Depletion in the field: out of charge.
   if (state.immobilizeOnEmpty && r.soc <= 1e-6) {
@@ -3772,7 +3862,22 @@ $('v2vToggle').addEventListener('change', (e) => {
   b.className = 'badge ' + (state.v2v ? 'on' : 'off');
   updateV2vDependentStyling();
 });
-$('sepToggle').addEventListener('change', (e) => { state.softSeparation = e.target.checked; });
+$('sepToggle').addEventListener('change', (e) => {
+  state.softSeparation = e.target.checked;
+  // Mutual exclusion: enabling soft sep disables hard sep
+  if (e.target.checked) {
+    state.hardSeparation = false;
+    $('hardSepToggle').checked = false;
+  }
+});
+$('hardSepToggle').addEventListener('change', (e) => {
+  state.hardSeparation = e.target.checked;
+  // Mutual exclusion: enabling hard sep disables soft sep
+  if (e.target.checked) {
+    state.softSeparation = false;
+    $('sepToggle').checked = false;
+  }
+});
 $('safetyToggle').addEventListener('change', (e) => { state.safetyMode = e.target.checked ? 'multihop' : 'onehop'; });
 
 // Visually mark toggle rows whose effect is gated on V2V being on. The rows
@@ -3918,7 +4023,7 @@ const BEHAVIOR_DEFAULTS = {
   n: 12, alpha: 0.0024, taskRate: 0.06, taskEnergyCost: 0.18,
   lowSocThreshold: 0.25, transferRate: 0.002,
   v2v: true, safetyMode: 'multihop', ferryHome: false,
-  softSeparation: true, immobilizeOnEmpty: true, coldStart: false,
+  softSeparation: true, hardSeparation: false, immobilizeOnEmpty: true, coldStart: false,
   hesitationDrift: false, bridgeMode: false, bridgeRule: 'difference', bridgeStrength: 1.0,
   refuelerEnabled: false, refuelerFrac: 0.30, shellMode: 'single',
   refuelerMotion: 'static', refuelerLogistics: 'self', stayInFieldAfterRefuel: true,
@@ -4000,6 +4105,7 @@ function applyPreset(name) {
   state.ferryHome = p.ferryHome;             $('ferryToggle').checked = p.ferryHome;
   state.coldStart = p.coldStart;             $('coldStartToggle').checked = p.coldStart;
   state.softSeparation = p.softSeparation;   $('sepToggle').checked = p.softSeparation;
+  state.hardSeparation = p.hardSeparation;   $('hardSepToggle').checked = p.hardSeparation;
   state.immobilizeOnEmpty = p.immobilizeOnEmpty; $('immobilizeToggle').checked = p.immobilizeOnEmpty;
   state.stayInFieldAfterRefuel = p.stayInFieldAfterRefuel; $('stayInFieldToggle').checked = p.stayInFieldAfterRefuel;
   state.hesitationDrift = p.hesitationDrift; $('driftToggle').checked = p.hesitationDrift;
