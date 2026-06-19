@@ -220,6 +220,11 @@ canvas {
 }
 
 .btn-row { display: flex; gap: 6px; margin-bottom: 10px; }
+/* Four-button impl grid: single row normally, 2x2 on very narrow screens */
+.impl-btn-grid { flex-wrap: wrap; }
+@media (max-width: 360px) {
+  .impl-btn-grid .src-btn { flex: 1 1 calc(50% - 3px); min-width: 0; }
+}
 
 /* ── Code view ──
    Shown when the user clicks a "View source in another platform" button.
@@ -349,7 +354,7 @@ canvas {
   color: inherit;
   padding: 0;
 }
-   Any element with [data-tooltip] gets a custom hover tooltip plus a subtle
+/* Any element with [data-tooltip] gets a custom hover tooltip plus a subtle
    dashed underline on its visible label as an affordance. We use data-tooltip
    instead of native title so we can style the tooltip and avoid the long
    browser delay. Page-load JS migrates title → data-tooltip in bulk. */
@@ -1067,10 +1072,11 @@ input[type="range"] {
         <div class="select-row">
           <label title="Open a minimal starter implementation of the basic swarm + V2V model in another agent-based-modeling platform. The full simulator is hidden while the source is shown; click 'Back to simulator' to return.">View source in another platform</label>
         </div>
-        <div class="btn-row">
+        <div class="btn-row impl-btn-grid">
           <button class="src-btn" data-lang="gama">GAMA</button>
           <button class="src-btn" data-lang="netlogo">NetLogo</button>
           <button class="src-btn" data-lang="python">Python</button>
+          <button class="src-btn" data-lang="matlab">MATLAB</button>
         </div>
         <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--ink-soft); line-height: 1.5; margin-top: 6px;">
           Starter templates: Levy-walk foraging, depot return, metered V2V transfer on contact, and the one-hop safety filter. They omit the widget's multi-hop chain reachability and the refueler role &mdash; just enough scaffolding to extend on your own.
@@ -1770,6 +1776,7 @@ input[type="range"] {
         <button class="lang-btn" data-lang="gama">GAMA</button>
         <button class="lang-btn" data-lang="netlogo">NetLogo</button>
         <button class="lang-btn" data-lang="python">Python</button>
+        <button class="lang-btn" data-lang="matlab">MATLAB</button>
       </div>
       <div class="action-buttons">
         <button class="action-btn" id="btnCopyCode" title="Copy source to clipboard">📋 Copy</button>
@@ -5572,24 +5579,442 @@ def main():
 if __name__ == '__main__':
     main()
 `,
+
+  matlab: `% V2V Swarm -- Basic Model (MATLAB implementation)
+%
+% Self-contained single-file simulator.  Two entry points:
+%
+%   v2v_swarm()          -- animated figure; keyboard controls below.
+%   run_headless(cfg)    -- silent run, returns a metrics struct; use for
+%                           parameter sweeps (no figure created).
+%
+% Keyboard controls in the animated figure:
+%   SPACE   pause / resume
+%   v       toggle V2V on/off mid-run
+%   r       reset
+%   q       quit
+%
+% Parameter-sweep idiom:
+%   cfg = default_cfg();
+%   results = cell(3,1);
+%   for k = 1:3
+%       cfg.alpha = [0.0024, 0.0030, 0.0040](k);
+%       results{k} = run_headless(cfg);
+%       fprintf('alpha=%.4f  tasks=%d  peak_reach=%.2f\\n', ...
+%               cfg.alpha, results{k}.tasks_done, results{k}.peak_reach);
+%   end
+%
+% Requires: R2019b or later (arguments block, struct literals).
+% Omitted vs the full widget: no multi-hop chain reachability, no refueler
+% role.  Safety filter is single-hop only -- same as the Python template.
+%
+% --------------------------------------------------------------------------
+
+function v2v_swarm()
+%V2V_SWARM  Animated V2V swarm simulator.
+    cfg  = default_cfg();
+    cfg.max_steps = Inf;          % run until the user quits
+    s    = init_state(cfg);
+    v2v  = true;
+    paused = false;
+
+    fig = figure('Name','V2V Swarm Explorer (MATLAB)', ...
+                 'KeyPressFcn', @on_key, ...
+                 'Color', [0.961 0.933 0.878]);   % warm cream
+    ax  = axes(fig);
+    axis(ax, [0 cfg.L 0 cfg.L]); axis(ax,'equal'); hold(ax,'on');
+    title(ax, 'V2V Swarm  |  SPACE=pause  v=V2V toggle  r=reset  q=quit', ...
+          'FontSize', 9);
+
+    step = 0;
+    while ishandle(fig)
+        if ~paused
+            [s, ~, ~] = step_sim(s, cfg, v2v);
+            step = step + 1;
+        end
+        draw(ax, s, cfg, v2v, step);
+        drawnow limitrate;
+    end
+
+    % ---- nested key handler ----
+    function on_key(~, ev)
+        switch ev.Key
+            case 'space';  paused = ~paused;
+            case 'v';      v2v    = ~v2v;
+            case 'r';      s = init_state(cfg); step = 0;
+            case {'q','escape'}; close(fig);
+        end
+    end
+end
+
+% --------------------------------------------------------------------------
+function m = run_headless(cfg)
+%RUN_HEADLESS  Run one simulation silently; return metrics struct.
+    arguments
+        cfg struct = default_cfg()
+    end
+    s          = init_state(cfg);
+    solo_reach = 1 / (2 * cfg.alpha);
+    m.tasks_done        = 0;
+    m.tasks_expired     = 0;
+    m.peak_reach        = 0;
+    m.time_at_outer80   = 0;
+    m.time_past_solo    = 0;
+    m.total_robot_time  = 0;
+    m.peak_lost         = 0;
+
+    for step = 1:cfg.max_steps
+        [s, dd, ed]  = step_sim(s, cfg, cfg.v2v_enabled);
+        m.tasks_done    = m.tasks_done    + dd;
+        m.tasks_expired = m.tasks_expired + ed;
+
+        d_from = vecnorm(s.pos - cfg.depot, 2, 2);
+        norm_r = max(d_from) / solo_reach;
+        m.peak_reach      = max(m.peak_reach, norm_r);
+        m.time_past_solo  = m.time_past_solo  + sum(d_from > solo_reach);
+        m.time_at_outer80 = m.time_at_outer80 + sum(d_from > 0.8*solo_reach);
+        m.total_robot_time = m.total_robot_time + cfg.N;
+        m.peak_lost = max(m.peak_lost, sum(s.mode == 3));
+    end
+    m.lost              = sum(s.mode == 3);
+    m.fraction_past_solo  = m.time_past_solo  / max(1, m.total_robot_time);
+    m.fraction_at_outer80 = m.time_at_outer80 / max(1, m.total_robot_time);
+    m.solo_reach        = solo_reach;
+    m.final_pos         = s.pos;
+    m.final_soc         = s.soc;
+    m.final_mode        = s.mode;
+    m.cfg               = cfg;
+end
+
+% --------------------------------------------------------------------------
+function cfg = default_cfg()
+%DEFAULT_CFG  Return a struct of default simulation parameters.
+    cfg.N                  = 12;      % number of robots
+    cfg.alpha              = 0.0024;  % energy cost per unit distance (1/(2R) = alpha)
+    cfg.task_rate          = 0.06;    % probability of spawning a task each step
+    cfg.task_energy_cost   = 0.18;    % SoC deducted per task completed
+    cfg.low_soc_threshold  = 0.25;    % SoC below which a robot heads home
+    cfg.transfer_rate      = 0.15;    % max SoC transferred per step (V2V)
+    cfg.v2v_enabled        = true;
+    cfg.immobilize_on_empty = true;
+
+    cfg.L                  = 500;     % world side length (square)
+    cfg.depot              = [250 250];
+    cfg.depot_radius       = 3;
+    cfg.move_step          = 0.5;
+    cfg.recharge_rate      = 0.004;   % SoC per step while docked
+
+    cfg.max_steps          = 5000;
+    cfg.task_ttl           = 200;
+    cfg.max_tasks          = 30;
+    cfg.task_engage_radius = 1.5;
+    cfg.revive_radius      = 3.0;
+end
+
+% --------------------------------------------------------------------------
+function s = init_state(cfg)
+%INIT_STATE  Initialise robot and task state arrays.
+    rng('shuffle');
+    solo_reach  = 1 / (2 * cfg.alpha);
+    init_r_max  = min(135, solo_reach * 0.9);
+
+    ang = rand(cfg.N,1) * 2*pi;
+    r   = init_r_max * sqrt(rand(cfg.N,1));
+    s.pos    = cfg.depot + [r.*cos(ang), r.*sin(ang)];   % [N x 2]
+    s.soc    = 0.5 + rand(cfg.N,1)*0.5;                  % [N x 1]
+
+    ang = rand(cfg.N,1) * 2*pi;
+    r   = solo_reach * 0.9 * sqrt(rand(cfg.N,1));
+    s.target = cfg.depot + [r.*cos(ang), r.*sin(ang)];   % [N x 2]
+
+    % mode: 0=wander  1=heading home  2=docked  3=immobilized
+    s.mode   = zeros(cfg.N,1);
+
+    s.task_pos = zeros(0,2);   % [T x 2]  (empty at start)
+    s.task_ttl = zeros(0,1);   % [T x 1]
+end
+
+% --------------------------------------------------------------------------
+function [s, done_delta, expired_delta] = step_sim(s, cfg, v2v)
+%STEP_SIM  Advance the simulation by one step.  Mutates s in place.
+    done_delta    = 0;
+    expired_delta = 0;
+    solo_reach    = 1 / (2 * cfg.alpha);
+    N = cfg.N;
+
+    % ---- Spawn task ----
+    if rand() < cfg.task_rate && size(s.task_pos,1) < cfg.max_tasks
+        r_min = 30;
+        r_max = min(solo_reach*0.9, cfg.L/2 - 45);
+        ang   = rand()*2*pi;
+        r     = sqrt(rand()*(r_max^2 - r_min^2) + r_min^2);
+        s.task_pos(end+1,:) = cfg.depot + r*[cos(ang), sin(ang)];
+        s.task_ttl(end+1)   = cfg.task_ttl;
+    end
+
+    % ---- Expire tasks ----
+    if ~isempty(s.task_ttl)
+        s.task_ttl = s.task_ttl - 1;
+        expired = s.task_ttl <= 0;
+        expired_delta = sum(expired);
+        s.task_pos(expired,:) = [];
+        s.task_ttl(expired)   = [];
+    end
+
+    % ---- Robot updates ----
+    for i = 1:N
+        if s.mode(i) == 3; continue; end   % immobilized
+
+        % Docked: recharge
+        if s.mode(i) == 2
+            s.soc(i) = min(1.0, s.soc(i) + cfg.recharge_rate);
+            if s.soc(i) >= 1.0
+                s.mode(i) = 0;
+                ang = rand()*2*pi;
+                r   = solo_reach*0.9*sqrt(rand());
+                s.target(i,:) = cfg.depot + r*[cos(ang), sin(ang)];
+            end
+            continue
+        end
+
+        % Pick fresh wander target if reached
+        d_tgt = norm(s.target(i,:) - s.pos(i,:));
+        if s.mode(i) == 0 && d_tgt < 1.0
+            ang = rand()*2*pi;
+            r   = solo_reach*0.9*sqrt(rand());
+            s.target(i,:) = cfg.depot + r*[cos(ang), sin(ang)];
+            d_tgt = norm(s.target(i,:) - s.pos(i,:));
+        end
+
+        % Seek-charge trigger
+        if s.mode(i) == 0 && s.soc(i) < cfg.low_soc_threshold
+            s.mode(i)   = 1;
+            s.target(i,:) = cfg.depot;
+            d_tgt = norm(s.target(i,:) - s.pos(i,:));
+        end
+
+        % V2V receive: returning robot asks nearest surplus peer for top-up
+        if s.mode(i) == 1 && v2v
+            dist_home = norm(s.pos(i,:) - cfg.depot);
+            home_need = cfg.alpha*dist_home + 0.05 - s.soc(i);
+            if home_need > 0
+                others = (1:N)' ~= i & s.mode == 0;
+                if any(others)
+                    idx     = find(others);
+                    h_home  = vecnorm(s.pos(idx,:) - cfg.depot, 2, 2);
+                    surplus = s.soc(idx) - cfg.alpha*h_home - 0.10;
+                    elig    = surplus > 0;
+                    if any(elig)
+                        eidx   = idx(elig);
+                        [~,bi] = max(surplus(elig));
+                        h      = eidx(bi);
+                        can_give = s.soc(h) ...
+                                   - cfg.alpha*norm(s.pos(h,:) - cfg.depot) ...
+                                   - 0.02;
+                        donation = max(0, min([can_give, home_need, cfg.transfer_rate]));
+                        if donation > 0
+                            s.soc(i) = s.soc(i) + donation;
+                            s.soc(h) = s.soc(h) - donation;
+                        end
+                    end
+                end
+            end
+        end
+
+        % Move toward target with CBF-style safety filter in wander mode
+        if d_tgt > 0
+            step_dist = min(cfg.move_step, d_tgt);
+            step_dir  = (s.target(i,:) - s.pos(i,:)) / d_tgt;
+            if s.mode(i) == 0
+                cand      = s.pos(i,:) + step_dir*step_dist;
+                cand_batt = s.soc(i) - cfg.alpha*step_dist;
+                if ~is_safe(s, cfg, i, cand, cand_batt, v2v, N)
+                    to_depot  = cfg.depot - s.pos(i,:);
+                    dd_norm   = norm(to_depot);
+                    if dd_norm > 1e-9
+                        depot_dir = to_depot / dd_norm;
+                        resolved  = false;
+                        for w = [0.25, 0.5, 0.75, 1.0]
+                            bd = (1-w)*step_dir + w*depot_dir;
+                            nm = norm(bd);
+                            if nm < 1e-9; continue; end
+                            bd = bd / nm;
+                            if is_safe(s, cfg, i, s.pos(i,:)+bd*step_dist, ...
+                                       s.soc(i)-cfg.alpha*step_dist, v2v, N)
+                                step_dir = bd;
+                                resolved = true;
+                                break
+                            end
+                        end
+                        if ~resolved; step_dir = depot_dir; end
+                    end
+                end
+            end
+            s.pos(i,:) = s.pos(i,:) + step_dir*step_dist;
+            s.soc(i)   = s.soc(i)   - cfg.alpha*step_dist;
+        end
+
+        % Depletion check
+        if cfg.immobilize_on_empty && s.soc(i) <= 0
+            s.soc(i) = 0;
+            if norm(s.pos(i,:) - cfg.depot) < cfg.depot_radius
+                s.mode(i)  = 2;
+                s.pos(i,:) = cfg.depot;
+            else
+                s.mode(i) = 3;
+            end
+            continue
+        end
+
+        % Task engagement
+        if s.mode(i) == 0 && ~isempty(s.task_pos)
+            dists = vecnorm(s.task_pos - s.pos(i,:), 2, 2);
+            [mn, near] = min(dists);
+            if mn < cfg.task_engage_radius
+                home_d = norm(s.pos(i,:) - cfg.depot);
+                if s.soc(i) - cfg.task_energy_cost > cfg.alpha*home_d
+                    s.soc(i) = s.soc(i) - cfg.task_energy_cost;
+                    done_delta = done_delta + 1;
+                    s.task_pos(near,:) = [];
+                    s.task_ttl(near)   = [];
+                end
+            end
+        end
+
+        % Dock check
+        if s.mode(i) == 1 && norm(s.pos(i,:) - cfg.depot) < cfg.depot_radius
+            s.mode(i)  = 2;
+            s.pos(i,:) = cfg.depot;
+        end
+    end
+
+    % ---- Contact revival (V2V rescue of immobilized robots) ----
+    if cfg.immobilize_on_empty && v2v
+        dead = find(s.mode == 3);
+        for di = 1:numel(dead)
+            d = dead(di);
+            need = cfg.alpha*norm(s.pos(d,:) - cfg.depot) + 0.05;
+            for j = 1:N
+                if j == d || s.mode(j) == 3; continue; end
+                if norm(s.pos(j,:) - s.pos(d,:)) > cfg.revive_radius; continue; end
+                give = s.soc(j) ...
+                       - cfg.alpha*norm(s.pos(j,:) - cfg.depot) ...
+                       - 0.02;
+                if give < need; continue; end
+                s.soc(j)    = s.soc(j) - need;
+                s.soc(d)    = s.soc(d) + need;
+                s.mode(d)   = 1;
+                s.target(d,:) = cfg.depot;
+                break
+            end
+        end
+    end
+end
+
+% --------------------------------------------------------------------------
+function ok = is_safe(s, cfg, i, pos, batt, v2v, N)
+%IS_SAFE  Single-hop CBF safety check: can robot i get home from pos with batt?
+    if batt >= cfg.alpha * norm(pos - cfg.depot)
+        ok = true; return
+    end
+    if ~v2v
+        ok = false; return
+    end
+    for j = 1:N
+        if j == i || s.mode(j) ~= 0; continue; end
+        d_jD = norm(s.pos(j,:) - cfg.depot);
+        d_ij = norm(pos         - s.pos(j,:));
+        if batt < cfg.alpha * d_ij; continue; end
+        x_max = s.soc(j) - cfg.alpha*d_jD;
+        if x_max <= 0; continue; end
+        b_post = batt - cfg.alpha*d_ij + x_max;
+        if b_post >= cfg.alpha*d_jD
+            ok = true; return
+        end
+    end
+    ok = false;
+end
+
+% --------------------------------------------------------------------------
+function draw(ax, s, cfg, v2v, step)
+%DRAW  Refresh the animated figure axes.
+    cla(ax);
+    solo_reach = 1 / (2 * cfg.alpha);
+    theta = linspace(0, 2*pi, 120);
+
+    % Solo-reach circle
+    plot(ax, cfg.depot(1) + solo_reach*cos(theta), ...
+             cfg.depot(2) + solo_reach*sin(theta), ...
+             '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 0.8);
+
+    % Depot
+    plot(ax, cfg.depot(1), cfg.depot(2), 'o', ...
+         'MarkerSize', 10, 'MarkerFaceColor', [0.12 0.22 0.18], ...
+         'MarkerEdgeColor', [0.12 0.22 0.18]);
+
+    % Tasks
+    if ~isempty(s.task_pos)
+        plot(ax, s.task_pos(:,1), s.task_pos(:,2), 'd', ...
+             'MarkerSize', 5, 'MarkerFaceColor', [0.85 0.49 0.23], ...
+             'MarkerEdgeColor', 'none');
+    end
+
+    % Robots coloured by mode and SoC
+    colors = [0.25 0.55 0.75;   % 0 wander    -- blue
+              0.80 0.30 0.20;   % 1 heading home -- red
+              0.18 0.55 0.30;   % 2 docked    -- green
+              0.35 0.35 0.35];  % 3 lost      -- grey
+    for i = 1:cfg.N
+        m = s.mode(i) + 1;   % MATLAB 1-based
+        c = colors(m,:);
+        sz = 6 + 4*s.soc(i);
+        plot(ax, s.pos(i,1), s.pos(i,2), 'o', ...
+             'MarkerSize', sz, 'MarkerFaceColor', c, 'MarkerEdgeColor', 'none');
+    end
+
+    % V2V edges between wander robots within transfer range
+    if v2v
+        wand = find(s.mode == 0);
+        for a = 1:numel(wand)
+            for b = a+1:numel(wand)
+                ia = wand(a); ib = wand(b);
+                if norm(s.pos(ia,:) - s.pos(ib,:)) < cfg.revive_radius*6
+                    line(ax, [s.pos(ia,1) s.pos(ib,1)], ...
+                             [s.pos(ia,2) s.pos(ib,2)], ...
+                         'Color', [0.85 0.49 0.23 0.35], 'LineWidth', 0.7);
+                end
+            end
+        end
+    end
+
+    n_lost = sum(s.mode == 3);
+    title(ax, sprintf('step %d  |  V2V=%s  |  lost=%d  |  tasks=%d  |  SPACE=pause v=V2V r=reset q=quit', ...
+          step, mat2str(v2v), n_lost, 0), 'FontSize', 8);
+    axis(ax, [0 cfg.L 0 cfg.L]);
+    axis(ax,'equal');
+end
+`,
 };
 
 const SOURCE_TITLES = {
   gama: 'GAMA Implementation',
   netlogo: 'NetLogo Implementation',
   python: 'Python Implementation',
+  matlab: 'MATLAB Implementation',
 };
 
 const SOURCE_FILENAMES = {
   gama: 'V2VSwarm.gaml',
   netlogo: 'V2VSwarm.nlogo',
   python: 'V2VSwarm.py',
+  matlab: 'v2v_swarm.m',
 };
 
 const SOURCE_NOTES = {
   gama: 'In GAMA, UI controls (parameters, displays, monitors) are declared inside the experiment block of the same .gaml file — no separate interface descriptor needed. The parameter "..." var:... min: max: lines below become the sliders and toggles in the GAMA UI automatically. Heads-up: this is a starter template, not a verified GAMA program; syntax may need adjustment against your installed GAMA version. The reflex/aspect/experiment structure should be roughly canonical, but please sanity-check against the GAMA wiki.',
   netlogo: 'This is the NetLogo 5.x/6.x text format. NetLogo 7 should auto-convert it to .nlogox XML on open, but the .nlogo parser is brittle. If NetLogo 7 rejects the file: (1) confirm the file extension is exactly .nlogo (not .txt or .nlogox); (2) create a blank new model in NetLogo 7, save it, and inspect that file in a text editor — your installation may use slightly different widget-field counts than the v6 sample I patterned this after; (3) as a fallback, keep just the procedures (everything before the first @#$@#$@ divider) and rebuild the Interface tab manually using the widgets-list-in-comments approach. The 12 sections are delimited by @#$@#$@ markers; Code tab is first, Interface widgets second, then Info, turtle shapes, version, four empty bookkeeping sections, link shapes, model settings, DeltaTick.',
   python: 'NumPy-vectorized headless simulator. Requires Python 3.10+, numpy, and matplotlib (only for visualization; the run() function itself has no plotting dependency). Use directly (python v2v_swarm.py) for a single demonstration run, import it as a module for notebook work, or wrap run() in a parameter-sweep loop. Each 5000-step run takes well under a second on modern hardware, so multi-thousand-trial sweeps are practical — that is the main reason to use this version over the GAMA/NetLogo implementations.',
+  matlab: 'Single self-contained .m file. Run v2v_swarm() at the MATLAB prompt for an animated figure with V2V toggling (press v), pause (space), and reset (r). Call run_headless(cfg) for a parameter sweep — it returns a struct of metrics and runs silently with no figure. Requires R2019b or later for the struct-literal syntax and the arguments block; earlier versions need the older inputParser pattern instead. The safety filter and V2V transfer logic match the Python and GAMA templates: one-hop only, no multi-hop chain reachability, no refueler role.',
 };
 
 // Current language being shown in the code view; used by Copy and Download.
