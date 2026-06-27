@@ -1544,6 +1544,14 @@ input[type="range"] {
                 <div class="annot"><span class="tag tag-what">What</span>Canonical survey of Dynamic Vehicle Routing (DVR) for robotic systems: stochastic-demand spatial queueing, scaling laws for vehicle count and wait time, single- and multi-vehicle policies, and decentralized variants.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>At this level of abstraction vehicles are available-on-demand servers without intrinsic energy state — demand is exogenous and the vehicle is the resource, not vice versa. Refueling and helper-mediated reachability are absent by design; included as the upstream methodological foundation on which the Cassandras and Smith energy-aware extensions build.</div>
               </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Sindi, Y., Pipe, T., Winfield, A., Dogramadzi, S., &amp; Melhuish, C. (2008). A feasibility study for energy autonomy in multi robot search and rescue operations. In L. Marques et al. (Eds.), <em>Advances in Mobile Robotics: Proceedings of the 11th International Conference on Climbing and Walking Robots</em>, 1146–1153. <a href="https://doi.org/10.1142/9789812835772_0137" target="_blank" rel="noopener">doi:10.1142/9789812835772_0137</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Proposes and simulates an energy supply chain concept for search-and-rescue: a line of small robots relays power from a depot to a leading robot operating beyond its solo range, deriving a mathematical cost function for the energy overhead of sustaining the chain at varying depths.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The chain is fixed and pre-deployed with a single purpose (keep the leader alive), not a freely moving swarm where any robot may become helper or receiver depending on encounter geometry. The cost-function framing is complementary to the formal chain-safety invariant the V2V filter aims to enforce, but the two have not been connected.</div>
+              </div>
             </div>
 
             <div class="ref-section">
@@ -1571,6 +1579,62 @@ input[type="range"] {
                 </div>
                 <div class="annot"><span class="tag tag-what">What</span>Combines CBF-style energy constraints with online task allocation for heterogeneous teams, surviving robot dropouts via slack-variable prioritization.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>Energy is consumed but not transferable — robots reallocate tasks, not battery, so the failure mode is task abandonment rather than peer rescue.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Energy trophallaxis: concept, simulation, and hardware</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Ngo, T. D., &amp; Schiøler, H. (2006). An approach to sociable robots through self-distributed energy. <em>IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)</em>, 2192–2199. <a href="https://doi.org/10.1109/IROS.2006.282559" target="_blank" rel="noopener">doi:10.1109/IROS.2006.282559</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Introduces the concept of robot energy trophallaxis — biologically inspired from social-insect food sharing — as a mechanism for sustaining a population of mobile robots beyond individual battery limits, with preliminary simulations of battery-exchange behavior among co-located peers.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The exchange requires physical co-location for battery swap (not wireless or wired continuous transfer), and the energy-sharing rule is not linked to a formal safety invariant or reachability condition. The closest ancestor to the V2V filter concept presented here.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Ngo, T. D., &amp; Schiøler, H. (2007). Randomized robot trophallaxis: from concept to implementation. <em>IEEE International Conference on Systems, Man and Cybernetics (SMC)</em>. <a href="https://doi.org/10.1109/ICSMC.2007.4414153" target="_blank" rel="noopener">doi:10.1109/ICSMC.2007.4414153</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Formalizes the randomized-encounter model for robot-to-robot energy sharing: robots encounter each other stochastically (proportional to density and motion), exchange energy on contact, and the aggregate effect on population survival is simulated and analyzed.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The sharing rule is triggered by spatial proximity without regard to whether the receiver actually needs the energy or whether the donor has enough surplus to return safely — the two conditions the V2V one-hop filter makes explicit.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Ngo, T. D., Raposo, H., &amp; Schiøler, H. (2007). Potentially distributable energy: towards energy autonomy in large populations of mobile robots. <em>IEEE International Symposium on Computational Intelligence in Robotics and Automation (CIRA)</em>. <a href="https://doi.org/10.1109/CIRA.2007.382875" target="_blank" rel="noopener">doi:10.1109/CIRA.2007.382875</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Extends the trophallaxis concept to large robot populations, introducing the notion of "potentially distributable energy" — the surplus energy that is in principle available for sharing across the population — and modeling how population-level energy autonomy scales with robot count and exchange rate.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Population-level analysis without per-robot safety conditions: distributable surplus is computed globally rather than maintained as a local invariant at each robot, so no individual guarantee of safe return is provided.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Ngo, T. D., Raposo, H., &amp; Schiøler, H. (2008). Multiagent robotics: toward energy autonomy. <em>Artificial Life and Robotics</em>, 12(1), 47–52. <a href="https://doi.org/10.1007/s10015-007-0440-1" target="_blank" rel="noopener">doi:10.1007/s10015-007-0440-1</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Journal synthesis of the energy-autonomy concept across the preceding conference papers: formal definition of energy autonomy for multi-robot systems, analysis of the conditions under which a population can sustain itself indefinitely through trophallaxis, and comparison of centralized versus decentralized sharing policies.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Energy autonomy is defined at the population level (the collective does not run out) rather than at the individual level (each robot can always return). The individual-safety dimension — the core of the V2V reachability invariant — is not addressed.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Ngo, T. D., &amp; Schiøler, H. (2008). Truly autonomous robots: hardware design for an energy trophallactic robot. <em>Artificial Life and Robotics</em>, 12(1), 335–345. <a href="https://doi.org/10.1007/s10015-007-0495-z" target="_blank" rel="noopener">doi:10.1007/s10015-007-0495-z</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Describes the CISSbot — a physical robot platform designed for energy trophallaxis via autonomous battery exchange. Each robot carries a battery pack in a mechatronic cradle that can be removed and passed to a neighbor; the paper details the mechanical, electrical, and power-management design required to make physical energy handoff reliable between autonomous mobile robots.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Physical battery exchange is a fundamentally different (and mechanically more demanding) transfer modality than the wireless or wired continuous-current transfer assumed in this simulator — exchange is discrete and slow, requiring physical docking. The work establishes that peer energy transfer in real hardware is feasible, but the latency and reliability constraints differ substantially from the instantaneous transfer model used here.</div>
+              </div>
+            </div>
+
+            <div class="ref-section">
+              <h4>Long-term autonomy and energy management in multi-robot systems</h4>
+
+              <div class="ref">
+                <div class="cite">
+                  Matusiak, M., Paanajärvi, J., Appelqvist, P., Elomaa, M., Vainio, M., Ylikorpi, T., &amp; Halme, A. (2009). A novel marsupial robot society: towards long-term autonomy. In H. Asama et al. (Eds.), <em>Distributed Autonomous Robotic Systems 8</em>, 523–532. Springer, Berlin, Heidelberg. <a href="https://doi.org/10.1007/978-3-642-00644-9_46" target="_blank" rel="noopener">doi:10.1007/978-3-642-00644-9_46</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Introduces the Marsubot Society: a heterogeneous multi-robot system in which a large "parent" robot carries smaller child robots, deploys them into the field, and recovers them for recharging when their batteries are low. The system is designed for indefinitely long autonomous operation, treating energy access as the central constraint on long-term capability.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Energy is managed through deployment/recovery cycles (the parent as a mobile depot) rather than peer-to-peer transfer between field robots. Long-term autonomy is achieved by structural role separation (parent vs. child) rather than by an emergent help graph — the approach is closer to the refueler-role architecture than to V2V sharing among equals.</div>
               </div>
             </div>
 
@@ -1639,6 +1703,22 @@ input[type="range"] {
                 </div>
                 <div class="annot"><span class="tag tag-what">What</span>A self-stabilizing distributed algorithm for energy distribution in active programmable matter (the amoebot model): the system draws from a single external source reachable by at least one module and relays charge module-to-module to keep the whole collective powered, with a sharing rule loosely inspired by metabolite signaling in <em>Bacillus subtilis</em> biofilms.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>The closest sibling in spirit — one source feeding a collective through peer relay — but energy flows along a fixed lattice of adjacent modules rather than via agents crossing space, so there is no α·distance transfer cost and no return-to-depot reachability. It is the structural-graph analog of depot-plus-V2V without the spatial-mobility safety dimension added here.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Arai, F., &amp; Satoh, Y. (2021). A power sharing modular robot with power packet technology. <em>23rd European Conference on Power Electronics and Applications (EPE ECCE Europe)</em>. <a href="https://doi.org/10.23919/EPE21ECCEEurope50061.2021.9570442" target="_blank" rel="noopener">doi:10.23919/EPE21ECCEEurope50061.2021.9570442</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Proposes a modular robot architecture in which electric power is distributed among modules via a "power packet" bus — discrete, tagged packets of energy routed through a shared bus with arbitration logic — providing fault tolerance when any single module's power source fails.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Modules are physically connected in a fixed assembly; power packets flow through a shared bus, not across free space between mobile robots. The discretized-energy framing is conceptually related to battery-exchange trophallaxis but the transfer medium is wired and the topology is static.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Sanada, R., Satoh, Y., &amp; Arai, F. (2024). Power-sharing mechanism for a modular robot using power packet technology. <em>IEEE TENCON 2024</em>. <a href="https://doi.org/10.1109/TENCON61640.2024.10902811" target="_blank" rel="noopener">doi:10.1109/TENCON61640.2024.10902811</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Extends the power packet bus architecture to multi-source modular robots, implementing a power-sharing mechanism that balances load across modules with different state-of-charge levels and demonstrates bus arbitration in a physical prototype.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>As with Arai &amp; Satoh 2021, the transfer is over a physically connected bus in a static modular assembly. The contribution is in the arbitration and balancing logic for the discrete-packet modality, which does not carry over directly to the mobile-robot setting where robots must move to rendezvous before any transfer occurs.</div>
               </div>
             </div>
 
