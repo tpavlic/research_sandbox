@@ -6563,77 +6563,53 @@ function downloadRWMarkdown() {
 }
 
 function downloadRWBib() {
-  // Walk refs from DOM — same source-of-truth as the Markdown export.
+  // Walk the same mixed-node list as the Markdown generator so we can emit
+  // section and subsection comments in the right places.
   const rw = document.getElementById('rwView');
   const keyCounts = {};
   let bib = '% V2V Energy-Safe Swarm Explorer — Related Work\n% Generated from live widget DOM\n\n';
+  let curSection = '', curSubsection = '';
 
-  rw.querySelectorAll('.ref').forEach(ref => {
-    const citeEl = ref.querySelector('.cite');
-    if (!citeEl) return;
-    const cite = stripHtml(citeEl).replace(/\s+/g, ' ').trim();
+  // Helper: process one .ref element into a BibTeX entry string.
+  function refToBib(ref) {
+    const ce = ref.querySelector('.cite');
+    if (!ce) return '';
+    const cite = stripHtml(ce).replace(/\s+/g, ' ').trim();
 
-    // ── Field extraction ──────────────────────────────────────────────────
     const yearM = cite.match(/\((\d{4}[a-z]?)\)/);
     const year  = yearM ? yearM[1] : '????';
-
     const doiM  = cite.match(/doi:(10\.[^\s)\]]+)/i);
     const doi   = doiM ? doiM[1].replace(/\.$/, '') : '';
-
     const arXivM = cite.match(/arXiv[:\s]+([\d.]+)/i);
     const arxiv  = arXivM ? arXivM[1] : '';
-
-    // Authors: everything before the first (YYYY)
     const authorsRaw = cite.split(/\s*\(\d{4}[a-z]?\)/)[0].trim().replace(/[,\s]+$/, '');
-
-    // Everything after "Year). "
-    const afterYear = cite.split(/\(\d{4}[a-z]?\)\.\s*/)[1] || '';
-
-    // Title: up to the first ". " that precedes a venue/In marker
+    const afterYear  = cite.split(/\(\d{4}[a-z]?\)\.\s*/)[1] || '';
     const titleM = afterYear.match(/^(.*?)\.\s+(?=[A-Z*]|In\s)/);
     const title  = titleM ? titleM[1].trim() : afterYear.split(/\.\s+/)[0].trim();
-
-    // Venue: in italics in the cite element
     let venue = '';
-    citeEl.querySelectorAll('em').forEach(em => { if (!venue) venue = em.textContent.trim(); });
-
-    // Volume / issue / pages
+    ce.querySelectorAll('em').forEach(em => { if (!venue) venue = em.textContent.trim(); });
     const volM   = afterYear.match(/,\s*(\d+)\((\d+)\)/);
     const vol    = volM ? volM[1] : '';
     const num    = volM ? volM[2] : '';
     const pagesM = afterYear.match(/[,\s](\d+)[–\-](\d+)/);
     const pages  = pagesM ? `${pagesM[1]}--${pagesM[2]}` : '';
 
-    // ── Entry type detection ──────────────────────────────────────────────
-    // Signals in the cite text (plain):
-    //   @inproceedings  → conference keywords, or "Proceedings of", or "(YYYY)"
-    //   @incollection   → "In " + editors + "(Eds.)" + book title + publisher
-    //   @misc           → arXiv preprint / no journal
-    //   @article        → journal name present, no conference signal
     const lc = afterYear.toLowerCase();
-    let entryType;
-    const confSignals = /\b(proceedings|conference|symposium|workshop|congress|meeting|iros|icra|ral|cdc|acc|smc|cira|icsmc|epe\b|tencon|spie|dars)\b/;
     const bookSignals = /\bIn\s+\S.*\(Eds?\.\)/;
-    if (bookSignals.test(afterYear)) {
-      entryType = 'incollection';
-    } else if (confSignals.test(lc)) {
-      entryType = 'inproceedings';
-    } else if (arxiv && !venue) {
-      entryType = 'misc';
-    } else if (venue) {
-      entryType = 'article';
-    } else {
-      entryType = 'misc';
-    }
+    const confSignals = /\b(proceedings|conference|symposium|workshop|congress|meeting|iros|icra|ral|cdc|acc|smc|cira|icsmc|epe\b|tencon|spie|dars)\b/;
+    let entryType;
+    if      (bookSignals.test(afterYear)) entryType = 'incollection';
+    else if (confSignals.test(lc))        entryType = 'inproceedings';
+    else if (arxiv && !venue)             entryType = 'misc';
+    else if (venue)                       entryType = 'article';
+    else                                  entryType = 'misc';
 
-    // ── BibTeX key ────────────────────────────────────────────────────────
     const firstSurname = authorsRaw.split(',')[0].trim()
       .split(/\s+/).pop().toLowerCase().replace(/[^a-z]/g, '');
     let key = `${firstSurname}${year}`;
     keyCounts[key] = (keyCounts[key] || 0) + 1;
-    if (keyCounts[key] > 1) key += String.fromCharCode(96 + keyCounts[key]); // a, b, c…
+    if (keyCounts[key] > 1) key += String.fromCharCode(96 + keyCounts[key]);
 
-    // ── What annotation for note field ────────────────────────────────────
     let what = '';
     ref.querySelectorAll('.annot').forEach(a => {
       if (a.querySelector('.tag-what') && !what)
@@ -6641,22 +6617,55 @@ function downloadRWBib() {
     });
     const note = what.length > 140 ? what.substring(0, 140) + '...' : what;
 
-    // ── Emit entry ────────────────────────────────────────────────────────
-    bib += `@${entryType}{${key},\n`;
-    bib += `  author    = {${authorsRaw}},\n`;
-    bib += `  title     = {{${title}}},\n`;
-    if (entryType === 'article')       bib += `  journal   = {${venue}},\n`;
-    if (entryType === 'inproceedings') bib += `  booktitle = {${venue}},\n`;
-    if (entryType === 'incollection')  bib += `  booktitle = {${venue}},\n`;
-    if (vol)   bib += `  volume    = {${vol}},\n`;
-    if (num)   bib += `  number    = {${num}},\n`;
-    if (pages) bib += `  pages     = {${pages}},\n`;
-    bib +=     `  year      = {${year}},\n`;
-    if (doi)   bib += `  doi       = {${doi}},\n`;
-    if (arxiv && entryType === 'misc') bib += `  eprint    = {${arxiv}},\n  archivePrefix = {arXiv},\n`;
-    if (note)  bib += `  note      = {${note}},\n`;
-    bib += `}\n\n`;
+    let entry = `@${entryType}{${key},\n`;
+    entry += `  author    = {${authorsRaw}},\n`;
+    entry += `  title     = {{${title}}},\n`;
+    if (entryType === 'article')       entry += `  journal   = {${venue}},\n`;
+    if (entryType === 'inproceedings') entry += `  booktitle = {${venue}},\n`;
+    if (entryType === 'incollection')  entry += `  booktitle = {${venue}},\n`;
+    if (vol)   entry += `  volume    = {${vol}},\n`;
+    if (num)   entry += `  number    = {${num}},\n`;
+    if (pages) entry += `  pages     = {${pages}},\n`;
+    entry +=   `  year      = {${year}},\n`;
+    if (doi)   entry += `  doi       = {${doi}},\n`;
+    if (arxiv && entryType === 'misc') entry += `  eprint    = {${arxiv}},\n  archivePrefix = {arXiv},\n`;
+    if (note)  entry += `  note      = {${note}},\n`;
+    entry += `}\n\n`;
+    return entry;
+  }
+
+  // Walk major sections, subsections, and refs in document order.
+  rw.querySelectorAll('.rw-major-section, .ref-section, .ref').forEach(el => {
+    const cls = el.className || '';
+
+    if (el.tagName === 'H4' && cls.includes('rw-major-section')) {
+      const title = stripHtml(el).trim();
+      if (title !== curSection) {
+        curSection    = title;
+        curSubsection = '';
+        const bar = '%' + ' ='.repeat(38);
+        bib += `${bar}\n% ${title}\n${bar}\n\n`;
+      }
+
+    } else if (cls.includes('ref-section')) {
+      const h4 = el.querySelector(':scope > h4');
+      if (h4) {
+        const sub = stripHtml(h4).trim();
+        if (sub !== curSubsection) {
+          curSubsection = sub;
+          bib += `% -- ${sub}\n\n`;
+        }
+      }
+
+    } else if (cls.includes('ref') && !el.closest('.ref-section') === false) {
+      // Only process top-level .ref nodes (not .ref inside an already-processed subtree).
+      // querySelectorAll returns all descendants so we skip refs whose parent .ref-section
+      // we've already noted — but since we're building bib entries here for all .ref nodes,
+      // the section/subsection comments will already have been emitted by the time we hit them.
+      bib += refToBib(el);
+    }
   });
+
   triggerDownload('v2v-related-work.bib', bib, 'text/plain');
 }
 
