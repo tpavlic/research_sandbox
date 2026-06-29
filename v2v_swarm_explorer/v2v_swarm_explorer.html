@@ -6529,14 +6529,18 @@ function downloadRWMarkdown() {
     if (tag === 'h4' && cls.includes('rw-major-section')) {
       md += `\n## ${stripHtml(node).trim()}\n\n`;
     }
-    // Prose paragraphs (ledes, engineering lede, synthesis)
+    // Prose paragraph
     else if (tag === 'p') {
-      const text = synthToMd(node).trim();
+      const text = innerToMd(node).replace(/\s+/g, ' ').trim();
       if (text) md += text + '\n\n';
     }
-    // Synthesis paragraph — the <p style="margin-top:14px"> that contains nested <p>/<ul>
-    else if (tag === 'p' && node.querySelector('ul')) {
-      md += synthToMd(node).trim() + '\n\n';
+    // Bullet list (the synthesis openings list, now a direct .body child after
+    // the browser auto-closes the invalid nested <p> structure in the HTML)
+    else if (tag === 'ul') {
+      node.querySelectorAll('li').forEach(li => {
+        md += `- ${innerToMd(li).replace(/\s+/g, ' ').trim()}\n`;
+      });
+      md += '\n';
     }
     // Subsection block
     else if (tag === 'div' && cls.includes('ref-section')) {
@@ -6546,10 +6550,9 @@ function downloadRWMarkdown() {
         const citeEl = ref.querySelector('.cite');
         if (citeEl) md += `**${innerToMd(citeEl).replace(/\s+/g, ' ').trim()}**\n\n`;
         ref.querySelectorAll('.annot').forEach(a => {
-          const tagEl  = a.querySelector('.tag');
-          const label  = tagEl ? tagEl.textContent.trim() : '';
+          const tagEl   = a.querySelector('.tag');
+          const label   = tagEl ? tagEl.textContent.trim() : '';
           const tagInner = tagEl ? tagEl.outerHTML : '';
-          // Get annotation text without the tag span
           const tmp = document.createElement('div');
           tmp.innerHTML = a.innerHTML.replace(tagInner, '');
           const text = innerToMd(tmp).replace(/\s+/g, ' ').trim();
@@ -6634,39 +6637,94 @@ function downloadRWBib() {
     return entry;
   }
 
-  // Walk major sections, subsections, and refs in document order.
-  rw.querySelectorAll('.rw-major-section, .ref-section, .ref').forEach(el => {
-    const cls = el.className || '';
-
-    if (el.tagName === 'H4' && cls.includes('rw-major-section')) {
-      const title = stripHtml(el).trim();
-      if (title !== curSection) {
-        curSection    = title;
-        curSubsection = '';
-        const bar = '%' + ' ='.repeat(38);
-        bib += `${bar}\n% ${title}\n${bar}\n\n`;
-      }
-
-    } else if (cls.includes('ref-section')) {
-      const h4 = el.querySelector(':scope > h4');
-      if (h4) {
-        const sub = stripHtml(h4).trim();
-        if (sub !== curSubsection) {
-          curSubsection = sub;
-          bib += `% -- ${sub}\n\n`;
+  // Wrap plain text (or bullet-list text) into % comment lines at 72 chars.
+  // Lines starting with "- " are treated as bullets and get a hanging indent.
+  function wrapComment(text) {
+    const out = [];
+    // Split on newlines that precede a bullet or are explicit paragraph breaks
+    const chunks = text.split(/\n+/);
+    chunks.forEach(chunk => {
+      chunk = chunk.replace(/\s+/g, ' ').trim();
+      if (!chunk) return;
+      const isBullet = chunk.startsWith('- ');
+      const prefix1  = isBullet ? '%   - ' : '% ';   // first line
+      const prefix2  = isBullet ? '%     ' : '% ';   // continuation lines
+      const content  = isBullet ? chunk.slice(2) : chunk;
+      const words    = content.split(' ');
+      let line       = prefix1;
+      words.forEach(w => {
+        if (line.length + 1 + w.length > 72 && line.trim() !== prefix1.trim()) {
+          out.push(line);
+          line = prefix2 + w;
+        } else {
+          line += (line === prefix1 ? '' : ' ') + w;
         }
-      }
+      });
+      if (line.trim() !== prefix1.trim() && line.trim() !== prefix2.trim()) out.push(line);
+    });
+    return out.join('\n') + '\n';
+  }
 
-    } else if (cls.includes('ref') && !el.closest('.ref-section') === false) {
-      // Only process top-level .ref nodes (not .ref inside an already-processed subtree).
-      // querySelectorAll returns all descendants so we skip refs whose parent .ref-section
-      // we've already noted — but since we're building bib entries here for all .ref nodes,
-      // the section/subsection comments will already have been emitted by the time we hit them.
-      bib += refToBib(el);
+  // Walk major sections, subsections, prose, and refs in document order.
+  // Mirror the Markdown generator: iterate .body's direct children so we
+  // see prose ledes, major section headers, and ref-sections in the right order.
+  const body = rw.querySelector('.body');
+  body.childNodes.forEach(node => {
+    if (node.nodeType !== 1) return;
+    const tag = node.tagName.toLowerCase();
+    const cls = node.className || '';
+
+    // Prose paragraph
+    if (tag === 'p') {
+      const text = innerToMd(node)
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/`/g, '')
+        .replace(/\s+/g, ' ').trim();
+      if (text) bib += wrapComment(text) + '\n';
+
+    // Bullet list (direct .body child after browser auto-closes nested <p>)
+    } else if (tag === 'ul') {
+      node.querySelectorAll('li').forEach(li => {
+        const text = innerToMd(li)
+          .replace(/\*\*([^*]+)\*\*/g, '$1')
+          .replace(/\*([^*]+)\*/g, '$1')
+          .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+          .replace(/`/g, '')
+          .replace(/\s+/g, ' ').trim();
+        if (text) bib += wrapComment('- ' + text) + '\n';
+      });
+      bib += '\n';
+
+    // Major section header
+    } else if (tag === 'h4' && cls.includes('rw-major-section')) {
+      const title = stripHtml(node).trim();
+      curSection    = title;
+      curSubsection = '';
+      const bar = '%' + ' ='.repeat(38);
+      bib += `${bar}\n% ${title}\n${bar}\n\n`;
+
+    // Subsection block
+    } else if (tag === 'div' && cls.includes('ref-section')) {
+      const h4 = node.querySelector(':scope > h4');
+      if (h4) {
+        curSubsection = stripHtml(h4).trim();
+        bib += `% -- ${curSubsection}\n\n`;
+      }
+      // Subsection lede (p directly inside ref-section, before the refs)
+      node.querySelectorAll(':scope > p').forEach(p => {
+        const text = stripHtml(p).replace(/\s+/g, ' ').trim();
+        if (text) bib += wrapComment(text) + '\n';
+      });
+      // Refs in this subsection
+      node.querySelectorAll(':scope > .ref').forEach(ref => {
+        bib += refToBib(ref);
+      });
     }
   });
 
-  triggerDownload('v2v-related-work.bib', bib, 'text/plain');
+  triggerDownload('v2v-related-work.bib', bib.replace(/\n{3,}/g, '\n\n'), 'text/plain');
 }
 
 function triggerDownload(filename, content, mime) {
