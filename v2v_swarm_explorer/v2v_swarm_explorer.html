@@ -6518,6 +6518,8 @@ function downloadRWMarkdown() {
   const rw   = document.getElementById('rwView');
   const body = rw.querySelector('.body');
   let md = '# Related Work: V2V Energy-Safe Swarm Explorer\n\n';
+  md += '© 2026 Theodore P. Pavlic · Licensed under the [MIT License](https://opensource.org/licenses/MIT)\n\n';
+  md += '*Generated from live widget DOM — re-download to get updated entries.*\n\n';
 
   // Walk every direct child of .body in document order
   body.childNodes.forEach(node => {
@@ -6570,7 +6572,10 @@ function downloadRWBib() {
   // section and subsection comments in the right places.
   const rw = document.getElementById('rwView');
   const keyCounts = {};
-  let bib = '% V2V Energy-Safe Swarm Explorer — Related Work\n% Generated from live widget DOM\n\n';
+  let bib = '% V2V Energy-Safe Swarm Explorer — Related Work\n';
+  bib += '% © 2026 Theodore P. Pavlic\n';
+  bib += '% Licensed under the MIT License: https://opensource.org/licenses/MIT\n';
+  bib += '% Generated from live widget DOM — re-download to get updated entries\n\n';
   let curSection = '', curSubsection = '';
 
   // Helper: process one .ref element into a BibTeX entry string.
