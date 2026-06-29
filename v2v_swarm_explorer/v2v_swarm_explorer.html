@@ -701,11 +701,89 @@ input[type="range"] {
   background: rgba(196, 74, 59, 0.13);
   color: var(--red);
 }
-.explainer .ref .annot .tag-bio {
-  background: rgba(74, 128, 96, 0.16);
-  color: #3a6b51;
+/* ── Tab bar ────────────────────────────────────────────────────────────────*/
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--paper-darker);
+  margin-bottom: 12px;
 }
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  padding: 8px 20px 7px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: color 0.12s, border-color 0.12s;
+}
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.active {
+  color: var(--forest);
+  border-bottom-color: var(--forest);
+}
+
+/* ── Related Work view ──────────────────────────────────────────────────────*/
+.rw-view {
+  display: none;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 8px 40px;
+}
+.rw-view.visible { display: block; }
+.rw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--paper-darker);
+}
+.rw-header h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--forest);
+  margin: 0;
+}
+.rw-dl-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.rw-dl-btn {
+  background: var(--paper);
+  border: 1px solid var(--paper-darker);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 5px 11px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+  min-width: 9em;
+  text-align: center;
+}
+.rw-dl-btn:hover { background: var(--paper-dark); border-color: var(--accent); }
+
+/* RW reading typography — roomier than the legend panel */
+.rw-view .explainer {
+  font-size: 14px;
+  line-height: 1.62;
+}
+.rw-view .explainer .ref .annot {
+  font-size: 13.5px;
+  line-height: 1.58;
+}
+.rw-view .explainer .card { margin-bottom: 0; box-shadow: none; border: none; background: none; }
+.rw-view .explainer .card-title { display: none; }
+.rw-view .explainer .body { padding: 0; }
 </style>
+
 </head>
 <body>
 <div class="app">
@@ -723,7 +801,12 @@ input[type="range"] {
     </p>
   </header>
 
-  <div class="layout">
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabSim">Simulator</button>
+    <button class="tab-btn" id="tabRW">Related Work</button>
+  </div>
+
+  <div class="layout" id="simView">
     <div class="canvas-wrap">
         <canvas id="sim" width="900" height="640"></canvas>
         <div class="overlay" id="overlay">
@@ -1239,9 +1322,21 @@ input[type="range"] {
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Related work</div>
-          <div class="body">
+      </div><!-- /.explainer -->
+  </div><!-- /.layout#simView -->
+
+  <div class="rw-view" id="rwView">
+    <div class="rw-header">
+      <h2>Related Work</h2>
+      <div class="rw-dl-btns">
+        <button class="rw-dl-btn" id="btnDlMd">⬇&nbsp;Markdown</button>
+        <button class="rw-dl-btn" id="btnDlBib">⬇&nbsp;BibTeX</button>
+      </div>
+    </div>
+    <div class="explainer">
+      <div class="card">
+        <div class="card-title">Related work</div>
+        <div class="body">
             <p style="margin-top: 6px; margin-bottom: 6px; color: var(--ink-soft); font-size: 13px;">
               The literature this work draws on splits into two strands. The first is the <strong>biological precedent</strong> — social insect colonies that have organized cooperative energy transfer around a central nest for a great deal longer than engineering has had vehicles. The second is the <strong>engineering literature</strong> on formal safety frameworks for multi-robot operations, which is gradually catching up to that precedent without yet stitching the network-safety invariant fully together.
             </p>
@@ -1954,9 +2049,8 @@ input[type="range"] {
             </p>
           </div>
         </div>
-      </div>
-
-  </div>
+      </div><!-- /.explainer -->
+  </div><!-- /.rw-view -->
 
   <div class="code-view" id="codeView" style="display: none;">
     <div class="code-header">
@@ -6313,10 +6407,39 @@ const SOURCE_NOTES = {
 // Current language being shown in the code view; used by Copy and Download.
 let currentCodeLang = null;
 
+// ─── Tab switching ───────────────────────────────────────────────────────────
+const simView  = document.getElementById('simView');
+const rwView   = document.getElementById('rwView');
+const codeView = document.getElementById('codeView');
+
+function showSimTab() {
+  simView.style.display  = 'grid';
+  rwView.classList.remove('visible');
+  codeView.style.display = 'none';
+  document.getElementById('tabSim').classList.add('active');
+  document.getElementById('tabRW').classList.remove('active');
+  currentCodeLang = null;
+}
+
+function showRWTab() {
+  simView.style.display  = 'none';
+  rwView.classList.add('visible');
+  codeView.style.display = 'none';
+  document.getElementById('tabSim').classList.remove('active');
+  document.getElementById('tabRW').classList.add('active');
+  currentCodeLang = null;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.getElementById('tabSim').addEventListener('click', showSimTab);
+document.getElementById('tabRW').addEventListener('click', showRWTab);
+
 function showCode(lang) {
-  document.querySelector('.layout').style.display = 'none';
-  const cv = document.getElementById('codeView');
-  cv.style.display = 'block';
+  simView.style.display  = 'none';
+  rwView.classList.remove('visible');
+  codeView.style.display = 'block';
+  document.getElementById('tabSim').classList.remove('active');
+  document.getElementById('tabRW').classList.remove('active');
   document.getElementById('codeViewTitle').textContent = SOURCE_TITLES[lang] || 'Reference implementation';
   document.getElementById('codeNote').textContent = SOURCE_NOTES[lang] || '';
   document.getElementById('codeContent').textContent = SOURCES[lang] || '';
@@ -6328,10 +6451,230 @@ function showCode(lang) {
 }
 
 function backToSim() {
-  document.querySelector('.layout').style.display = 'grid';
-  document.getElementById('codeView').style.display = 'none';
-  currentCodeLang = null;
+  showSimTab();
 }
+
+// ─── Related Work download helpers ──────────────────────────────────────────
+// Both generators walk the live DOM so they are always current — no separate
+// data structure to keep in sync.
+
+function stripHtml(el) {
+  // Returns plain text, collapsing whitespace but preserving italic markers
+  // for the BibTeX venue extractor. Works on both a DOM element and a string.
+  if (typeof el === 'string') {
+    const d = document.createElement('div');
+    d.innerHTML = el;
+    el = d;
+  }
+  return el.textContent || el.innerText || '';
+}
+
+// Convert an element's innerHTML to Markdown, handling <em>, <strong>, <a>.
+function innerToMd(el) {
+  let md = '';
+  el.childNodes.forEach(node => {
+    if (node.nodeType === 3) {
+      md += node.textContent;
+    } else if (node.nodeType === 1) {
+      const tag = node.tagName.toLowerCase();
+      const inner = innerToMd(node);
+      if      (tag === 'em')     md += `*${inner}*`;
+      else if (tag === 'strong') md += `**${inner}**`;
+      else if (tag === 'a')      md += `[${inner}](${node.href})`;
+      else if (tag === 'sub')    md += inner;
+      else if (tag === 'sup')    md += inner;
+      else if (tag === 'code')   md += `\`${inner}\``;
+      else                       md += inner;
+    }
+  });
+  return md;
+}
+
+// Walk the synthesis paragraph, which may contain nested <p>, <ul>, <li>.
+function synthToMd(el) {
+  let md = '';
+  el.childNodes.forEach(node => {
+    if (node.nodeType === 3) {
+      const t = node.textContent.replace(/\s+/g, ' ');
+      if (t.trim()) md += t;
+    } else if (node.nodeType === 1) {
+      const tag = node.tagName.toLowerCase();
+      if (tag === 'p') {
+        md += synthToMd(node) + '\n\n';
+      } else if (tag === 'ul') {
+        node.querySelectorAll('li').forEach(li => {
+          md += `- ${innerToMd(li).replace(/\s+/g, ' ').trim()}\n`;
+        });
+        md += '\n';
+      } else {
+        md += innerToMd(node);
+      }
+    }
+  });
+  return md;
+}
+
+function downloadRWMarkdown() {
+  const rw   = document.getElementById('rwView');
+  const body = rw.querySelector('.body');
+  let md = '# Related Work: V2V Energy-Safe Swarm Explorer\n\n';
+
+  // Walk every direct child of .body in document order
+  body.childNodes.forEach(node => {
+    if (node.nodeType !== 1) return;  // skip text nodes / comments
+    const tag = node.tagName.toLowerCase();
+    const cls = node.className || '';
+
+    // Major section header (## level)
+    if (tag === 'h4' && cls.includes('rw-major-section')) {
+      md += `\n## ${stripHtml(node).trim()}\n\n`;
+    }
+    // Prose paragraphs (ledes, engineering lede, synthesis)
+    else if (tag === 'p') {
+      const text = synthToMd(node).trim();
+      if (text) md += text + '\n\n';
+    }
+    // Synthesis paragraph — the <p style="margin-top:14px"> that contains nested <p>/<ul>
+    else if (tag === 'p' && node.querySelector('ul')) {
+      md += synthToMd(node).trim() + '\n\n';
+    }
+    // Subsection block
+    else if (tag === 'div' && cls.includes('ref-section')) {
+      const h4 = node.querySelector('h4');
+      if (h4) md += `### ${stripHtml(h4).trim()}\n\n`;
+      node.querySelectorAll('.ref').forEach(ref => {
+        const citeEl = ref.querySelector('.cite');
+        if (citeEl) md += `**${innerToMd(citeEl).replace(/\s+/g, ' ').trim()}**\n\n`;
+        ref.querySelectorAll('.annot').forEach(a => {
+          const tagEl  = a.querySelector('.tag');
+          const label  = tagEl ? tagEl.textContent.trim() : '';
+          const tagInner = tagEl ? tagEl.outerHTML : '';
+          // Get annotation text without the tag span
+          const tmp = document.createElement('div');
+          tmp.innerHTML = a.innerHTML.replace(tagInner, '');
+          const text = innerToMd(tmp).replace(/\s+/g, ' ').trim();
+          if (label && text) md += `- **${label}:** ${text}\n`;
+        });
+        md += '\n';
+      });
+    }
+  });
+  triggerDownload('v2v-related-work.md', md.trim().replace(/\n{3,}/g, '\n\n') + '\n', 'text/markdown');
+}
+
+function downloadRWBib() {
+  // Walk refs from DOM — same source-of-truth as the Markdown export.
+  const rw = document.getElementById('rwView');
+  const keyCounts = {};
+  let bib = '% V2V Energy-Safe Swarm Explorer — Related Work\n% Generated from live widget DOM\n\n';
+
+  rw.querySelectorAll('.ref').forEach(ref => {
+    const citeEl = ref.querySelector('.cite');
+    if (!citeEl) return;
+    const cite = stripHtml(citeEl).replace(/\s+/g, ' ').trim();
+
+    // ── Field extraction ──────────────────────────────────────────────────
+    const yearM = cite.match(/\((\d{4}[a-z]?)\)/);
+    const year  = yearM ? yearM[1] : '????';
+
+    const doiM  = cite.match(/doi:(10\.[^\s)\]]+)/i);
+    const doi   = doiM ? doiM[1].replace(/\.$/, '') : '';
+
+    const arXivM = cite.match(/arXiv[:\s]+([\d.]+)/i);
+    const arxiv  = arXivM ? arXivM[1] : '';
+
+    // Authors: everything before the first (YYYY)
+    const authorsRaw = cite.split(/\s*\(\d{4}[a-z]?\)/)[0].trim().replace(/[,\s]+$/, '');
+
+    // Everything after "Year). "
+    const afterYear = cite.split(/\(\d{4}[a-z]?\)\.\s*/)[1] || '';
+
+    // Title: up to the first ". " that precedes a venue/In marker
+    const titleM = afterYear.match(/^(.*?)\.\s+(?=[A-Z*]|In\s)/);
+    const title  = titleM ? titleM[1].trim() : afterYear.split(/\.\s+/)[0].trim();
+
+    // Venue: in italics in the cite element
+    let venue = '';
+    citeEl.querySelectorAll('em').forEach(em => { if (!venue) venue = em.textContent.trim(); });
+
+    // Volume / issue / pages
+    const volM   = afterYear.match(/,\s*(\d+)\((\d+)\)/);
+    const vol    = volM ? volM[1] : '';
+    const num    = volM ? volM[2] : '';
+    const pagesM = afterYear.match(/[,\s](\d+)[–\-](\d+)/);
+    const pages  = pagesM ? `${pagesM[1]}--${pagesM[2]}` : '';
+
+    // ── Entry type detection ──────────────────────────────────────────────
+    // Signals in the cite text (plain):
+    //   @inproceedings  → conference keywords, or "Proceedings of", or "(YYYY)"
+    //   @incollection   → "In " + editors + "(Eds.)" + book title + publisher
+    //   @misc           → arXiv preprint / no journal
+    //   @article        → journal name present, no conference signal
+    const lc = afterYear.toLowerCase();
+    let entryType;
+    const confSignals = /\b(proceedings|conference|symposium|workshop|congress|meeting|iros|icra|ral|cdc|acc|smc|cira|icsmc|epe\b|tencon|spie|dars)\b/;
+    const bookSignals = /\bIn\s+\S.*\(Eds?\.\)/;
+    if (bookSignals.test(afterYear)) {
+      entryType = 'incollection';
+    } else if (confSignals.test(lc)) {
+      entryType = 'inproceedings';
+    } else if (arxiv && !venue) {
+      entryType = 'misc';
+    } else if (venue) {
+      entryType = 'article';
+    } else {
+      entryType = 'misc';
+    }
+
+    // ── BibTeX key ────────────────────────────────────────────────────────
+    const firstSurname = authorsRaw.split(',')[0].trim()
+      .split(/\s+/).pop().toLowerCase().replace(/[^a-z]/g, '');
+    let key = `${firstSurname}${year}`;
+    keyCounts[key] = (keyCounts[key] || 0) + 1;
+    if (keyCounts[key] > 1) key += String.fromCharCode(96 + keyCounts[key]); // a, b, c…
+
+    // ── What annotation for note field ────────────────────────────────────
+    let what = '';
+    ref.querySelectorAll('.annot').forEach(a => {
+      if (a.querySelector('.tag-what') && !what)
+        what = stripHtml(a).replace(/^What\s*/, '').trim();
+    });
+    const note = what.length > 140 ? what.substring(0, 140) + '...' : what;
+
+    // ── Emit entry ────────────────────────────────────────────────────────
+    bib += `@${entryType}{${key},\n`;
+    bib += `  author    = {${authorsRaw}},\n`;
+    bib += `  title     = {{${title}}},\n`;
+    if (entryType === 'article')       bib += `  journal   = {${venue}},\n`;
+    if (entryType === 'inproceedings') bib += `  booktitle = {${venue}},\n`;
+    if (entryType === 'incollection')  bib += `  booktitle = {${venue}},\n`;
+    if (vol)   bib += `  volume    = {${vol}},\n`;
+    if (num)   bib += `  number    = {${num}},\n`;
+    if (pages) bib += `  pages     = {${pages}},\n`;
+    bib +=     `  year      = {${year}},\n`;
+    if (doi)   bib += `  doi       = {${doi}},\n`;
+    if (arxiv && entryType === 'misc') bib += `  eprint    = {${arxiv}},\n  archivePrefix = {arXiv},\n`;
+    if (note)  bib += `  note      = {${note}},\n`;
+    bib += `}\n\n`;
+  });
+  triggerDownload('v2v-related-work.bib', bib, 'text/plain');
+}
+
+function triggerDownload(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('btnDlMd').addEventListener('click', downloadRWMarkdown);
+document.getElementById('btnDlBib').addEventListener('click', downloadRWBib);
+document.getElementById('btnBackToSim').addEventListener('click', backToSim);
 
 function copyCode() {
   if (!currentCodeLang) return;
@@ -6377,7 +6720,6 @@ document.querySelectorAll('.src-btn').forEach((btn) => {
 document.querySelectorAll('.lang-btn').forEach((btn) => {
   btn.addEventListener('click', () => showCode(btn.dataset.lang));
 });
-document.getElementById('btnBackToSim').addEventListener('click', backToSim);
 document.getElementById('btnCopyCode').addEventListener('click', copyCode);
 document.getElementById('btnDownloadCode').addEventListener('click', downloadCode);
 
