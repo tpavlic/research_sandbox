@@ -1448,6 +1448,14 @@ input[type="range"] {
                 <div class="annot"><span class="tag tag-what">What</span>Develops decentralized pairwise CBFs in QP form for guaranteed collision-free multi-robot motion, with the canonical centralized-to-decentralized decomposition argument.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>Pairwise constraints are symmetric "avoid each other" — they do not encode cooperative-help feasibility nor anything depending on a third point (the depot).</div>
               </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Fouad, H., &amp; Beltrame, G. (2022). Energy autonomy for robot systems with constrained resources. <em>IEEE Transactions on Robotics</em>, 38(6), 3675–3693. <a href="https://doi.org/10.1109/TRO.2022.3175438" target="_blank" rel="noopener">doi:10.1109/TRO.2022.3175438</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Applies CBFs to enforce both energy sufficiency (no robot runs out of battery) and coordination constraints (mutually exclusive use of a shared charging station) for a multi-robot system with limited charging infrastructure, with real-robot experiments demonstrating the approach.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The closest existing work applying CBF safety guarantees to per-robot energy levels in a multi-robot setting. The gap is the transfer modality: robots queue for a fixed station rather than donating energy peer-to-peer in the field, so the help-graph structure and the α·distance donor feasibility condition are absent.</div>
+              </div>
             </div>
 
             <div class="ref-section">
@@ -1552,6 +1560,14 @@ input[type="range"] {
                 <div class="annot"><span class="tag tag-what">What</span>Proposes and simulates an energy supply chain concept for search-and-rescue: a line of small robots relays power from a depot to a leading robot operating beyond its solo range, deriving a mathematical cost function for the energy overhead of sustaining the chain at varying depths.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>The chain is fixed and pre-deployed with a single purpose (keep the leader alive), not a freely moving swarm where any robot may become helper or receiver depending on encounter geometry. The cost-function framing is complementary to the formal chain-safety invariant the V2V filter aims to enforce, but the two have not been connected.</div>
               </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Kumar, N., Lee, J. J., Rathinam, S., Darbha, S., Sujit, P. B., &amp; Raman, R. (2025). The persistent robot charging problem for long-duration autonomy. <em>IEEE Robotics and Automation Letters</em>, 10(3), 2191–2198. <a href="https://doi.org/10.1109/LRA.2024.3524897" target="_blank" rel="noopener">doi:10.1109/LRA.2024.3524897</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Formulates optimal recharging-schedule design for a heterogeneous fleet as an Integer Linear Programming problem, minimizing charging-station utilization (or equivalently maximizing servicing time) subject to all robots' periodic recharge requirements, and evaluates the formulation against a reference scheduling algorithm.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Scheduling-centric: the problem is to determine initial charge states and sequencing so robots can share a fixed station without conflict. There is no peer transfer between field robots and no closed-loop motion-safety invariant — the energy constraint is handled in planning rather than in real-time control.</div>
+              </div>
             </div>
 
             <div class="ref-section">
@@ -1624,6 +1640,30 @@ input[type="range"] {
                 <div class="annot"><span class="tag tag-what">What</span>Describes the CISSbot — a physical robot platform designed for energy trophallaxis via autonomous battery exchange. Each robot carries a battery pack in a mechatronic cradle that can be removed and passed to a neighbor; the paper details the mechanical, electrical, and power-management design required to make physical energy handoff reliable between autonomous mobile robots.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>Physical battery exchange is a fundamentally different (and mechanically more demanding) transfer modality than the wireless or wired continuous-current transfer assumed in this simulator — exchange is discrete and slow, requiring physical docking. The work establishes that peer energy transfer in real hardware is feasible, but the latency and reliability constraints differ substantially from the instantaneous transfer model used here.</div>
               </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Ngo, T. D., &amp; Schiøler, H. (2006). Sociable robots through self-maintained energy. <em>International Journal of Advanced Robotic Systems</em>, 3(4), 295–302. <a href="https://doi.org/10.5772/5724" target="_blank" rel="noopener">doi:10.5772/5724</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Journal companion to the IROS 2006 conference paper: extends the CISSbot framework with a probabilistic formulation of self-maintained energy, detailed hardware architecture of the battery-exchange cradle, and experimental validation of the decision function that governs whether a robot should donate, accept, or decline an energy exchange.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>As with the conference paper, energy sufficiency is evaluated at the population level via the probabilistic model; there is no per-robot return-to-depot invariant and no distance-dependent feasibility cost on the donation decision.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Kim, J.-O., &amp; Moon, C. (2015). A vision-based wireless charging system for robot trophallaxis. <em>International Journal of Advanced Robotic Systems</em>, 12, 177. <a href="https://doi.org/10.5772/62043" target="_blank" rel="noopener">doi:10.5772/62043</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>A vision-guided wireless charging system enabling one mobile robot to recharge another: a transmitter robot uses a camera and Bayesian pose estimator to align its coil with a marker on the receiver, achieving precise inductive alignment without physical docking and validating the approach across several receiver robot types.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Solves the hardware rendezvous problem (coil alignment for wireless transfer between mobile peers) but the charging decision is manual or pre-scripted — there is no autonomous protocol governing when a robot should seek a donor, what donor surplus threshold triggers acceptance, or whether the donor can afford to give without stranding itself.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Witkowski, M. (2007). Energy sharing for swarms modeled on the common vampire bat. <em>Adaptive Behavior</em>, 15(3), 307–328. <a href="https://doi.org/10.1177/1059712307082092" target="_blank" rel="noopener">doi:10.1177/1059712307082092</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Models energy sharing in robot swarms on the reciprocal food-sharing behavior of vampire bats (<em>Desmodus rotundus</em>): robots forage for fuel, encounter each other stochastically, and share energy under a bat-inspired reciprocity policy; simulations quantify the survival benefit and the effect of group size, sharing thresholds, and defectors.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The sharing policy is triggered by encounter proximity and reciprocity history without a geometric feasibility condition — a donor robot does not check whether it retains enough charge to return safely before giving. The population-survival framing also means there is no individual-level guarantee analogous to the V2V safety invariant.</div>
+              </div>
             </div>
 
             <div class="ref-section">
@@ -1635,6 +1675,30 @@ input[type="range"] {
                 </div>
                 <div class="annot"><span class="tag tag-what">What</span>Introduces the Marsubot Society: a heterogeneous multi-robot system in which a large "parent" robot carries smaller child robots, deploys them into the field, and recovers them for recharging when their batteries are low. The system is designed for indefinitely long autonomous operation, treating energy access as the central constraint on long-term capability.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>Energy is managed through deployment/recovery cycles (the parent as a mobile depot) rather than peer-to-peer transfer between field robots. Long-term autonomy is achieved by structural role separation (parent vs. child) rather than by an emergent help graph — the approach is closer to the refueler-role architecture than to V2V sharing among equals.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Mulgaonkar, Y., &amp; Kumar, V. (2014). Autonomous charging to enable long-endurance missions for small aerial robots. <em>Proceedings of SPIE</em>, 9083, 90831S. <a href="https://doi.org/10.1117/12.2051111" target="_blank" rel="noopener">doi:10.1117/12.2051111</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Demonstrates fully autonomous multi-MAV operation over 9.5 hours through scheduled contact-based recharging at a fixed station, with automated vision-guided landing and swapping among a pool of vehicles to maintain continuous task coverage.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Long-endurance autonomy is achieved by scheduling and station access, not peer transfer; the energy architecture is centralized (fixed depot) and the robots do not share with each other in the field. The vision-guided docking work is relevant to precision rendezvous for V2V contact transfer but the charging decision itself is not safety-critical in the same way.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Kim, J.-H. (2019). A robot system maintained with small-scale distributed energy sources. <em>Energies</em>, 12(20), 3851. <a href="https://doi.org/10.3390/en12203851" target="_blank" rel="noopener">doi:10.3390/en12203851</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Proposes sustaining a robot system from spatially distributed small-scale renewable energy sources (e.g. small solar panels scattered over a large area) rather than a single central depot, analyzing the energy-collection and distribution logistics when no single node can supply the full fleet.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Energy sources are fixed infrastructure nodes; robots travel to sources rather than transferring energy among themselves. The distributed-source framing is relevant to the "depot need not be singular" opening in the synthesis but does not address peer transfer between field robots.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Ziouzios, D., Baras, N., Dasygenis, M., &amp; Tsanaktsidis, C. (2025). Fair and energy-efficient charging resource allocation for heterogeneous UGV fleets. <em>Computers</em>, 14(11), 473. <a href="https://doi.org/10.3390/computers14110473" target="_blank" rel="noopener">doi:10.3390/computers14110473</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Formulates charging-resource allocation for a heterogeneous fleet of UGVs at a large photovoltaic park as a joint fairness and energy-efficiency optimization, balancing equitable access to charging across robot types against minimizing total mission energy cost.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The problem is allocation to fixed charging infrastructure, not peer transfer; robots queue for stations rather than sharing with each other. The fairness formulation is directly relevant downstream: when refueler robots are the constrained resource in a V2V swarm, the same equity considerations arise — which field robots get served first, and whether the allocation is fair across a heterogeneous fleet.</div>
               </div>
             </div>
 
@@ -1720,6 +1784,14 @@ input[type="range"] {
                 <div class="annot"><span class="tag tag-what">What</span>Extends the power packet bus architecture to multi-source modular robots, implementing a power-sharing mechanism that balances load across modules with different state-of-charge levels and demonstrates bus arbitration in a physical prototype.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>As with Arai &amp; Satoh 2021, the transfer is over a physically connected bus in a static modular assembly. The contribution is in the arbitration and balancing logic for the discrete-packet modality, which does not carry over directly to the mobile-robot setting where robots must move to rendezvous before any transfer occurs.</div>
               </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Sarin, A., &amp; Avestruz, A.-T. (2020). Code division multiple access wireless power transfer for energy sharing in heterogeneous robot swarms. <em>IEEE Access</em>, 8, 132121–132133. <a href="https://doi.org/10.1109/ACCESS.2020.3010202" target="_blank" rel="noopener">doi:10.1109/ACCESS.2020.3010202</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Proposes CDMA-modulated wireless power transfer enabling multiple robots in a heterogeneous swarm to exchange energy simultaneously while in motion — without a centralized controller — by encoding each transfer channel with a distinct spreading code; hardware demonstration with four robots achieving selective, scalable peer energy transfer.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The contribution is in the physical-layer multi-access protocol, not the decision layer: which robot should donate to which, when, and whether the donor can afford to give without sacrificing its own return capability are outside the scope. Provides the transfer infrastructure on which a V2V safety filter could operate.</div>
+              </div>
             </div>
 
             <div class="ref-section">
@@ -1739,6 +1811,30 @@ input[type="range"] {
                 </div>
                 <div class="annot"><span class="tag tag-what">What</span>Systematic literature review of 61 articles categorizing the V2V energy-trading literature by mechanism, infrastructure, and economic model.</div>
                 <div class="annot"><span class="tag tag-gap">Gap</span>The surveyed literature centres on grid-scale economics and protocol design; essentially no work treats V2V transfer as a closed-loop safety filter for a mobile autonomous swarm.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Zhang, Y., Chen, Y., Xie, R., Lin, G., Chen, X., &amp; Cheng, X. (2025). A bidirectional AGV wireless charging system capable of vehicle-to-vehicle wireless charging with shared bridge arms. <em>IEEE Journal of Emerging and Selected Topics in Power Electronics</em>. <a href="https://doi.org/10.1109/JESTPE.2025.3593595" target="_blank" rel="noopener">doi:10.1109/JESTPE.2025.3593595</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Proposes a multistage, multimode V2V wireless power transfer system for industrial AGV fleets in which one AGV can supply energy to another via shared bridge-arm hardware; four operating modes (one-to-one, one-to-two, two-to-one, relay) are demonstrated on a prototype achieving 94.7% efficiency at 2400 W.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The hardware operates in controlled industrial settings with known AGV positions and pre-planned transfer modes; there is no autonomous decision protocol for when to initiate transfer, no mobility cost on the transfer decision, and no safety invariant on donor state-of-charge. Provides directly relevant circuit-level precedent for robot-to-robot wireless transfer.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Alghawi, M., &amp; Mounsef, J. (2024). Overview of vehicle-to-vehicle energy sharing infrastructure. <em>IEEE Access</em>, 12, 54567–54589. <a href="https://doi.org/10.1109/ACCESS.2024.3388088" target="_blank" rel="noopener">doi:10.1109/ACCESS.2024.3388088</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>Survey of V2V energy-sharing architectures in the automotive domain, covering hardware topologies, communication protocols, grid interaction, and economic incentive structures for peer energy exchange between electric vehicles.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>Automotive V2V sharing is stationary or low-speed and economically motivated; the survey does not address mission-critical mobile robots where transfer decisions are safety constraints rather than economic choices, and the distance-dependent feasibility cost of travelling to a donor is absent.</div>
+              </div>
+
+              <div class="ref">
+                <div class="cite">
+                  Chatterjee, P., Majumder, P., &amp; Das, S. K. (2025). V2VDisCS: Vehicle to vehicle distributed charge sharing in intelligent transportation systems. <em>IEEE Transactions on Intelligent Transportation Systems</em>, 26(4), 4960–4974. <a href="https://doi.org/10.1109/TITS.2025.3534025" target="_blank" rel="noopener">doi:10.1109/TITS.2025.3534025</a>
+                </div>
+                <div class="annot"><span class="tag tag-what">What</span>A distributed peer charge-sharing protocol for EVs in a transportation network: vehicles broadcast state-of-charge, negotiate transfers via a decentralized matching protocol, and exchange energy through opportunistic encounters, with analysis of fairness, convergence, and throughput.</div>
+                <div class="annot"><span class="tag tag-gap">Gap</span>The distributed matching logic and fairness analysis are the most conceptually transferable elements to the robot-swarm setting. The gap is that EVs in a road network have fixed routes and no depot-return safety constraint; the protocol does not encode a donor feasibility condition equivalent to the V2V one-hop filter.</div>
               </div>
             </div>
 
@@ -1845,15 +1941,16 @@ input[type="range"] {
             <p style="margin-top: 14px;">
               <strong>Synthesis of gaps.</strong> Despite the natural precedent above, the engineering literature has yet to formalize an analogous safety framework. Across the engineering categories above, no surveyed work simultaneously provides (a) every robot performing both the primary task and donating energy, (b) safety as a closure property of the energy-aware proximity graph rather than of individual agents, and (c) the CBF / forward-invariance machinery lifted from a single-agent state variable to a network invariant. That conjunction is the gap a contribution should aim to fill.
 
-              <p style="margin:8px 0 0 0">The Ngo–Schiøler energy-trophallaxis line (2006–2008) is the closest prior body of work in the mobile-robot-swarm setting: bio-inspired peer energy transfer among mobile robots, population-level energy-autonomy conditions, and a physical battery-exchange platform (the CISSbot). What it does not provide is a per-robot safety condition — distributable surplus is tracked at the population level, not guaranteed to each individual as a return-to-depot invariant. Daymude et al. 2021 is the closest structural sibling: a self-stabilizing distributed algorithm in which one source feeds a collective through module-to-module relay — the graph-relay analog of depot-plus-V2V — but energy flows along a fixed lattice with no spatial mobility or distance-dependent transfer cost. Sindi et al. 2008 establish a cost-function analysis for a fixed energy-relay chain serving a leading robot, the closest precursor to the chain-safety geometry formalized here. On the control side, the closest methodological precedent for the network lift is Ong–Capelli–Sabattini–Cortes 2023 (CBF on a network connectivity property); the closest precedent for the hybrid, rendezvous-triggered character of V2V is the Xiao–Belta–Cassandras event-triggered CBF line; the closest physical precedent for P2P energy transfer in motion is Chakraborty et al. 2022, with the Ngo CISSbot as the earlier discrete-exchange analog. Combining these — per-robot reachability invariant, energy as the conserved network resource, depot as the privileged sink — is the territory.</p>
+              <p style="margin:8px 0 0 0">The Ngo–Schiøler energy-trophallaxis line (2006–2008) is the closest prior body of work in the mobile-robot-swarm setting: bio-inspired peer energy transfer among mobile robots, population-level energy-autonomy conditions, and a physical battery-exchange platform (the CISSbot) — extended by the contemporaneous Witkowski 2007 vampire-bat simulation and the Kim &amp; Moon 2015 vision-guided wireless docking work. What none of it provides is a per-robot safety condition — distributable surplus is tracked at the population level, not guaranteed to each individual as a return-to-depot invariant. Daymude et al. 2021 is the closest structural sibling: a self-stabilizing distributed algorithm in which one source feeds a collective through module-to-module relay — the graph-relay analog of depot-plus-V2V — but energy flows along a fixed lattice with no spatial mobility or distance-dependent transfer cost. Sindi et al. 2008 establish a cost-function analysis for a fixed energy-relay chain serving a leading robot, the closest precursor to the chain-safety geometry formalized here. On the control side, Fouad &amp; Beltrame 2022 is the closest existing work applying CBFs directly to per-robot battery sufficiency in a multi-robot system, but robots queue for a fixed station rather than transferring peer-to-peer in the field. The closest methodological precedent for lifting that to a network invariant is Ong–Capelli–Sabattini–Cortes 2023 (CBF on a network connectivity property); the closest precedent for the hybrid, rendezvous-triggered character of V2V is the Xiao–Belta–Cassandras event-triggered CBF line; the closest physical precedent for P2P energy transfer in motion is Chakraborty et al. 2022 and the Sarin &amp; Avestruz 2020 CDMA-WPT hardware, with the Ngo CISSbot as the earlier discrete-exchange analog. Combining these — per-robot reachability invariant, energy as the conserved network resource, depot as the privileged sink — is the territory.</p>
 
-              <p style="margin:8px 0 4px 0">Three further openings sit just past it:</p>
+              <p style="margin:8px 0 4px 0">Four further openings sit just past it:</p>
               <ul style="margin:0 0 0 1.2em; padding:0; font-size:inherit; line-height:1.55">
                 <li style="margin-bottom:6px"><strong>Relocatable depot.</strong> Central-place foraging theory, the multiple-/dynamic-depot robot algorithms, and the Marsubot Society (Matusiak et al. 2009, where a parent robot acts as a mobile depot) all point toward replicating or relocating the privileged sink — which is what the refueler shells begin to do.</li>
                 <li style="margin-bottom:6px"><strong>Emergent refueler role.</strong> The refueler role is assigned in advance here, whereas the self-assembly and encounter-driven walling literatures suggest it could instead emerge — a worker latching into a held-station refueler, or into an energy-carrying phalanx reaching outward from the depot, from nothing more than its position in the help-feasibility graph and the traffic through it.</li>
                 <li style="margin-bottom:6px"><strong>Layered safety.</strong> The safety invariant need not be absolute: precision rescue in <em>Cataglyphis</em> and patient-initiated retrieval in <em>Megaponera</em> treat stranded individuals as recoverable failures rather than invariant breaches, pointing toward a framing in which the chain-safe V2V condition is the strong-safety mode and a separate rescue layer handles its failures within bounded time.</li>
+                <li style="margin-bottom:6px"><strong>Fairness in refueler allocation.</strong> Once refueler robots are the constrained resource rather than a fixed charging station, the question of equitable service across a heterogeneous fleet becomes live. Ziouzios et al. 2025 treat this for fixed-station UGV fleets; the analogous problem for a V2V swarm — which field robot gets the next available refueler, and whether the allocation is fair across robot types with different energy demands — is open.</li>
               </ul>
-              <p style="margin:6px 0 0 0">None of these is represented in the simulator, and none needs to be, but all are where the biology points.</p>
+              <p style="margin:6px 0 0 0">None of these is represented in the simulator, and none needs to be, but all are where the literature points.</p>
             </p>
           </div>
         </div>
