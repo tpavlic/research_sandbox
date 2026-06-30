@@ -53,9 +53,9 @@ the excursion's HTML file itself** before finishing:
 2. Check that the bottom of `<body>` has the standard back-link `<footer>` and the
    iframe-hiding `<script>`. If missing, add them.
 
-The four excursions imported at repository creation do **not** yet carry the OG/Twitter/GA
-metadata, preview images, or the back-link footer; these are the main outstanding polish items.
-The status pills and the index/README entries are already in place.
+The four excursions imported at repository creation now carry full `<head>` metadata (OG, Twitter/X
+card, and the GA gtag block), a preview image, and the back-link footer, alongside their status
+pills and index/README entries. Keep these intact when editing those files.
 
 ---
 
@@ -158,5 +158,5 @@ Update the **Current excursions** list below.
 - **Copyright:** (c) Theodore P. Pavlic, MIT License (`LICENSE` file at repo root). The MIT License covers the page code, not the underlying research ideas.
 - **fb:app_id:** `2385695445236853` – include in all OG blocks
 - **GitHub Pages base URL:** `https://tpavlic.github.io/research_sandbox/`
-- **Google Analytics:** GA4 measurement ID `G-1GJE3Z9182`. The landing page carries the gtag block; add the same block (with this ID) to each excursion's `<head>` during the metadata pass
+- **Google Analytics:** GA4 measurement ID `G-1GJE3Z9182`. The landing page and all four excursions carry the gtag block with this ID; include it in any new excursion's `<head>`
 - **Git commits:** do **not** add a `Co-Authored-By: Claude` (or any AI co-author) trailer to commit messages
