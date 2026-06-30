@@ -77,13 +77,13 @@ full Open Graph block, the Twitter/X card block, and the Google Analytics gtag b
 the actual values. Use any page in [Topic Visualizers](https://github.com/tpavlic/topic_visualizers)
 as the template.
 
-**Ampersands in the page title and OG/Twitter strings:** use a literal `&`, not the `&amp;`
-entity, in the `<title>` element and in the `og:title`, `twitter:title`, and description `content`
-attributes; several card scrapers (Slack notably) read these as plain text and display the literal
-`&amp;` rather than expanding it. A bare `&` followed by a space stays valid HTML, so the entity is
-never needed here. This applies only to the title and metadata strings: in visible body content
-(headings, prose, citations) the `&amp;` entity is conventional and fine, since the browser decodes
-it and scrapers do not read it.
+**Ampersands in the document head only:** use a literal `&`, not the `&amp;` entity, in the
+`<title>` element and in the OG/Twitter/X metadata strings (the `og:title`, `twitter:title`, and
+description `content` attributes); several card scrapers (Slack notably) read these as plain text
+and display the literal `&amp;` rather than expanding it. A bare `&` followed by a space stays valid
+HTML, so the entity is never needed there. This rule is scoped to the head: in the visible body
+(headings, prose, citations) leave the `&amp;` entity in place, where it is conventional and in
+some cases required (a bare `&` is only valid when it cannot be read as the start of an entity).
 
 **Twitter/X image requirements:** aspect ratio close to **2:1**, file size under **5 MB**.
 
