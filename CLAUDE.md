@@ -158,5 +158,5 @@ Update the **Current excursions** list below.
 - **Copyright:** (c) Theodore P. Pavlic, MIT License (`LICENSE` file at repo root). The MIT License covers the page code, not the underlying research ideas.
 - **fb:app_id:** `2385695445236853` – include in all OG blocks
 - **GitHub Pages base URL:** `https://tpavlic.github.io/research_sandbox/`
-- **Google Analytics:** the landing page carries a placeholder gtag ID (`G-XXXXXXXXXX`); replace it with a real GA4 property ID before deploy, then add the same block to each excursion's `<head>`
+- **Google Analytics:** GA4 measurement ID `G-1GJE3Z9182`. The landing page carries the gtag block; add the same block (with this ID) to each excursion's `<head>` during the metadata pass
 - **Git commits:** do **not** add a `Co-Authored-By: Claude` (or any AI co-author) trailer to commit messages
