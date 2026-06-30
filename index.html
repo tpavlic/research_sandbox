@@ -3,22 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Research Sandbox — Work-in-Progress Explorers</title>
-  <meta name="description" content="Work-in-progress interactive explorers tied to ongoing research projects in collective behavior, multi-robot systems, and learning models — built by Theodore Pavlic.">
+  <title>Research Sandbox – Work-in-Progress Excursions</title>
+  <meta name="description" content="Work-in-progress interactive excursions tied to ongoing research projects in collective behavior, multi-robot systems, and learning models – built by Theodore Pavlic.">
 
   <!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, etc.) -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Research Sandbox — Work-in-Progress Explorers">
-  <meta property="og:description" content="Work-in-progress interactive explorers tied to ongoing research projects in collective behavior, multi-robot systems, and learning models — built by Theodore Pavlic.">
+  <meta property="og:title" content="Research Sandbox – Work-in-Progress Excursions">
+  <meta property="og:description" content="Work-in-progress interactive excursions tied to ongoing research projects in collective behavior, multi-robot systems, and learning models – built by Theodore Pavlic.">
   <meta property="og:url" content="https://tpavlic.github.io/research_sandbox/">
   <meta property="fb:app_id" content="2385695445236853">
 
   <!-- Twitter/X card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Research Sandbox — Work-in-Progress Explorers">
-  <meta name="twitter:description" content="Work-in-progress interactive explorers tied to ongoing research projects in collective behavior, multi-robot systems, and learning models — built by Theodore Pavlic.">
+  <meta name="twitter:title" content="Research Sandbox – Work-in-Progress Excursions">
+  <meta name="twitter:description" content="Work-in-progress interactive excursions tied to ongoing research projects in collective behavior, multi-robot systems, and learning models – built by Theodore Pavlic.">
 
-  <!-- Google Analytics — TODO: replace with the research_sandbox GA4 property ID before deploy -->
+  <!-- Google Analytics – TODO: replace with the research_sandbox GA4 property ID before deploy -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -64,7 +64,7 @@
       letter-spacing: 0.1em;
       color: #aaa;
       padding: 0 0.4rem 0.55rem;
-      border-bottom: 1.5px solid #c4d8c4;
+      border-bottom: 1.5px solid #e2e2e2;
       display: block;
     }
 
@@ -88,14 +88,14 @@
     }
 
     .side-nav a:hover {
-      color: #2e7d32;
-      background: #f2f9f2;
+      color: #6b21a8;
+      background: #f7f4fb;
       text-decoration: none;
     }
 
     .side-nav a.active {
-      color: #2e7d32;
-      background: #e8f4e8;
+      color: #6b21a8;
+      background: #eee3f8;
       font-weight: 700;
     }
 
@@ -104,13 +104,13 @@
       flex: 1;
       min-width: 0;
       padding: 2rem 1.25rem 3rem;
-      border-left: 1.5px solid #e8f0e8;
+      border-left: 1.5px solid #ececec;
     }
 
     /* ── Header ─────────────────────────────────────────── */
     header {
       margin-bottom: 2.25rem;
-      border-bottom: 1.5px solid #c4d8c4;
+      border-bottom: 2px solid #6b21a8;
       padding-bottom: 1.25rem;
     }
 
@@ -119,6 +119,7 @@
       font-weight: 700;
       line-height: 1.25;
       margin-bottom: 0.35rem;
+      color: #6b21a8;
     }
 
     header p {
@@ -126,18 +127,28 @@
       font-size: 0.9rem;
     }
 
-    a { color: #2e7d32; text-decoration: none; }
+    a { color: #6b21a8; text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    /* ── Status banner ──────────────────────────────────── */
+    /* ── Scope & attribution callout ─────────────────────── */
     .status-note {
-      background: #f2f9f2;
-      border: 1px solid #c4d8c4;
+      background: #f7f4fb;
+      border: 1px solid #e2d4f0;
+      border-left: 4px solid #6b21a8;
       border-radius: 6px;
-      padding: 0.7rem 0.9rem;
+      padding: 0.85rem 1.05rem;
       font-size: 0.83rem;
-      color: #555;
+      color: #444;
       margin-bottom: 2rem;
+    }
+    .status-note p { margin-bottom: 0.6rem; }
+    .status-note p:last-child { margin-bottom: 0; }
+    .status-note .copyright {
+      font-size: 0.78rem;
+      color: #666;
+      padding-top: 0.6rem;
+      margin-top: 0.6rem;
+      border-top: 1px solid #ece1f6;
     }
 
     /* ── Sections ───────────────────────────────────────── */
@@ -150,10 +161,17 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #2e7d32;
-      border-bottom: 1.5px solid #c4d8c4;
+      color: #6b21a8;
+      border-bottom: 1.5px solid #6b21a8;
       padding-bottom: 0.4rem;
       margin-bottom: 0.1rem;
+    }
+
+    /* "More from Ted Pavlic" holds external links, not excursions, so set its
+       heading apart from the purple excursion sections with neutral charcoal. */
+    #more h2 {
+      color: #1a1a1a;
+      border-bottom-color: #1a1a1a;
     }
 
     /* ── Demo list ──────────────────────────────────────── */
@@ -162,7 +180,7 @@
     }
 
     .demo-list li {
-      border-bottom: 1px solid #e8f0e8;
+      border-bottom: 1px solid #ececec;
     }
 
     .demo-list li:last-child {
@@ -174,15 +192,13 @@
       align-items: flex-start;
       gap: 1rem;
       padding: 0.85rem 0.5rem;
-      text-decoration: none;
-      color: inherit;
       border-radius: 4px;
       transition: background 0.12s ease;
+      position: relative;            /* anchor for the stretched title link */
     }
 
     .demo-row:hover {
-      background: #f2f9f2;
-      text-decoration: none;
+      background: #f7f4fb;
     }
 
     .demo-thumb {
@@ -192,8 +208,8 @@
       object-fit: cover;
       object-position: top center;
       border-radius: 4px;
-      border: 1px solid #c4d8c4;
-      background: #e8f4e8;
+      border: 1px solid #e2e2e2;
+      background: #eee3f8;
       display: block;
     }
 
@@ -206,18 +222,146 @@
       font-size: 0.97rem;
       font-weight: 700;
       line-height: 1.3;
-      color: #1a1a1a;
       margin-bottom: 0.2rem;
     }
 
-    .demo-row:hover .demo-text h3 {
-      color: #2e7d32;
+    /* Title link is "stretched" to cover the whole row, so the entire
+       row is clickable while pills stay clickable/focusable above it. */
+    .demo-text h3 a.stretched {
+      color: #1a1a1a;
+      text-decoration: none;
+    }
+
+    .demo-text h3 a.stretched::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      border-radius: 4px;
+    }
+
+    .demo-row:hover .demo-text h3 a.stretched {
+      color: #6b21a8;
+      text-decoration: underline;
     }
 
     .demo-text p {
       font-size: 0.83rem;
       color: #666;
       line-height: 1.45;
+    }
+
+    /* ── Status pills ───────────────────────────────────── */
+    .pill {
+      position: relative;
+      z-index: 2;                    /* sit above the stretched link */
+      display: inline-block;
+      margin-left: 0.5rem;
+      padding: 0.12rem 0.5rem;
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      vertical-align: middle;
+      border-radius: 999px;
+      white-space: nowrap;
+      cursor: default;
+    }
+    a.pill { cursor: pointer; text-decoration: none; }
+
+    .pill-wip {
+      background: #f3edda;
+      color: #8a5a00;
+      border: 1px solid #e6d3a8;
+    }
+
+    .pill-pub {
+      background: #eee3f8;
+      color: #581c87;
+      border: 1px solid #d8c4ee;
+    }
+    a.pill-pub:hover { background: #e2d4f0; text-decoration: none; }
+
+    .pill-arc {
+      background: #ededed;
+      color: #555;
+      border: 1px solid #d6d6d6;
+    }
+    a.pill-arc:hover { background: #e2e2e2; text-decoration: none; }
+
+    /* ── Legend / status filter (inside the callout) ────── */
+    .legend {
+      margin-top: 0.75rem;
+      padding-top: 0.7rem;
+      border-top: 1px solid #e2d4f0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+    }
+    .legend-label {
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #444;
+      margin-right: 0.1rem;
+    }
+    button.pill { font-family: inherit; line-height: 1.4; }
+    .legend-pill { cursor: pointer; }
+    .legend-pill[aria-pressed="true"].pill-wip { background: #8a5a00; color: #fff; border-color: #8a5a00; }
+    .legend-pill[aria-pressed="true"].pill-pub { background: #6b21a8; color: #fff; border-color: #6b21a8; }
+    .legend-pill[aria-pressed="true"].pill-arc { background: #555; color: #fff; border-color: #555; }
+
+    /* Status tooltip: a single shared element positioned by JS (see the script
+       at the end), so every pill -- legend and body -- uses the identical code
+       path. Centered under the hovered pill and clamped to the viewport. */
+    #tip {
+      position: fixed;
+      z-index: 1000;
+      width: 240px;                  /* fixed width => deterministic centering, no measuring */
+      padding: 0.4rem 0.55rem;
+      background: #1a1a1a;
+      color: #fff;
+      text-align: center;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      border-radius: 5px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+    }
+    #tip.show { opacity: 1; }
+    #tip::after {
+      content: "";
+      position: absolute;
+      bottom: 100%;
+      left: var(--arrow-x, 120px);   /* JS points this at the pill center */
+      margin-left: -5px;
+      border: 5px solid transparent;
+      border-bottom-color: #1a1a1a;
+    }
+
+    .filter-empty {
+      color: #666;
+      font-size: 0.85rem;
+      font-style: italic;
+      margin: 0 0 1.75rem;
+    }
+    .filter-empty[hidden] { display: none; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     /* ── Mobile FAB ──────────────────────────────────────── */
@@ -227,7 +371,7 @@
       bottom: 1.25rem;
       right: 1.25rem;
       z-index: 200;
-      background: #2e7d32;
+      background: #6b21a8;
       color: #fff;
       border: none;
       border-radius: 999px;
@@ -242,7 +386,7 @@
       align-items: center;
       transition: background 0.12s;
     }
-    #nav-fab:hover { background: #1b5e20; }
+    #nav-fab:hover { background: #581c87; }
 
     #nav-drawer {
       display: none;
@@ -251,7 +395,7 @@
       right: 1.25rem;
       z-index: 199;
       background: #fff;
-      border: 1.5px solid #c4d8c4;
+      border: 1.5px solid #e2e2e2;
       border-radius: 8px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.18);
       padding: 0.4rem 0;
@@ -269,8 +413,8 @@
       transition: background 0.1s, color 0.1s;
     }
     #nav-drawer a:hover {
-      background: #f2f9f2;
-      color: #2e7d32;
+      background: #f7f4fb;
+      color: #6b21a8;
       text-decoration: none;
     }
 
@@ -319,9 +463,9 @@
     <main class="main-content">
 
   <header>
-    <h1>Research Sandbox — Work-in-Progress Explorers</h1>
+    <h1>Research Sandbox – Work-in-Progress Excursions</h1>
     <p>
-      Work-in-progress interactive explorers built by
+      Work-in-progress interactive excursions built by
       <a href="https://search.asu.edu/profile/1995237" target="_blank" rel="noopener">Theodore Pavlic</a>
       to support ongoing research projects, many developed together with graduate students
       while working toward a paper or testing a hypothesis in the field.
@@ -333,42 +477,96 @@
     </p>
   </header>
 
-  <p class="status-note">
-    These are experimental demonstrations and explorations rather than finished tools, shared
-    early both as a resource for current and future collaborators and to plant a flag in the
-    underlying ideas. Expect rough edges, and expect them to change.
-  </p>
+  <div class="status-note">
+    <p>
+      These are experimental demonstrations and explorations rather than finished tools &ndash;
+      expect rough edges, and expect them to change. I built each one to communicate ideas of my
+      own and to give students, collaborators, and myself a place to experiment with them. They do
+      not disclose any student's unpublished work, though they may show how much of that later work
+      was grounded in ideas I had put forward here.
+    </p>
+    <p>
+      Sharing these openly is <strong>not</strong> a release of the underlying ideas into the
+      public domain. The MIT License covers the page code, not the research ideas it illustrates.
+      I retain authorship of those ideas and ask that they not be reused without attribution. If
+      you intend to build on any idea here that has not yet been published, please reach out to me
+      first as a professional courtesy.
+    </p>
+    <div class="legend" role="group" aria-label="Filter excursions by status">
+      <span class="legend-label">Status:</span>
+      <button type="button" class="pill pill-wip legend-pill" data-filter="wip" aria-pressed="false"
+              data-tip="work in progress: actively developed and likely to change"
+              aria-label="Work in progress: actively developed and likely to change. Click to show only these.">WIP</button>
+      <button type="button" class="pill pill-pub legend-pill" data-filter="pub" aria-pressed="false"
+              data-tip="completed and published; links to the paper's DOI where one exists"
+              aria-label="Published: completed and published; links to the paper's DOI where one exists. Click to show only these.">PUBLISHED</button>
+      <button type="button" class="pill pill-arc legend-pill" data-filter="arc" aria-pressed="false"
+              data-tip="set aside and no longer active; never published"
+              aria-label="Archived: set aside and no longer active; never published. Click to show only these.">ARCHIVED</button>
+      <span class="legend-status sr-only" aria-live="polite"></span>
+    </div>
+
+    <p class="copyright">
+      &copy; 2026 Theodore P. Pavlic. Page code released under the <a href="LICENSE">MIT License</a>;
+      the underlying ideas are not.
+    </p>
+  </div>
 
   <!-- ══════════════════════════════════════════════════════
-       Add explorers below. Once a preview image exists, restore the
-       thumbnail by adding, as the first child of <a class="demo-row">:
+       Excursion entry structure (data-status drives the legend filter):
 
-         <img class="demo-thumb"
-              src="my_explorer/my_explorer-preview.png"
-              alt="My Explorer preview"
-              width="120" height="90">
+         <li data-status="wip">
+           <div class="demo-row">
+             <div class="demo-text">
+               <h3><a class="stretched" href="my_excursion/my_excursion.html">Title</a><span class="pill pill-wip" role="note" tabindex="0" aria-label="Work in progress: actively developed and likely to change" data-tip="work in progress: actively developed and likely to change">WIP</span></h3>
+               <p>One-sentence description.</p>
+             </div>
+           </div>
+         </li>
+
+       The stretched title link makes the whole row clickable; the pill sits above it.
+
+       Status (set BOTH the li's data-status and the matching pill; the legend
+       in the callout box filters on data-status). Three statuses:
+         - Work in progress -> data-status="wip":
+             <span class="pill pill-wip" role="note" tabindex="0" aria-label="Work in progress: actively developed and likely to change" data-tip="work in progress: actively developed and likely to change">WIP</span>
+         - Published (completed, carried through to publication) -> data-status="pub".
+           Make the pill a link to the DOI:
+             <a class="pill pill-pub" href="https://doi.org/XX.XXXX/XXXXX" target="_blank" rel="noopener"
+                aria-label="Published; opens the paper's DOI">Published</a>
+         - Archived (set aside, no longer active, never published) -> data-status="arc":
+             <span class="pill pill-arc" role="note" tabindex="0" aria-label="Archived: set aside and no longer active; never published" data-tip="set aside and no longer active; never published">Archived</span>
+
+       Entry pills are status indicators only; filtering is driven by the legend
+       pills. Keep the legend's three tooltips in sync with these categories.
+
+       Once a preview image exists, add it as the first child of <div class="demo-row">:
+         <img class="demo-thumb" src="my_excursion/my_excursion-preview.png"
+              alt="My excursion preview" width="120" height="90">
   ═══════════════════════════════════════════════════════ -->
+
+  <p class="filter-empty" hidden></p>
 
   <section id="collective-behavior" class="demo-section">
     <h2>Collective Behavior</h2>
     <ul class="demo-list">
 
-      <li>
-        <a class="demo-row" href="ytree_detrend/ytree_detrend.html">
+      <li data-status="wip">
+        <div class="demo-row">
           <div class="demo-text">
-            <h3>Y-Tree Trajectory Detrending &amp; Spectral Analysis</h3>
+            <h3><a class="stretched" href="ytree_detrend/ytree_detrend.html">Y-Tree Trajectory Detrending &amp; Spectral Analysis</a><span class="pill pill-wip" role="note" tabindex="0" aria-label="Work in progress: actively developed and likely to change" data-tip="work in progress: actively developed and likely to change">WIP</span></h3>
             <p>Detrend and spectrally analyze the trajectories of collective-transport groups (weaver ants) moving loads vertically up trees, including forked trees, by projecting motion onto the tree.</p>
           </div>
-        </a>
+        </div>
       </li>
 
-      <li>
-        <a class="demo-row" href="rsf_explorer/rsf_explorer.html">
+      <li data-status="wip">
+        <div class="demo-row">
           <div class="demo-text">
-            <h3>RSF Explorer — Subnest Destination Choice</h3>
-            <p>Test field hypotheses about how distance interacts with other nest properties in the navigational choices of collective-transport groups and individual ants in polydomous colonies.</p>
+            <h3><a class="stretched" href="rsf_explorer/rsf_explorer.html">RSF Explorer – Subnest Destination Choice</a><span class="pill pill-wip" role="note" tabindex="0" aria-label="Work in progress: actively developed and likely to change" data-tip="work in progress: actively developed and likely to change">WIP</span></h3>
+            <p>Test field hypotheses about how distance interacts with other nest properties in the navigational choices of collective-transport groups and individual ants in polydomous colonies, framed through a resource selection function (RSF) for subnest destination choice.</p>
           </div>
-        </a>
+        </div>
       </li>
 
     </ul>
@@ -378,13 +576,13 @@
     <h2>Multi-Robot Systems</h2>
     <ul class="demo-list">
 
-      <li>
-        <a class="demo-row" href="v2v_swarm_explorer/v2v_swarm_explorer.html">
+      <li data-status="wip">
+        <div class="demo-row">
           <div class="demo-text">
-            <h3>V2V Energy-Safe Swarm Explorer</h3>
+            <h3><a class="stretched" href="v2v_swarm_explorer/v2v_swarm_explorer.html">V2V Energy-Safe Swarm Explorer</a><span class="pill pill-wip" role="note" tabindex="0" aria-label="Work in progress: actively developed and likely to change" data-tip="work in progress: actively developed and likely to change">WIP</span></h3>
             <p>Explore strategies for battery-safe vehicle-to-vehicle (V2V) energy sharing that extend the endurance and capabilities of multi-robot teams, with a related-work review exportable as Markdown and BibTeX.</p>
           </div>
-        </a>
+        </div>
       </li>
 
     </ul>
@@ -394,13 +592,13 @@
     <h2>Reinforcement Learning &amp; Decision Models</h2>
     <ul class="demo-list">
 
-      <li>
-        <a class="demo-row" href="social-cue-ql/social-cue-ql.html">
+      <li data-status="wip">
+        <div class="demo-row">
           <div class="demo-text">
-            <h3>Q-Learning Social Cue Model</h3>
+            <h3><a class="stretched" href="social-cue-ql/social-cue-ql.html">Q-Learning Social Cue Model</a><span class="pill pill-wip" role="note" tabindex="0" aria-label="Work in progress: actively developed and likely to change" data-tip="work in progress: actively developed and likely to change">WIP</span></h3>
             <p>Explore a connection between conventional reinforcement learning (Q-learning) and a psychological social-cue assay, as a candidate model for the phenomena.</p>
           </div>
-        </a>
+        </div>
       </li>
 
     </ul>
@@ -416,7 +614,7 @@
       </li>
 
       <li>
-        <a href="https://tpavlic.github.io/asu-bioinspired-ai-and-optimization/" target="_blank" rel="noopener">Bio-Inspired AI &amp; Optimization — Course Visualizations</a>
+        <a href="https://tpavlic.github.io/asu-bioinspired-ai-and-optimization/" target="_blank" rel="noopener">Bio-Inspired AI &amp; Optimization – Course Visualizations</a>
         <p>Supplemental interactive explorers for <em>IEE/CSE 598: Bio-Inspired AI and Optimization</em> at Arizona State University, spanning genetic algorithms, swarm intelligence, neural networks, and other bio-inspired methods.</p>
       </li>
 
@@ -435,9 +633,9 @@
 
   <footer>
     <p>
-      &copy; 2026 Theodore P. Pavlic &mdash;
+      &copy; 2026 Theodore P. Pavlic &ndash;
       <a href="https://github.com/tpavlic/research_sandbox" target="_blank" rel="noopener">Source on GitHub</a>
-      &mdash; Released under the <a href="LICENSE" target="_blank">MIT License</a>.
+      &ndash; Released under the <a href="LICENSE" target="_blank">MIT License</a>.
     </p>
   </footer>
 
@@ -495,6 +693,84 @@
         drawer.classList.remove('open');
         fab.setAttribute('aria-expanded', 'false');
       }
+    });
+
+    // ── Status filter (legend pills act like deactivatable radios) ────
+    const legendPills   = document.querySelectorAll('.legend-pill');
+    const statusMsg     = document.querySelector('.legend-status');
+    const emptyMsg      = document.querySelector('.filter-empty');
+    const taggedItems   = document.querySelectorAll('li[data-status]');
+    const demoSections  = document.querySelectorAll('.demo-section');
+    let activeFilter = null;
+
+    function applyFilter() {
+      taggedItems.forEach(li => {
+        li.hidden = activeFilter ? li.dataset.status !== activeFilter : false;
+      });
+      // Hide an excursion section if the filter empties it; leave untagged
+      // sections (e.g. "More from Ted Pavlic") alone.
+      demoSections.forEach(sec => {
+        const tagged = sec.querySelectorAll('li[data-status]');
+        if (!tagged.length) return;
+        sec.hidden = ![...tagged].some(li => !li.hidden);
+      });
+      legendPills.forEach(p =>
+        p.setAttribute('aria-pressed', String(p.dataset.filter === activeFilter))
+      );
+      // Empty-state note (e.g. filtering "Published" while everything is WIP).
+      const anyVisible = [...taggedItems].some(li => !li.hidden);
+      if (emptyMsg) {
+        const empty = activeFilter && !anyVisible;
+        emptyMsg.hidden = !empty;
+        if (empty) {
+          emptyMsg.textContent =
+            activeFilter === 'pub' ? 'No published excursions yet; these are all works in progress for now.'
+            : activeFilter === 'arc' ? 'No archived excursions yet; these are all works in progress for now.'
+            : 'No work-in-progress excursions to show.';
+        }
+      }
+      if (statusMsg) {
+        statusMsg.textContent = !activeFilter ? ''
+          : activeFilter === 'wip' ? 'Showing work in progress only.'
+          : activeFilter === 'pub' ? 'Showing published only.'
+          : 'Showing archived only.';
+      }
+    }
+
+    legendPills.forEach(p => p.addEventListener('click', () => {
+      const f = p.dataset.filter;
+      activeFilter = (activeFilter === f) ? null : f;   // click active again to clear
+      applyFilter();
+    }));
+
+    // ── Shared status tooltip (one element, JS-positioned, identical for all pills) ──
+    const tip = document.createElement('div');
+    tip.id = 'tip';
+    tip.setAttribute('role', 'tooltip');
+    document.body.appendChild(tip);
+
+    const TIP_W = 240;                              // must match #tip width in the CSS
+    function showTip(el) {
+      const text = el.getAttribute('data-tip');
+      if (!text) return;
+      tip.textContent = text;
+      const r = el.getBoundingClientRect();
+      const margin = 8;
+      const pillCenter = r.left + r.width / 2;
+      let left = pillCenter - TIP_W / 2;            // center the fixed-width box on the pill
+      left = Math.max(margin, Math.min(left, window.innerWidth - TIP_W - margin));  // keep on-screen
+      tip.style.left = Math.round(left) + 'px';
+      tip.style.top  = Math.round(r.bottom + 8) + 'px';
+      tip.style.setProperty('--arrow-x', Math.round(pillCenter - left) + 'px');  // arrow points at pill
+      tip.classList.add('show');
+    }
+    function hideTip() { tip.classList.remove('show'); }
+
+    document.querySelectorAll('[data-tip]').forEach(el => {
+      el.addEventListener('pointerenter', () => showTip(el));
+      el.addEventListener('pointerleave', hideTip);
+      el.addEventListener('focusin',  () => showTip(el));
+      el.addEventListener('focusout', hideTip);
     });
   </script>
 
