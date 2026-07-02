@@ -759,7 +759,7 @@ input[type="range"] {
   display: none;
   max-width: 860px;
   margin: 0 auto;
-  padding: 0 8px 40px;
+  padding: 0 8px 12px;
 }
 .rw-view.visible { display: block; }
 .rw-header {
@@ -823,7 +823,7 @@ input[type="range"] {
       from individual to network.
     </p>
     <p style="font-size: 11px; color: var(--ink-faint); margin: 6px 0 0 0;">
-      &copy; 2026 Theodore P. Pavlic &middot; <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; text-decoration-color: var(--ink-faint); text-underline-offset: 2px;">MIT License</a>
+      &copy; 2026 Theodore P. Pavlic &middot; <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">MIT License</a>
     </p>
   </header>
 
@@ -2071,7 +2071,7 @@ input[type="range"] {
                 <li style="margin-bottom:6px"><strong>Layered safety.</strong> The safety invariant need not be absolute: precision rescue in <em>Cataglyphis</em> and patient-initiated retrieval in <em>Megaponera</em> treat stranded individuals as recoverable failures rather than invariant breaches, pointing toward a framing in which the chain-safe V2V condition is the strong-safety mode and a separate rescue layer handles its failures within bounded time.</li>
                 <li style="margin-bottom:6px"><strong>Fairness in refueler allocation.</strong> Once refueler robots are the constrained resource rather than a fixed charging station, the question of equitable service across a heterogeneous fleet becomes live. Ziouzios et al. 2025 treat this for fixed-station UGV fleets; the analogous problem for a V2V swarm — which field robot gets the next available refueler, and whether the allocation is fair across robot types with different energy demands — is open.</li>
               </ul>
-              <p style="margin:6px 0 0 0">None of these is represented in the simulator, and none needs to be, but all are where the literature points.</p>
+              <p style="margin:6px 0 0 0">None of these are represented in the simulator, and none need to be, but all are where the literature points.</p>
             </p>
           </div>
         </div>
@@ -6874,8 +6874,11 @@ updateRefuelerDependentStyling();
 updateV2vDependentStyling();
 loop();
 </script>
-<footer id="back-link-footer" style="max-width:1380px;margin:0 auto;padding:0 0 1.5rem;">
-  <div style="padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+<div style="max-width:1380px;margin:0 auto;padding:1rem 0 0;font-size:0.8rem;color:var(--ink-faint);text-align:center;">
+  &copy; 2026 Theodore P. Pavlic &middot; <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">MIT License</a>
+</div>
+<footer id="back-link-footer" style="max-width:1380px;margin:0 auto;padding:0;">
+  <div style="padding-top:0.35rem;font-size:0.8rem;color:#888;">
     <a href="../" style="color:var(--accent);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All excursions</a>
   </div>
 </footer>

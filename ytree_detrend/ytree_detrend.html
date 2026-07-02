@@ -418,14 +418,15 @@ a { color: var(--accent); }
 
 .foot {
   border-top: 1px solid var(--border);
-  margin-top: 36px;
+  margin-top: 18px;
   padding-top: 12px;
   font-size: 0.74rem;
   color: var(--tiny);
-  text-align: right;
+  text-align: center;
   font-family: var(--mono);
 }
-.foot a { color: var(--tiny); text-decoration: underline; }
+.foot a { color: var(--green-dark); text-decoration: none; }
+.foot a:hover { text-decoration: underline; }
 .footer-sep { display: inline; }
 .footer-lic { display: inline; }
 
@@ -1366,7 +1367,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
   <div class="foot">
     &copy; 2026 Theodore P. Pavlic<span class="footer-sep">&nbsp;&middot;&nbsp;</span><a class="footer-lic" href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT&nbsp;License</a>
   </div>
-  <footer id="back-link-footer" style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+  <footer id="back-link-footer" style="margin-top:0.75rem;font-size:0.8rem;color:#888;">
     <a href="../" style="color:var(--green-dark);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All excursions</a>
   </footer>
 </div>
