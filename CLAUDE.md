@@ -94,7 +94,7 @@ At the very bottom of `<body>`, before `</body>`, add:
 ```html
 <footer id="back-link-footer" style="max-width:CONTENT_MAX_WIDTH;margin:0 auto;padding:0 CONTENT_HPAD 1.5rem;">
   <div style="padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
-    <a href="../" style="color:#6b21a8;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All excursions</a>
+    <a href="../" style="color:#6b21a8;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><span style="font-family:sans-serif">&larr;</span> All excursions</a>
   </div>
 </footer>
 <script>
@@ -105,6 +105,38 @@ if (window.self !== window.top) { var f = document.getElementById('back-link-foo
 Replace `CONTENT_MAX_WIDTH` and `CONTENT_HPAD` with the `max-width` and horizontal `padding` of
 the page's main centered content container so the back-link aligns with the page content. The
 script hides the footer when the page is embedded in a Canvas LMS iframe.
+
+The back-link color is the site accent `#6b21a8` so it reads as one of the page's own links; keep
+a literal hex (not a CSS variable) so the footer stays self-contained when the widget source is
+re-pasted. If an excursion uses a different link color, match that instead.
+
+**Watch for body padding:** if the page's `body` CSS has no `padding-bottom`, the footer sits
+flush against the viewport edge. Add `padding-bottom` to the body, bump the footer's bottom
+padding, or add `margin-bottom` if needed.
+
+**Back-link arrow (`&larr;`) glyph varies by font fallback.** The page webfonts usually lack a
+`←` glyph, so it falls back down the stack. A stack containing `system-ui`/`-apple-system`
+renders a short, stubby `←` (San Francisco on macOS), whereas falling through to the generic
+`sans-serif` gives a longer, nicer `←` (Helvetica/Arial). For a consistent long arrow, wrap just
+the arrow in `<span style="font-family:sans-serif">&larr;</span>` (as in the template above) so
+it never picks up `system-ui`.
+
+**A generic `footer { … }` rule can leak onto `#back-link-footer`.** If a page styles its own
+copyright `footer{}` (font-family, `text-align`, `border-top`, `margin-top`, padding), those
+properties also land on the back-link footer, since both are `<footer>` elements — giving an
+unwanted second horizontal rule, a mono font, or a large gap. Reset the offending properties on
+`#back-link-footer` inline, or scope the rule to `footer:not(#back-link-footer)`.
+
+**Link decoration (underline) consistency.** Within each page, the copyright/license "MIT
+License" link (in the `.status-note` callout) and the back-link should share ONE underline
+behavior; the default is **hover-underline** (no resting underline, no hover-bold, no hover
+color-shift — the underline appears only on hover). Use a resting (always-on) underline only when
+a link is the *same color* as its surrounding text so nothing else signals it is a link; better
+still, give such links a distinct accent color and keep hover-underline. Choose each link's color
+to be readable **and** distinct from adjacent text *in its own context* (an accent that reads on a
+light background is often unreadable on a dark banner). Bring body/reference links into the same
+behavior via the page's global `a{}` rule (`a{…;text-decoration:none} a:hover{text-decoration:underline}`)
+so the whole page is consistent.
 
 ### 3. Entry in `index.html`
 
@@ -120,6 +152,31 @@ Add a row to the appropriate table under `## Contents`.
 ### 5. Entry in `CLAUDE.md`
 
 Update the **Current excursions** list below.
+
+---
+
+## HiDPI `<canvas>` rendering
+
+Any `<canvas>` drawing (plots, trajectories, phase portraits, spectra) looks blurry on
+retina/HiDPI unless the backing store is scaled by `devicePixelRatio`. Draw in **logical** units
+but size the backing store at `logical × dpr` and scale the context once:
+
+```js
+const dpr = window.devicePixelRatio || 1, W = 600, H = 175;   // logical size
+cv.style.width = W + 'px';                                     // display size (height:auto keeps ratio)
+cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+const ctx = cv.getContext('2d');
+ctx.setTransform(dpr, 0, 0, dpr, 0, 0);                        // all drawing below uses logical W,H
+```
+
+- Draw with the logical `W`/`H`, **not** `cv.width`/`cv.height` (those are now the larger backing
+  store — using them would double-scale).
+- For a canvas redrawn every frame, guard the resize (`if (cv.width !== Math.round(W*dpr)) { … }`)
+  so an incremental (non-clearing) draw loop is not wiped each frame.
+- Mouse/click mapping that uses `getBoundingClientRect()` normalized to `[0,1]` is unaffected by
+  the backing-store change, so interaction keeps working.
+
+When adding or reviewing an excursion with canvas graphics, check that this dpr scaling is present.
 
 ---
 
