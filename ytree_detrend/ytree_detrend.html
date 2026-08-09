@@ -267,6 +267,53 @@ a { color: var(--accent); }
 .toggle-disabled { opacity: 0.35; pointer-events: none; }
 .ctrl-disabled   { opacity: 0.35; pointer-events: none; }
 
+/* ── Help tooltips ───────────────────────────────────────────────────────────
+   The affordance is a dotted underline on the label text. The bubble itself is a
+   single element positioned by script (see initTips) rather than a ::after, because
+   CSS cannot measure the viewport and bubbles on the outermost controls were being
+   clipped at the window edges. */
+.tip {
+  border-bottom: 1px dotted var(--muted);
+  cursor: help;
+}
+.tip:hover { border-bottom-color: var(--green-dark); color: var(--green-dark); }
+.tip-pop {
+  position: absolute;
+  display: none;
+  z-index: 200;
+  max-width: 380px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: #1f1f1f;
+  color: #f2f2f2;
+  font-family: var(--sans);
+  font-size: 0.76rem;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+  pointer-events: none;
+}
+/* A label is a space-between flex row, so EVERY child becomes its own flex item
+   and gets spread across the width. Labels that carry more than a bare value must
+   therefore keep that trailing content inside one wrapper, or the row ends up with
+   "cutoff", "f", "=" and the number all pushed apart. */
+/* Full-width rows: keep the readout next to its name rather than flung to the
+   far right of a very wide row, where the two stop reading as one statement. */
+.ctrl label.lab-tight { justify-content: flex-start; gap: 0.5em; }
+.ctrl label.lab-tight .lab-vals { margin-left: 0; }
+.lab-vals {
+  /* Inline, NOT flex: a flex container would make the subscript in "f_cut" and the
+     "=" into separate items and space them apart. Normal inline flow keeps the
+     expression reading as one phrase. */
+  display: inline-block;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .sec-divider {
   border-top: 1px dashed var(--border);
   margin: 14px 0 12px;
@@ -484,12 +531,15 @@ a { color: var(--accent); }
       deliberation, drift &mdash; one first needs to subtract the trend. This widget illustrates two complementary
       ways to do it: (1) fit a smooth spline to the trajectory and study the perpendicular residuals
       <code>d(s)</code>, or (2) compute a windowed Fourier transform of lateral position
-      <code>x(z)</code> along the trunk and treat low spatial frequencies as the trend.
+      <code>x(y)</code> against height and treat low spatial frequencies as the trend. The second route
+      is the model-free one: it never estimates where the tree is.
     </p>
     <p class="lede" style="font-size: 0.85rem; color: var(--muted);">
       The trajectory is modeled as an autocorrelated random walk along the centerline, clipped to the trunk
       surface &mdash; every sample sits on the tree, mimicking samples from a single video of a load being
-      cooperatively transported.
+      cooperatively transported. Approaching the fork, the walk becomes both wider and
+      <em>quicker</em>; the change in speed, not the change in width, is what a spatial-frequency
+      cutoff can separate from the tree.
     </p>
   </div>
 
@@ -531,32 +581,32 @@ a { color: var(--accent); }
         <h3>Controls</h3>
         <div class="ctrls">
           <div class="ctrl">
-            <label>Tree type <span class="v" id="v-treeType">Y</span></label>
+            <label><span class="tip" data-tip="Y gives a forked tree, so the centreline kinks at the fork and there is a fork height to look for signal near. I is a straight trunk with no kink, useful as a control: any structure you see there cannot be the fork.">Tree type</span> <span class="v" id="v-treeType">Y</span></label>
             <select id="treeType">
               <option value="Y" selected>Y &mdash; forked</option>
               <option value="I">I &mdash; straight</option>
             </select>
           </div>
           <div class="ctrl">
-            <label>Branch angle <span class="v" id="v-theta">35&deg;</span></label>
+            <label><span class="tip" data-tip="Angle of the branch away from vertical. A wider angle makes the kink at the fork sharper and the branch&#39;s sideways ramp steeper, so it puts more tree power into the low-frequency band.">Branch angle</span> <span class="v" id="v-theta">35&deg;</span></label>
             <input type="range" id="theta" min="15" max="65" value="35">
           </div>
 
           <div class="ctrl">
-            <label>Samples N <span class="v" id="v-N">100</span></label>
+            <label><span class="tip" data-tip="Number of trajectory samples, i.e. video frames. More samples means finer spacing in height, which raises the Nyquist limit and so widens the usable frequency axis of the spectrogram.">Samples N</span> <span class="v" id="v-N">100</span></label>
             <input type="range" id="N" min="40" max="240" value="100">
           </div>
           <div class="ctrl">
-            <label>Spline DF (cubic) <span class="v" id="v-df">6</span></label>
+            <label><span class="tip" data-tip="Degrees of freedom of the cubic B-spline used by the other tabs. More DF lets the spline follow the trajectory more closely, eventually absorbing the ant behaviour you are trying to measure. This is the spline route&#39;s tuning knob, the counterpart of L_bend here.">Spline DF (cubic)</span> <span class="v" id="v-df">6</span></label>
             <input type="range" id="df" min="4" max="14" value="6">
           </div>
 
           <div class="ctrl">
-            <label><span>Baseline <span class="greek">&sigma;</span></span><span class="v" id="v-sbase">0.030</span></label>
+            <label><span class="tip" data-tip="Width of the ordinary side-to-side wobble away from the deliberation window, as a standard deviation in tree-width units. This sets how WIDE the baseline wander is, not how quick.">Baseline <span class="greek">&sigma;</span></span><span class="v" id="v-sbase">0.030</span></label>
             <input type="range" id="sbase" min="2" max="40" value="30">
           </div>
           <div class="ctrl">
-            <label>Pre-fork deliberation <span class="v" id="v-sdel">0.080</span></label>
+            <label><span class="tip" data-tip="Extra wobble WIDTH added around the fork. On its own this only makes the same slow wobble louder, which moves no power across the divide. The companion control that changes wobble SPEED, and so does move power, is Deliberation quickness on the Fourier tab.">Pre-fork deliberation</span> <span class="v" id="v-sdel">0.080</span></label>
             <input type="range" id="sdel" min="0" max="150" value="80">
           </div>
 
@@ -1164,29 +1214,50 @@ edf <- gx$edf + gy$edf</pre></div>
   <div class="tabpane" data-pane="3">
 
     <div class="explainer" style="margin-top:0;">
-      <h4>Spectral detrending as an alternative</h4>
+      <h4>Separating by scale instead of detrending</h4>
       <p>
         Instead of fitting a spline and subtracting it, we can move directly into the spatial-frequency
-        domain. Let <code>d&perp;(z)</code> be the perpendicular deviation from the tree centerline
-        as a function of arc-length height <code>z</code>, resampled onto a uniform grid.
-        (Using the raw <em>x</em> coordinate instead would mix in the lateral trend of the branch,
-        creating a large DC component at branch heights &mdash; the perpendicular deviation is
-        zero-mean by construction.)
-        The trunk&rsquo;s gentle curvature and the trajectory&rsquo;s slow drift contribute power
-        at <em>low</em> spatial frequencies; pre-fork deliberation contributes power at
-        <em>higher</em> frequencies localized near the fork. A windowed Fourier transform of
-        <code>d&perp;(z)</code> exposes both at once.
+        domain. Let <code>x(y)</code> be the observed lateral coordinate as a function of height
+        <code>y</code>, resampled onto a uniform grid. Nothing about the tree is used: the tree&rsquo;s
+        shape is precisely what the spline tabs have to estimate, and the point of this route is to
+        avoid estimating it. The trunk&rsquo;s gentle curvature, the branch&rsquo;s sideways ramp, and
+        the trajectory&rsquo;s slow drift all contribute power at <em>low</em> spatial frequencies;
+        deliberation contributes faster side-to-side movement, and therefore power at <em>higher</em>
+        frequencies. A windowed Fourier transform of <code>x(y)</code> exposes both at once.
+      </p>
+      <p>
+        Nothing is subtracted off first. That is the whole point: the transform is what does the
+        separating, so the trend has to be left in for the divide to have anything to separate, and the
+        tree shows up as the bright band along the left edge. The one exception is each window&rsquo;s
+        mean, which is not a trend at all, being wherever the horizontal origin happens to sit. Leaving
+        it in would put a single DC bin about 17 times above anything past the divide and flatten the
+        rest of the plot to black.
       </p>
       <p>
         The slow trajectory shape has some characteristic length scale <code>L<sub>bend</sub></code>.
-        A cutoff at spatial frequency <code>f<sub>cut</sub> = 1 / L<sub>bend</sub></code>
-        plays the same role as a spline detrend: power below the cutoff is &ldquo;trend&rdquo;
-        and is ignored; power above the cutoff is candidate behavioral structure. Drag the
-        <code>L<sub>bend</sub></code> slider to move the cutoff.
+        The divide at spatial frequency <code>f<sub>cut</sub> = 1 / L<sub>bend</sub></code> reaches the
+        same end as a spline detrend without fitting or subtracting anything: power below it is the
+        tree, power above it is candidate behavioral structure. Drag the <code>L<sub>bend</sub></code>
+        slider to move the divide. What you are looking for is energy crossing to the <em>right</em> of
+        the dashed line as the load approaches the fork.
       </p>
       <p style="font-size:0.88em; color:var(--muted);">
-        <b>Why vertical = z.</b> The spectrogram is plotted with the same vertical axis as the tree
-        on the left, so you can read frequencies at any height by sliding your eye up the column.
+        <b>Why vertical = y.</b> Height is directly observable and, unlike distance travelled along the
+        trajectory, is unaffected by the wobble being measured. Parameterizing by path length would let
+        a bout of wide side-to-side movement advance the axis faster, stretching that bout to a longer
+        apparent wavelength and pushing it the wrong way across the cutoff. Height also lets this panel
+        share a vertical axis with the tree beside it, so the dashed fork line falls at the same place
+        in both and any height can be read straight across.
+      </p>
+      <p style="font-size:0.88em; color:var(--muted);">
+        <b>Two things to be wary of.</b> The fork is a kink in the trend itself, so the tree alone puts
+        a broadband smudge at that height; its energy falls off like <code>1/f&sup2;</code>, so most of
+        it should stay left of the cutoff, but the streak at the fork row is not evidence of behavior.
+        And the frequency axis stops at the Nyquist limit of the raw samples, not beyond it: resampling
+        onto a finer grid would only interpolate, and interpolation corners are broadband, producing a
+        floor that is invisible where the signal is strong and dominant wherever it is weak. That is how
+        a quiet, straight stretch of trunk can be painted as high frequency, especially under per-slice
+        normalization, which rescales an almost empty window to full brightness.
       </p>
     </div>
 
@@ -1195,23 +1266,37 @@ edf <- gx$edf + gy$edf</pre></div>
         <h3>Tree with samples</h3>
         <div class="viz-wrap" id="treeWrap-4"></div>
         <div class="viz-cap">
-          The current trajectory drawn on the tree. The lateral position <code>x(z)</code> used
+          The current trajectory drawn on the tree. The lateral position <code>x(y)</code> used
           by the spectrogram on the right is the horizontal coordinate of these samples.
+          The dashed orange fork line is drawn at the same height in both panels, and on the
+          same pixel row wherever the two sit side by side.
+        </div>
+        <div class="ctrl-row" style="margin-top:10px;">
+          <button class="btn" id="btn-resim-4"
+                  data-tip="Draws a fresh AR(1) noise realization from a new random seed, with every other setting unchanged. Use it to check whether a feature in the spectrogram is a real consequence of the settings or just one lucky draw.">New realization</button>
+          <span style="font-size:0.78rem; color:var(--muted);">fresh AR(1) draw</span>
         </div>
       </div>
 
       <div class="panel">
-        <h3>Spectrogram of <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">d&perp;(z)</span> &mdash; lateral deviation</h3>
+        <h3>Spectrogram of <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">x(y)</span> &mdash; lateral position</h3>
         <div class="viz-wrap" id="wftWrap-4"></div>
         <div class="viz-cap">
-          Magnitude of the windowed Fourier transform of the perpendicular deviation
-          <code>d&perp;(z)</code> from the tree centerline, as a function of arc-length height&nbsp;<code>z</code>.
-          Using the perpendicular deviation (rather than raw&nbsp;<em>x</em>) removes the systematic
-          lateral trend from the angled branch, leaving only the behavioral wobble.
-          Vertical axis is height <code>z</code> (aligned to the tree on the left); horizontal axis
-          is spatial frequency. The horizontal orange line marks <code>z</code> at the fork.
-          The dashed white vertical line is the detrending cutoff
-          <code>f<sub>cut</sub> = 1/L<sub>bend</sub></code>; power to its left is treated as trend.
+          Magnitude of the windowed Fourier transform of the observed lateral coordinate
+          <code>x(y)</code>, as a function of height&nbsp;<code>y</code>. No knowledge of the tree is
+          used, and nothing is detrended: the trend stays in, which is why the bright band on the far
+          left is the tree itself. Only each window&rsquo;s mean is subtracted, and that is an arbitrary
+          coordinate origin rather than a trend.
+          Vertical axis is height <code>y</code>, shared with the tree on the left; horizontal axis
+          is spatial frequency, stopping at the raw samples&rsquo; Nyquist limit. The horizontal orange
+          line marks the fork. The dashed white vertical line is the predicted divide
+          <code>f<sub>cut</sub> = 1/L<sub>bend</sub></code> in spatial frequency between power
+          contributions from the smoothly changing tree (left of the line) and from tighter changes
+          intrinsic to the ant dynamics (right of the line). The faint dashed lines marked
+          <em>edge</em> sit <code>W/2</code> (half of the window length) from the top and bottom of the
+          tree, and more specifically of the trajectory data. Between the edges of the tree and those
+          <em>edge</em> lines, part of the <code>W</code> window is not reflective of the trajectory
+          data, so read those bands with caution.
         </div>
       </div>
     </div>
@@ -1220,16 +1305,16 @@ edf <- gx$edf + gy$edf</pre></div>
       <h3>Controls</h3>
       <div class="ctrls">
         <div class="ctrl">
-          <label>Window length W <span class="v" id="v-W">32</span></label>
-          <input type="range" id="W" min="8" max="64" step="2" value="32">
+          <label><span class="tip" data-tip="Number of grid samples in each slice of the transform. Sets the trade-off: a longer window resolves frequency more finely but smears everything over a taller stretch of the tree, and the *edge* bands grow to W/2 at each end. The default spans about one deliberation bout, which is where the signal is easiest to see.">Window length W</span> <span class="v" id="v-W">20</span></label>
+          <input type="range" id="W" min="8" max="64" step="2" value="20">
         </div>
         <div class="ctrl">
-          <label>Hop <span class="v" id="v-hop">4</span></label>
+          <label><span class="tip" data-tip="How far the window slides between slices, in grid samples. It controls only how finely the spectrogram is sampled up the tree, NOT how sharply it can localize (that is W). hop = 4 with W = 20 means consecutive windows overlap by 80%, giving a smooth picture; hop = W would butt them end to end with no overlap.">Hop</span> <span class="v" id="v-hop">4</span></label>
           <input type="range" id="hop" min="1" max="16" value="4">
         </div>
 
         <div class="ctrl">
-          <label>Window type <span class="v" id="v-win">Hann</span></label>
+          <label><span class="tip" data-tip="The taper applied across each window. Hann and Hamming fade to near zero at the edges, which suppresses the false broadband energy a hard cut-off would smear across all frequencies. Rectangular applies no taper and leaks badly. Gaussian is optimal in the joint scale/position sense (Gabor&#39;s bound).">Window type</span> <span class="v" id="v-win">Hann</span></label>
           <select id="win">
             <option value="hann" selected>Hann</option>
             <option value="hamming">Hamming</option>
@@ -1238,7 +1323,7 @@ edf <- gx$edf + gy$edf</pre></div>
           </select>
         </div>
         <div class="ctrl">
-          <label>Colormap <span class="v" id="v-cmap">viridis</span></label>
+          <label><span class="tip" data-tip="Colour scale for magnitude. viridis and magma are perceptually uniform, so equal colour steps mean equal magnitude steps; gray is there for print.">Colormap</span> <span class="v" id="v-cmap">viridis</span></label>
           <select id="cmap">
             <option value="viridis" selected>viridis</option>
             <option value="magma">magma</option>
@@ -1247,15 +1332,22 @@ edf <- gx$edf + gy$edf</pre></div>
         </div>
 
         <div class="ctrl" style="grid-column: 1 / -1;">
-          <label>Bend length scale L<sub>bend</sub> &nbsp;<span class="v" id="v-Lbend">0.150</span> &nbsp;&middot;&nbsp; cutoff f<sub>cut</sub> = <span class="v" id="v-fcut">6.67</span></label>
+          <label class="lab-tight"><span class="tip" data-tip="A heuristic length scale: changes slower than L_bend are treated as tree, faster as ant. The divide sits at f_cut = 1/L_bend. It is a judgement about the trajectory, not a property of the analysis, and does not depend on the window in any way. Window length affects only how sharply the two sides can be told apart, never where the divide belongs.">Bend length scale L<sub>bend</sub></span><span class="lab-vals"><span class="v" id="v-Lbend">0.150</span> &middot; cutoff f<sub>cut</sub> = <span class="v" id="v-fcut">6.67</span></span></label>
           <input type="range" id="Lbend" min="5" max="60" value="15">
+        </div>
+        <div class="ctrl" style="grid-column: 1 / -1;">
+          <label class="lab-tight"><span class="tip" data-tip="How quick the side-to-side movement becomes inside the deliberation window, as an AR(1) coefficient. LOWER = the load changes direction sooner = shorter wavelength = power further RIGHT on the frequency axis. At 0.92 it matches the baseline wobble and the deliberation band vanishes, which is the control to try first: sweep it down and watch a bright patch appear right of the divide at the fork height.">Deliberation quickness</span><span class="lab-vals"><span class="v" id="v-alphaD">0.55</span> &middot; baseline is 0.92</span></label>
+          <input type="range" id="alphaD" min="20" max="92" value="55">
+        </div>
+        <div class="ctrl" style="grid-column: 1 / -1;">
+          <label class="lab-tight"><span class="tip" data-tip="Read-only. K is the number of points on the uniform height grid, chosen so its spacing matches the coarsest spacing of the raw samples in y. f_Nyquist is the highest spatial frequency those samples can support, and the frequency axis stops there.">Analysis grid</span> <span class="v" id="v-grid">&mdash;</span></label>
         </div>
       </div>
 
       <div class="sec-divider"></div>
       <div class="toggles">
-        <label class="toggle"><input type="checkbox" id="tg-log"> log magnitude</label>
-        <label class="toggle"><input type="checkbox" id="tg-perCol"> per-slice normalization</label>
+        <label class="toggle"><input type="checkbox" id="tg-log"> <span class="tip" data-tip="Rescale magnitude as log10(1 + 9v) so weak components become visible. Worth trying when the low-frequency band still dominates a slice and you want to see faint structure to the right of the divide.">log magnitude</span></label>
+        <label class="toggle"><input type="checkbox" id="tg-perCol" checked> <span class="tip" data-tip="ON by default. Rescales every height slice to its own maximum, so what you compare between heights is the SHAPE of the spectrum rather than its loudness. Without it the branch dominates, because its sideways ramp is genuinely large: the top of the plot washes out and the trunk goes dark. It changes only the picture, never the numbers, since the tree/ant split is a ratio within each slice. One caveat: a slice with almost no power gets its noise floor promoted to full brightness.">per-slice normalization</span></label>
       </div>
     </div>
 
@@ -1263,14 +1355,22 @@ edf <- gx$edf + gy$edf</pre></div>
       <h4>What the controls do</h4>
       <p>
         <b>Window length W</b> &mdash; number of samples in each STFT slice. Larger <code>W</code>
-        gives better frequency resolution but coarser localization in <code>z</code>; a Heisenberg-style
-        trade-off. With <code>K&nbsp;=&nbsp;256</code> uniform <code>z</code> samples and
-        <code>W&nbsp;=&nbsp;32</code>, each slice spans roughly 12% of the trunk.
+        gives better frequency resolution but coarser localization in <code>y</code>; a Heisenberg-style
+        trade-off, and one you can see directly, as the <em>edge</em> bands at the top and bottom of the
+        spectrogram are each <code>W/2</code> deep and grow as you widen the window. The uniform grid
+        <code>K</code> is not a free parameter: it is set so the grid spacing matches the coarsest
+        spacing of the raw samples in <code>y</code>, which is what fixes the right-hand end of the
+        frequency axis. Both <code>K</code> and the resulting Nyquist limit are reported under the
+        <code>L<sub>bend</sub></code> slider, along with a note if <code>W</code> had to be capped
+        to fit the grid.
       </p>
       <p>
         <b>Hop</b> &mdash; shift between consecutive windows. Smaller hop means more overlap (smoother
         spectrogram, more compute). Default <code>hop&nbsp;=&nbsp;4</code> with
-        <code>W&nbsp;=&nbsp;32</code> gives 87.5% overlap.
+        <code>W&nbsp;=&nbsp;20</code> gives 80% overlap. The default <code>W</code> is set so a window
+        spans about the same height as a deliberation bout: widen it much beyond that and the bout is
+        smeared across many slices, narrow it much below and too few frequency bins fall below
+        <code>f<sub>cut</sub></code> to read the split.
       </p>
       <p>
         <b>Window type</b> &mdash;
@@ -1289,8 +1389,11 @@ edf <- gx$edf + gy$edf</pre></div>
       <p>
         <b>log magnitude</b> &mdash; switch from linear to <code>log<sub>10</sub>(1+9v)</code> scaling
         of the spectrogram so weaker components become visible.
-        <b>Per-slice normalization</b> &mdash; rescale each <code>z</code>-slice to its own max,
-        useful when overall power varies along the trunk.
+        <b>Per-slice normalization</b> &mdash; rescale each <code>y</code>-slice to its own max,
+        useful when overall power varies along the trunk. Read it with care: a slice whose absolute
+        power is near zero gets its noise floor promoted to full brightness, so bright high-frequency
+        bands on quiet, straight stretches are the expected artifact of this option rather than a
+        finding. Cross-check anything interesting with the option off.
       </p>
     </div>
 
@@ -1308,57 +1411,85 @@ edf <- gx$edf + gy$edf</pre></div>
       </div>
       <div class="rpane active" data-rpane="t3-base"><pre>library(signal)
 
-# Resample x as a function of height z onto a uniform grid.
-# (y from the trajectory plays the role of trunk-aligned height.)
-z_grid <- seq(min(ants$y), max(ants$y), length.out = 256)
-xz     <- approx(ants$y, ants$x, xout = z_grid)$y
-dz     <- diff(z_grid)[1]
+# Lateral coordinate x resampled against HEIGHT y.  Grid spacing matches the
+# coarsest raw spacing in y, so the frequency axis stops where the samples stop
+# supporting it; a finer grid would only interpolate, and interpolation corners
+# are broadband.
+K      <- round(diff(range(ants$y)) / max(diff(ants$y))) + 1
+y_grid <- seq(min(ants$y), max(ants$y), length.out = K)
+xy     <- approx(ants$y, ants$x, xout = y_grid)$y
+dy     <- diff(y_grid)[1]
 
-# Windowed Fourier transform: Hann window, hop = W - overlap
-W   <- 32
-hop <- 4
-spec <- specgram(xz, n = W, Fs = 1/dz,
-                 window = hanning(W),
-                 overlap = W - hop)
+W <- 20; hop <- 4              # W spans about one deliberation bout
+sp <- specgram(xy, n = W, Fs = 1/dy, window = hanning(W), overlap = W - hop)
 
-# Mark the fork height and the spatial-scale cutoff
-z_fork <- 1                    # height of the geometric fork
-L_bend <- 0.15                 # estimated bend length scale
-f_cut  <- 1 / L_bend           # detrending cutoff in 1/length
+# specgram reports frame STARTS in sp$t, as offsets from the first sample.
+# Shift to frame centres, expressed as height:
+y_c <- min(ants$y) + sp$t + (W %/% 2 - 1) * dy
 
-# Plot with VERTICAL = z (transpose so z runs up the y-axis):
-image(x = spec$f, y = spec$t, z = abs(spec$S),
+# Drop the DC row.  It is the window mean, i.e. wherever the x-origin happens to
+# sit, and it runs ~32x the rest of the spectrum.  Dropping it does the same job
+# as subtracting each window's mean: the next bin up is inflated only ~1.4x by
+# leakage and the bins beyond that not at all.  The trend itself is NOT removed,
+# and shows up as the bright band at the left.
+mag <- Mod(sp$S)[-1, ]
+f   <- sp$f[-1]
+
+y_fork <- 1                    # height of the geometric fork
+L_bend <- 0.15                 # length scale treated as tree rather than ant
+f_cut  <- 1 / L_bend           # the divide, in 1/length
+
+# VERTICAL = y, so it reads against a drawing of the tree
+image(x = f, y = y_c, z = mag,
       col   = hcl.colors(64, "viridis"),
       xlab  = "spatial frequency  (1/length)",
-      ylab  = "height z")
-abline(h = z_fork, col = "darkorange", lwd = 2)
-abline(v = f_cut,  col = "white", lty = 2, lwd = 1.5)</pre></div>
+      ylab  = "height y")
+abline(h = y_fork, col = "darkorange", lwd = 2)
+abline(v = f_cut,  col = "white", lty = 2, lwd = 1.5)
+
+# This covers only the middle ~67% of the tree, and that is not a bug: specgram
+# places a frame only where a whole window fits, so nothing is centred within
+# W/2 of either end.  Widen W and the covered band shrinks further.  The widget
+# zero-fills past the ends so the axis can be shared with a drawing of the tree,
+# and marks those bands, since part of the window there is not real data.</pre></div>
       <div class="rpane" data-rpane="t3-tidy"><pre>library(signal)
 library(tibble)
 library(dplyr)
 library(tidyr)
+library(purrr)
 library(ggplot2)
 
-z_grid <- seq(min(ants$y), max(ants$y), length.out = 256)
-xz     <- approx(ants$y, ants$x, xout = z_grid)$y
-dz     <- diff(z_grid)[1]
+# Uniform grid in HEIGHT, spaced to match the coarsest raw spacing so the
+# frequency axis never runs past what the samples support.
+K      <- round(diff(range(ants$y)) / max(diff(ants$y))) + 1
+y_grid <- seq(min(ants$y), max(ants$y), length.out = K)
+xy     <- approx(ants$y, ants$x, xout = y_grid)$y
+dy     <- diff(y_grid)[1]
 
-spec <- specgram(xz, n = 32, Fs = 1/dz,
-                 window = hanning(32), overlap = 28)
+W <- 20; hop <- 4              # W spans about one deliberation bout
+win <- hanning(W)
+pad <- W %/% 2
+xp  <- c(numeric(pad), xy, numeric(pad))
 
-spec_df <- expand_grid(
-  z = spec$t,
-  f = spec$f
-) |>
-  mutate(magnitude = as.numeric(abs(spec$S)))
+# Frames centred on grid points, each window's mean removed
+spec_df <- tibble(ctr = seq(1, K, by = hop)) |>
+  mutate(
+    y = y_grid[ctr],
+    mag = map(ctr, \(i) {
+      seg <- xp[i:(i + W - 1)]
+      tibble(f         = (0:(W %/% 2)) / (W * dy),
+             magnitude = Mod(fft((seg - mean(seg)) * win))[1:(W %/% 2 + 1)])
+    })
+  ) |>
+  unnest(mag)
 
-# Vertical axis = z, horizontal axis = spatial frequency
-ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
+# Vertical axis = height y, horizontal axis = spatial frequency
+ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
   geom_raster() +
   geom_hline(yintercept = 1,        color = "darkorange", linewidth = 1.2) +
   geom_vline(xintercept = 1 / 0.15, color = "white",      linetype  = "dashed") +
   scale_fill_viridis_c() +
-  labs(x = "spatial freq  (1/length)", y = "height z") +
+  labs(x = "spatial freq  (1/length)", y = "height y") +
   theme_minimal()</pre></div>
     </div>
 
@@ -1385,14 +1516,18 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         df: 6,
         sBase: 0.030,
         sDel: 0.100,
-        delibWidth: 0.12,
+        delibWidth: 0.20,
         showSkel: true,
         showSpline: true,
         showKnots: false,
         showDevs: true,
         avgMode: 'single',
-        W: 32, hop: 4, win: 'hann', cmap: 'viridis',
-        Lbend: 0.150, logMag: false, perCol: false,
+        // W is chosen so the window spans about the same height as a deliberation
+        // bout. Much wider and the bout is smeared across many columns; much
+        // narrower and there are too few bins below f_cut to read the split.
+        W: 20, hop: 4, win: 'hann', cmap: 'viridis',
+        alphaDelib: 0.55,       // AR(1) coefficient inside the deliberation bump (= ALPHA_DELIB)
+        Lbend: 0.150, logMag: false, perCol: true,
         mainTab: 0,
         rTab: {t0: 't0-base', t1: 't1-base', t2: 't2-base', t3: 't3-base'}
       };
@@ -1402,6 +1537,32 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
       const BRANCH_LEN = 0.7;
       const TRUNK_THICK = 0.18;         // wider trunk — samples live inside this width
       const I_TOTAL_LEN = TRUNK_LEN + BRANCH_LEN;
+
+      // ─── Lateral-wobble timescale (see generateTrajectory) ──────────────────
+      // AR(1) coefficients outside and inside the deliberation window. The drop
+      // shortens the correlation length, which is what puts power above f_cut.
+      const ALPHA_BASE  = 0.92;
+      const ALPHA_DELIB = 0.55;   // initial value of the Deliberation quickness slider
+
+      // ─── Shared vertical geometry for Tab 4 ─────────────────────────────────
+      // The tree SVG and the spectrogram canvas must map height y to the SAME
+      // pixel band, or the two panels cannot be read across. That requires three
+      // things to agree: the intrinsic height (viewBox height for the SVG, CSS
+      // height for the canvas), the top/bottom padding, and the y range. The
+      // wide-screen CSS rule then scales both to one common rendered height, so a
+      // shared intrinsic height means a shared scale factor.
+      const T4_VH = 540, T4_PAD_T = 22, T4_PAD_B = 48;
+      const T4_PLOT_H = T4_VH - T4_PAD_T - T4_PAD_B;
+
+      // Top of the drawn tree in y. Also the top of both Tab 4 vertical axes.
+      function treeTopY(treeType, theta) {
+        return treeType === 'I'
+          ? I_TOTAL_LEN
+          : TRUNK_LEN + Math.cos(theta * Math.PI / 180) * BRANCH_LEN;
+      }
+      function t4yToPy(y, yTop) {
+        return T4_PAD_T + T4_PLOT_H * (1 - y / yTop);
+      }
 
       // ─── PRNG ───────────────────────────────────────────
       function makePRNG(seed) {
@@ -1548,20 +1709,39 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
       // ─── Trajectory generation: AR(1) lateral, clipped to trunk surface ─────
       //
       // The load is one video frame at a time. Lateral position (perpendicular to
-      // the centerline) is modeled as a stationary AR(1) process so consecutive
-      // samples are strongly correlated. The stationary std is `tgtStd`; the
-      // window around t=0.5 raises it from sBase to sBase+sDel (deliberation).
+      // the centerline) is modeled as an AR(1) process so consecutive samples are
+      // strongly correlated. The deliberation window around t=0.5 changes TWO
+      // things, and both matter:
+      //
+      //   amplitude — the stationary std rises from sBase to sBase+sDel;
+      //   wavelength — the AR(1) coefficient falls from ALPHA_BASE to alphaDelib.
+      //
+      // The wavelength part is what the windowed Fourier transform in Tab 4 is
+      // built to detect. An AR(1)'s correlation length depends on alpha alone, so
+      // raising sDel by itself would produce a louder copy of the same slow
+      // undulation and would move NO power across the f_cut line. Deliberation is
+      // meant to be faster side-to-side movement, not merely wider, and that is a
+      // change in alpha. Because the excitation is scaled by sqrt(1 - alpha^2),
+      // the stationary std stays tgtStd whatever alpha does, so the two knobs stay
+      // independent: sDel sets how wide the wobble is, alpha sets how quick.
+      //
       // Hard-reflect at ±halfW so every sample sits on the tree.
-      function generateTrajectory(N, treeType, theta, sBase, sDel, delibWidth, prng) {
+      function generateTrajectory(N, treeType, theta, sBase, sDel, delibWidth, alphaDelib, prng) {
         const gauss = makeGauss(prng);
         const halfW = TRUNK_THICK / 2;
-        const alpha = 0.92;                       // AR(1) coefficient (high → strongly correlated)
         const out = new Array(N);
         let lat = 0;
         for (let i = 0; i < N; i++) {
           const t = (i + 0.5) / N;
-          const d = Math.abs(t - 0.5);
-          const w = (d < delibWidth) ? (1 - d / delibWidth) : 0;
+          // Deliberation sits strictly BELOW the fork, on the approach to it, and
+          // is back to baseline by the time the load arrives. That is what makes it
+          // a leading indicator: the signature has to appear below the fork line to
+          // be worth anything, and a window straddling t = 0.5 (as an earlier
+          // version had) cannot show that. A raised sine gives a smooth bump with
+          // no corners of its own to contribute spurious high frequencies.
+          const u = (t - (0.5 - delibWidth)) / delibWidth;   // 0 -> 1 across the approach
+          const w = (u > 0 && u < 1) ? Math.sin(Math.PI * u) : 0;
+          const alpha = ALPHA_BASE + (alphaDelib - ALPHA_BASE) * w;
           const tgtStd = sBase + sDel * w;
           const sigE = tgtStd * Math.sqrt(1 - alpha * alpha);   // excitation σ
           lat = alpha * lat + sigE * gauss();
@@ -1682,7 +1862,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
 
         const skel = treeSkeleton(S.treeType, S.branchAngle);
         const prng = makePRNG(S.internalSeed);
-        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, prng);
+        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, S.alphaDelib, prng);
         const fit = fitSpline(samples, S.df);
         const dense = denseCurve(fit, 600);
         const projs = samples.map(s => projectPoint(s, dense));
@@ -1881,7 +2061,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
 
         const skel = treeSkeleton(S.treeType, S.branchAngle);
         const prng = makePRNG(S.internalSeed);
-        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, prng);
+        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, S.alphaDelib, prng);
         const trunkPx = (TRUNK_THICK / (L.txMax - L.txMin)) * (svgW - L.padL - L.padR);
 
         let svg = `<svg viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
@@ -1956,7 +2136,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
 
       function computeRSSCurve(seed) {
         const prng = makePRNG(seed);
-        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, prng);
+        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, S.alphaDelib, prng);
         const skelPts = samples.map(s => {
           const c = treeCenterline(s.t, S.branchAngle, S.treeType);
           return {x: c.x, y: c.y};
@@ -2108,10 +2288,10 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         };
       }
 
-      function renderTreeT4(samples, skel) {
+      function renderTreeT4(samples, skel, yTop) {
         const wrap = document.getElementById('treeWrap-4');
         if (!wrap) return;
-        const svgW = 200, svgH = 540;
+        const svgW = 200, svgH = T4_VH;
         // Compute the horizontal extent of the tree at the current branch angle so
         // the SVG layout never clips the branches, even at large angles.
         const sinTr = Math.sin(S.branchAngle * Math.PI / 180);
@@ -2119,15 +2299,13 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           ? sinTr * BRANCH_LEN + TRUNK_THICK / 2 + 0.06
           : TRUNK_THICK / 2 + 0.06;
         const txBound = Math.max(0.25, branchXMax);
-        const L = {
-          svgW, svgH,
-          padL: 12, padR: 12, padT: 18, padB: 28,
-          txMin: -txBound, txMax: txBound, tyMin: -0.05, tyMax: 1.80
-        };
+        const L = { svgW, svgH, padL: 12, padR: 12, txMin: -txBound, txMax: txBound };
+        // Vertical mapping is t4yToPy, shared verbatim with the spectrogram, so
+        // any height reads across the two panels at the same pixel row.
         function toSVG(tx, ty) {
           return {
             sx: L.padL + (tx - L.txMin) / (L.txMax - L.txMin) * (svgW - L.padL - L.padR),
-            sy: L.padT + (1 - (ty - L.tyMin) / (L.tyMax - L.tyMin)) * (svgH - L.padT - L.padB)
+            sy: t4yToPy(ty, yTop)
           };
         }
         const trunkPx = (TRUNK_THICK / (L.txMax - L.txMin)) * (svgW - L.padL - L.padR);
@@ -2150,8 +2328,12 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           svg += `<line x1="${lb0.sx}" y1="${lb0.sy}" x2="${lb1.sx}" y2="${lb1.sy}" stroke="#8a6843" stroke-width="${trunkPx * 0.78}" stroke-linecap="round" opacity="0.55" stroke-dasharray="3 4"/>`;
         }
         if (skel.fork) {
+          // Fork guide, drawn identically in the spectrogram at the same pixel
+          // row. This is the visual check that the two vertical axes agree.
+          const fy = t4yToPy(skel.fork.y, yTop);
+          svg += `<line x1="${L.padL}" y1="${fy}" x2="${svgW - L.padR}" y2="${fy}" stroke="#d97842" stroke-width="1.6" stroke-dasharray="6 4" opacity="0.9"/>`;
           const fpt = toSVG(skel.fork.x, skel.fork.y);
-          svg += `<text x="${fpt.sx + trunkPx*0.55 + 3}" y="${fpt.sy + 4}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#666">fork</text>`;
+          svg += `<text x="${fpt.sx + trunkPx*0.55 + 3}" y="${fpt.sy - 5}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#d97842">fork</text>`;
         }
 
         // Samples on tree
@@ -2160,9 +2342,9 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           svg += `<circle cx="${sp.sx}" cy="${sp.sy}" r="2.2" fill="#d97842" stroke="#fff" stroke-width="0.4"/>`;
         }
 
-        // "up the tree" arrow
+        // "up the tree" arrow, spanning exactly the shared plot band
         const ax = svgW - 12;
-        svg += `<line x1="${ax}" y1="${svgH - 30}" x2="${ax}" y2="36" stroke="#bbb" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrUp-4)"/>`;
+        svg += `<line x1="${ax}" y1="${t4yToPy(0, yTop)}" x2="${ax}" y2="${t4yToPy(yTop, yTop) + 14}" stroke="#bbb" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrUp-4)"/>`;
         svg += '</svg>';
         wrap.innerHTML = svg;
       }
@@ -2172,109 +2354,197 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         if (!wftWrap) return;
 
         const prng = makePRNG(S.internalSeed);
-        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, prng);
+        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, S.alphaDelib, prng);
         const skel = treeSkeleton(S.treeType, S.branchAngle);
-        renderTreeT4(samples, skel);
+        const yTop = treeTopY(S.treeType, S.branchAngle);
+        renderTreeT4(samples, skel, yTop);
 
-        // ─── Resample lateral coordinate onto uniform z grid ───
-        // z is cumulative arc length along the trajectory; on the trunk this is
-        // essentially the y coordinate, on the branch it continues smoothly.
-        let pathLen = 0;
-        const zRaw = [0];
-        for (let i = 1; i < samples.length; i++) {
-          const dx = samples[i].x - samples[i-1].x, dy = samples[i].y - samples[i-1].y;
-          pathLen += Math.sqrt(dx*dx + dy*dy);
-          zRaw.push(pathLen);
-        }
+        // ─── Resample the OBSERVED lateral coordinate onto a uniform height grid ─
+        //
+        // Two deliberate choices here, both of which earlier versions got wrong.
+        //
+        // (1) The vertical axis is height y, not arc length along the trajectory.
+        // Path length is contaminated by the very wobble being measured: a bout of
+        // wide side-to-side movement adds sideways distance, so z advances faster
+        // exactly where the ants are most active, stretching that bout to a longer
+        // apparent wavelength and pushing it the wrong way across f_cut. Height is
+        // directly observable and is unaffected by lateral motion, and it is what
+        // lets this panel share a vertical axis with the tree beside it.
+        //
+        // (2) The signal is the raw lateral coordinate x, NOT the deviation from
+        // the true tree centerline. The centerline is exactly what the spline tabs
+        // exist to estimate; feeding this transform a centerline-corrected signal
+        // would be using an oracle that real data does not come with, and it would
+        // leave nothing meaningful below f_cut for the cutoff to separate. The
+        // branch's sideways ramp is trend, and trend belongs on the low-frequency
+        // side of the line. Per-window linear removal below keeps that ramp from
+        // saturating the color scale without needing to know where the tree is.
+        const yRaw = samples.map(s => s.y);
+        const xRaw = samples.map(s => s.x);
         const hasFork = (S.treeType === 'Y');
-        let zForkIdx = 0;
-        for (let i = 0; i < samples.length; i++) { if (samples[i].t >= 0.5) { zForkIdx = i; break; } }
-        const zFork = hasFork ? zRaw[zForkIdx] : -1;
+        const yFork = hasFork ? TRUNK_LEN : -1;
 
-        const K = 256;
-        const zMax = pathLen;
-        const zGrid = new Array(K), xGrid = new Array(K);
-        for (let i = 0; i < K; i++) zGrid[i] = zMax * i / (K - 1);
-        // Use the perpendicular (lateral) deviation from the tree centerline, NOT
-        // the raw x coordinate. Raw x has a systematic trend on the branch (it
-        // increases as the branch extends sideways) which dominates the spectrum as
-        // DC and low-frequency content, swamping the behavioral signal. The lateral
-        // deviation lat is zero-mean and directly captures wobble regardless of
-        // which segment of the tree the load is on.
-        function interp(z) {
-          if (z <= zRaw[0]) return samples[0].lat;
-          if (z >= zRaw[zRaw.length - 1]) return samples[samples.length - 1].lat;
-          let lo = 0, hi = zRaw.length - 1;
-          while (hi - lo > 1) { const m = (lo + hi) >> 1; if (zRaw[m] <= z) lo = m; else hi = m; }
-          const f = (z - zRaw[lo]) / (zRaw[hi] - zRaw[lo]);
-          return samples[lo].lat * (1 - f) + samples[hi].lat * f;
+        // Grid spacing is set by the COARSEST raw spacing in y, so the analysis
+        // never claims resolution the samples do not have. Samples are uniform in
+        // time, not in height, and on an angled branch a frame advances less in y
+        // than on the trunk, so the trunk sets the limit. Choosing a finer grid (an
+        // earlier version hardcoded K = 256) does not add information: it only
+        // interpolates, and the corners that linear interpolation introduces are
+        // broadband. That fabricated floor is invisible where the signal is strong
+        // and dominates wherever the signal is weak, which is precisely how a
+        // straight, quiet stretch of trunk ends up painted as high-frequency.
+        const yLo = yRaw[0], yHi = yRaw[yRaw.length - 1];
+        let dyMax = 0;
+        for (let i = 1; i < yRaw.length; i++) dyMax = Math.max(dyMax, yRaw[i] - yRaw[i-1]);
+        const K = Math.max(16, Math.round((yHi - yLo) / dyMax) + 1);
+
+        // W cannot exceed the grid, and a few columns are needed to see anything.
+        const hop = S.hop;
+        const W = Math.max(8, Math.min(S.W, K - 3 * hop));
+        const wClamped = (W !== S.W);
+
+        const yGrid = new Array(K), xGrid = new Array(K);
+        for (let i = 0; i < K; i++) yGrid[i] = yLo + (yHi - yLo) * i / (K - 1);
+        function interp(y) {
+          if (y <= yRaw[0]) return xRaw[0];
+          if (y >= yRaw[yRaw.length - 1]) return xRaw[xRaw.length - 1];
+          let lo = 0, hi = yRaw.length - 1;
+          while (hi - lo > 1) { const m = (lo + hi) >> 1; if (yRaw[m] <= y) lo = m; else hi = m; }
+          const f = (y - yRaw[lo]) / (yRaw[hi] - yRaw[lo]);
+          return xRaw[lo] * (1 - f) + xRaw[hi] * f;
         }
-        for (let i = 0; i < K; i++) xGrid[i] = interp(zGrid[i]);
-        const dz = zMax / (K - 1);
+        for (let i = 0; i < K; i++) xGrid[i] = interp(yGrid[i]);
+        const dz = (yHi - yLo) / (K - 1);
         const Fs = 1 / dz;
         const nyq = Fs / 2;
 
-        // ─── STFT ───
-        const W = S.W, hop = S.hop;
+        // ─── STFT, removing only the window mean ───
+        // The mean comes off; the slope stays. They differ in kind. The mean is
+        // wherever the x-origin happens to sit, an arbitrary constant carrying no
+        // information about the tree, and leaving it in puts one DC bin about 17x
+        // above the largest bin past f_cut and flattens the rest of the plot. The
+        // slope is the branch's sideways ramp, which IS trend, and classifying trend
+        // is f_cut's job here; subtracting it would do the spline's work inside the
+        // transform meant to stand in for the spline.
+        // Frames are centred on grid points so the spectrogram covers the whole
+        // height axis it shares with the tree. Placing frames only where a full
+        // window fits would leave the outer W/2 empty, which at this grid size is a
+        // third of the axis and blanks out the approach to the fork. Past the ends
+        // of the trajectory the window holds the last observed value. Zero-filling
+        // reads as the natural choice but is wrong here in an asymmetric way: the
+        // trunk base sits near x = 0 so zeros happen to match it, while the branch
+        // tip sits near x = 0.4 so zeros put a step there, and the top frames came
+        // out at ~3x the interior peak, which is what made the top of the plot glow.
+        // Holding the edge value introduces no step at either end (measured 0.16x
+        // at the bottom, 0.65x at the top). The end frames are still ~37% wrong
+        // against a known continuation, hence the markers.
+        const pad = W >> 1;
+        const xPad = new Array(K + 2 * pad);
+        for (let i = 0; i < K; i++) xPad[pad + i] = xGrid[i];
+        for (let j = 0; j < pad; j++) {
+          xPad[j] = xGrid[0];
+          xPad[pad + K + j] = xGrid[K - 1];
+        }
+
         const win = makeWindow(S.win, W);
-        const nCols = Math.max(1, Math.floor((K - W) / hop) + 1);
+        const nCols = Math.max(1, Math.floor((K - 1) / hop) + 1);
         const nFreq = Math.floor(W / 2) + 1;
         const mag = new Array(nCols);
+        const ctr = new Array(nCols);
+        const seg = new Array(W);
         for (let c = 0; c < nCols; c++) {
-          const off = c * hop;
+          // Window centred on grid index ci starts at padded index ci, because the
+          // left pad is exactly W/2 wide.
+          const ci = Math.min(c * hop, K - 1);
+          const off = ci;
+          ctr[c] = ci;
+          let sum = 0;
+          for (let n = 0; n < W; n++) sum += xPad[off + n];
+          const mean = sum / W;
+          for (let n = 0; n < W; n++) seg[n] = (xPad[off + n] - mean) * win[n];
+
           const m = new Array(nFreq);
           for (let k = 0; k < nFreq; k++) {
             let re = 0, im = 0;
             for (let n = 0; n < W; n++) {
-              const x = xGrid[off + n] * win[n];
               const phi = -2 * Math.PI * k * n / W;
-              re += x * Math.cos(phi);
-              im += x * Math.sin(phi);
+              re += seg[n] * Math.cos(phi);
+              im += seg[n] * Math.sin(phi);
             }
             m[k] = Math.sqrt(re * re + im * im);
           }
           mag[c] = m;
         }
 
+        // Normalize on the INTERIOR frames only. Zero-filling past the trajectory
+        // leaves a step at each end whose spectrum runs about twice the largest
+        // interior magnitude, so including those frames would halve the brightness
+        // of everything real. Edge frames are drawn clamped at full scale instead,
+        // which is honest: they are already marked as not reflecting the data.
+        const isEdgeCol = c => ctr[c] < pad || ctr[c] > (K - 1 - pad);
         let gMax = 0;
-        for (let c = 0; c < nCols; c++) for (let k = 0; k < nFreq; k++) if (mag[c][k] > gMax) gMax = mag[c][k];
+        for (let c = 0; c < nCols; c++) {
+          if (isEdgeCol(c)) continue;
+          for (let k = 0; k < nFreq; k++) if (mag[c][k] > gMax) gMax = mag[c][k];
+        }
+        if (gMax === 0) {   // every frame is edge-affected (very small grid)
+          for (let c = 0; c < nCols; c++) for (let k = 0; k < nFreq; k++) if (mag[c][k] > gMax) gMax = mag[c][k];
+        }
         let display = mag;
         if (S.perCol) {
           display = mag.map(col => { const m = Math.max.apply(null, col); return col.map(v => m > 0 ? v / m : 0); });
           gMax = 1;
         }
 
-        // ─── Canvas: vertical = z, horizontal = f ───
-        // Portrait aspect (narrower than tall) — the z-axis is the main visual
-        // dimension and should be tall; frequency axis does not need much width.
-        const cssW = 360, cssH = 520;
-        const padL = 58, padR = 20, padT = 22, padB = 48;
-        const plotW = cssW - padL - padR, plotH = cssH - padT - padB;
+        // ─── Canvas: vertical = height y, horizontal = f ───
+        // Height, padding, and y range are shared with the tree SVG (T4_VH,
+        // T4_PAD_T, T4_PAD_B, t4yToPy), so the wide-screen CSS rule scales both to
+        // one rendered height and a given height lands on the same pixel row in
+        // both panels. Changing any of those four here without changing the SVG
+        // silently breaks the alignment.
+        const cssW = 360, cssH = T4_VH;
+        const padL = 58, padR = 20, padT = T4_PAD_T, padB = T4_PAD_B;
+        const plotW = cssW - padL - padR, plotH = T4_PLOT_H;
         const dpr = window.devicePixelRatio || 1;
 
         wftWrap.innerHTML = `<canvas id="wftCanvas" style="display:block;max-width:${cssW}px;width:100%;height:auto;margin:0 auto;"></canvas>`;
         const canvas = document.getElementById('wftCanvas');
         canvas.style.aspectRatio = `${cssW} / ${cssH}`;
-        canvas.width = cssW * dpr;
-        canvas.height = cssH * dpr;
+        // Size the backing store from the size the canvas is ACTUALLY rendered at,
+        // not from its logical size. The wide-screen rule in the stylesheet pins
+        // this canvas to a fixed rendered height so it matches the tree SVG, and
+        // that height is larger than cssH; a backing store of cssH*dpr would then
+        // be stretched over more CSS pixels than it has, landing at about 92% of
+        // native on a HiDPI screen. Measuring first keeps it exactly 1:1.
+        const rect = canvas.getBoundingClientRect();
+        const upscale = rect.height > 1 ? rect.height / cssH : 1;
+        const px = dpr * upscale;
+        canvas.width = Math.round(cssW * px);
+        canvas.height = Math.round(cssH * px);
         const ctx = canvas.getContext('2d');
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.setTransform(px, 0, 0, px, 0, 0);   // drawing below stays in logical units
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, cssW, cssH);
 
-        // z increases UPWARD: z=0 at bottom of plot, z=zMax at top
-        function zToPy(z) { return padT + plotH - (z / zMax) * plotH; }
+        const zToPy = y => t4yToPy(y, yTop);
         function fToPx(f) { return padL + (f / nyq) * plotW; }
 
         const cmap = getColormap(S.cmap);
 
+        // Each column is drawn at its window CENTRE, one hop tall. The first and last
+        // are extended to the ends of the AXIS rather than to the first and last
+        // sample. Samples are cell-centred in t, at (i+0.5)/N, so they stop half a
+        // spacing short of y = 0 and of the treetop; leaving that uncovered draws a
+        // few pixels of white that read as a rendering seam rather than as a
+        // statement about coverage. The real caveat at the ends is the reflected
+        // window, and that is already marked, at a scale (W/2) far larger than this.
         for (let c = 0; c < nCols; c++) {
-          // z extent of this STFT column
-          const zL = (c === 0) ? 0 : ((c * hop + W/2 - hop/2) * dz);
-          const zR = (c === nCols - 1) ? zMax : ((c * hop + W/2 + hop/2) * dz);
-          const yTop = zToPy(zR);                 // larger z → smaller y in SVG
-          const yBot = zToPy(zL);
-          const cellH = Math.max(1.2, yBot - yTop);
+          const yc = yLo + ctr[c] * dz;
+          const hi = (c === nCols - 1) ? yTop : yc + hop * dz / 2;
+          const lo = (c === 0)         ? 0    : yc - hop * dz / 2;
+          const yA = zToPy(hi);
+          const yB = zToPy(lo);
+          const cellH = Math.max(1.2, yB - yA);
           for (let k = 0; k < nFreq; k++) {
             const fL = Math.max(0,   (k - 0.5) * Fs / W);
             const fR = Math.min(nyq, (k + 0.5) * Fs / W);
@@ -2283,8 +2553,32 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
             if (S.logMag) v = Math.log10(1 + 9 * v);
             v = Math.max(0, Math.min(1, v));
             ctx.fillStyle = cmap(v);
-            ctx.fillRect(xL, yTop, (xR - xL) + 0.6, cellH + 0.6);
+            ctx.fillRect(xL, yA, (xR - xL) + 0.6, cellH + 0.6);
           }
+        }
+
+        // Edge-affected bands: within W/2 of either end, part of the window is
+        // reflected data rather than observed data. Mark the boundary rather than
+        // leaving the region blank, so the axis stays full but the caveat is visible.
+        const edgeLo = yLo + pad * dz, edgeHi = yHi - pad * dz;
+        if (edgeLo < edgeHi) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([2, 3]);
+          for (const ye of [edgeLo, edgeHi]) {
+            ctx.beginPath();
+            ctx.moveTo(padL, zToPy(ye));
+            ctx.lineTo(padL + plotW, zToPy(ye));
+            ctx.stroke();
+          }
+          ctx.setLineDash([]);
+          ctx.fillStyle = 'rgba(255,255,255,0.75)';
+          ctx.font = '9px "IBM Plex Mono", monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText('edge', padL + 3, zToPy(edgeLo) + 10);
+          ctx.fillText('edge', padL + 3, zToPy(edgeHi) - 4);
+          ctx.restore();
         }
 
         // Frame
@@ -2292,20 +2586,20 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         ctx.lineWidth = 1.2;
         ctx.strokeRect(padL, padT, plotW, plotH);
 
-        // Fork: HORIZONTAL line at z = z_fork
-        if (hasFork && zFork > 0 && zFork <= zMax) {
+        // Fork: HORIZONTAL line at y = 1.0, the same row as in the tree panel
+        if (hasFork && yFork > 0 && yFork <= yTop) {
           ctx.strokeStyle = '#d97842';
           ctx.lineWidth = 2.0;
           ctx.setLineDash([6, 4]);
           ctx.beginPath();
-          ctx.moveTo(padL, zToPy(zFork));
-          ctx.lineTo(padL + plotW, zToPy(zFork));
+          ctx.moveTo(padL, zToPy(yFork));
+          ctx.lineTo(padL + plotW, zToPy(yFork));
           ctx.stroke();
           ctx.setLineDash([]);
           ctx.fillStyle = '#d97842';
           ctx.font = '600 12px "IBM Plex Mono", monospace';
           ctx.textAlign = 'right';
-          ctx.fillText('fork (z)', padL + plotW - 6, zToPy(zFork) - 5);
+          ctx.fillText('fork', padL + plotW - 6, zToPy(yFork) - 5);
         }
 
         // f_cut: VERTICAL line at f = 1/L_bend
@@ -2342,13 +2636,13 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           ctx.beginPath(); ctx.moveTo(px, padT + plotH); ctx.lineTo(px, padT + plotH + 5); ctx.stroke();
           ctx.fillText(f.toFixed(1), px, padT + plotH + 19);
         }
-        // Y axis (z) — left
+        // Y axis (height y) — left
         ctx.textAlign = 'right';
         for (let i = 0; i <= 5; i++) {
-          const z = zMax * i / 5;
-          const py = zToPy(z);
+          const yv = yTop * i / 5;
+          const py = zToPy(yv);
           ctx.beginPath(); ctx.moveTo(padL - 5, py); ctx.lineTo(padL, py); ctx.stroke();
-          ctx.fillText(z.toFixed(2), padL - 8, py + 4);
+          ctx.fillText(yv.toFixed(2), padL - 8, py + 4);
         }
 
         // Axis labels
@@ -2360,10 +2654,16 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         ctx.translate(18, padT + plotH / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.textAlign = 'center';
-        ctx.fillText('height  z  (arc length up the tree)', 0, 0);
+        ctx.fillText('height  y  up the tree', 0, 0);
         ctx.restore();
 
         document.getElementById('v-fcut').textContent = fCut.toFixed(2);
+        // Report the analysis budget rather than letting it be a silent cap.
+        const gridEl = document.getElementById('v-grid');
+        if (gridEl) {
+          gridEl.textContent = `K = ${K} samples, f_Nyquist = ${nyq.toFixed(1)}`
+            + (wClamped ? `, W capped to ${W}` : '');
+        }
       }
 
       // ─── Dispatch ───────────────────────────────────────
@@ -2473,6 +2773,51 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         document.getElementById('btn-avg30').addEventListener('click', () => { S.avgMode = 'avg';    renderTab3(); });
         document.getElementById('btn-avg1').addEventListener('click',  () => { S.avgMode = 'single'; renderTab3(); });
 
+        // ─── Tooltips ───────────────────────────────────────
+        // One shared bubble, positioned per target and clamped to the viewport so
+        // controls at the far left or right are not clipped.
+        (function initTips() {
+          let pop = null;
+          const GAP = 7, EDGE = 8;
+          function show(el) {
+            if (!pop) { pop = document.createElement('div'); pop.className = 'tip-pop'; document.body.appendChild(pop); }
+            pop.textContent = el.getAttribute('data-tip');
+            pop.style.visibility = 'hidden';
+            pop.style.display = 'block';
+            pop.style.left = '0px';
+            pop.style.top = '0px';
+            const r = el.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+            let left = Math.min(r.left, window.innerWidth - w - EDGE);
+            left = Math.max(EDGE, left);
+            let top = r.bottom + GAP;
+            if (top + h > window.innerHeight - EDGE) top = Math.max(EDGE, r.top - h - GAP);
+            pop.style.left = (left + window.scrollX) + 'px';
+            pop.style.top = (top + window.scrollY) + 'px';
+            pop.style.visibility = 'visible';
+          }
+          function hide() { if (pop) pop.style.display = 'none'; }
+          document.addEventListener('mouseover', e => {
+            const t = e.target.closest && e.target.closest('.tip[data-tip]');
+            if (t) show(t); else if (!(e.target.closest && e.target.closest('.tip-pop'))) hide();
+          });
+          document.addEventListener('focusin', e => {
+            const t = e.target.closest && e.target.closest('.tip[data-tip]');
+            if (t) show(t);
+          });
+          document.addEventListener('focusout', hide);
+          window.addEventListener('scroll', hide, { passive: true });
+          window.addEventListener('resize', hide);
+        })();
+
+        document.getElementById('alphaD').addEventListener('input', e => {
+          S.alphaDelib = +e.target.value / 100;
+          document.getElementById('v-alphaD').textContent = S.alphaDelib.toFixed(2);
+          renderAll();          // the trajectory itself changes, so every tab restyles
+        });
+        document.getElementById('btn-resim-4').addEventListener('click', () => {
+          S.internalSeed = Math.floor(Math.random() * 99998) + 1;
+          renderAll();
+        });
         document.getElementById('W').addEventListener('input', e => {
           S.W = +e.target.value;
           document.getElementById('v-W').textContent = S.W;
