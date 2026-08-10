@@ -758,8 +758,12 @@ a { color: var(--accent); }
       </div>
       <div class="rpane active" data-rpane="t0-base"><pre>library(splines)
 
-# `ants` columns: t (parameter), x, z (load position).
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+#          0 to 1), x (lateral position), z (height up the tree).
+
 # Fit cubic B-splines to x and z independently as functions of t.
+
 df &lt;- 6
 fit_x &lt;- lm(x ~ bs(t, df = df, degree = 3), data = ants)
 fit_z &lt;- lm(z ~ bs(t, df = df, degree = 3), data = ants)
@@ -778,6 +782,11 @@ curve$s   &lt;- c(0, cumsum(ds))</pre></div>
       <div class="rpane" data-rpane="t0-tidy"><pre>library(splines)
 library(dplyr)
 library(tibble)
+
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+
+#          0 to 1), x (lateral position), z (height up the tree).
 
 df &lt;- 6
 fit_x &lt;- lm(x ~ bs(t, df = df, degree = 3), data = ants)
@@ -1012,7 +1021,14 @@ curve &lt;- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |&gt;
           <option value="t1-tidy">Tidyverse</option>
         </select>
       </div>
-      <div class="rpane active" data-rpane="t1-base"><pre># Project samples (x, z) onto a dense evaluation of the fitted
+      <div class="rpane active" data-rpane="t1-base"><pre># Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+#          0 to 1), x (lateral position), z (height up the tree).
+#   curve: the dense spline evaluation built by the Detrending overview
+#          snippet, columns x, z, s (cumulative arc length). This snippet
+#          continues that one rather than standing alone.
+
+# Project samples (x, z) onto a dense evaluation of the fitted
 # spline (curve$x, curve$z) and compute the SCALAR d_i and s_i.
 
 K &lt;- nrow(curve)
@@ -1040,7 +1056,15 @@ resid &lt;- data.frame(s = s_i, d = d_i)</pre></div>
       <div class="rpane" data-rpane="t1-tidy"><pre>library(dplyr)
 library(purrr)
 
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+#          0 to 1), x (lateral position), z (height up the tree).
+#   curve: the dense spline evaluation built by the Detrending overview
+#          snippet, columns x, z, s (cumulative arc length). This snippet
+#          continues that one rather than standing alone.
+
 # Add unit tangent columns to the curve tibble
+
 curve &lt;- curve |&gt;
   mutate(
     tx = lead(x, default = last(x)) - lag(x, default = first(x)),
@@ -1054,7 +1078,7 @@ curve &lt;- curve |&gt;
 # computed directly as the 2D cross product tau x delta.
 resid &lt;- ants |&gt;
   mutate(
-    i_foot = map2_int(x, z, ~ which.min((curve$x - .x)^2 + (curve$z - .z)^2)),
+    i_foot = map2_int(x, z, ~ which.min((curve$x - .x)^2 + (curve$z - .y)^2)),
     d = curve$tx[i_foot] * (z - curve$z[i_foot]) -
         curve$tz[i_foot] * (x - curve$x[i_foot]),
     s = curve$s[i_foot]
@@ -1208,7 +1232,12 @@ resid &lt;- ants |&gt;
       </div>
       <div class="rpane active" data-rpane="t5-base"><pre>library(splines)
 
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+#          0 to 1), x (lateral position), z (height up the tree).
+
 # df = interior knots + 4 for a cubic, so df = 6 puts 2 knots inside the range.
+
 fit &lt;- lm(x ~ bs(z, df = 6, degree = 3, intercept = TRUE), data = ants)
 
 ants$trend &lt;- fitted(fit)
@@ -1230,6 +1259,11 @@ abline(v = brk[-c(1, length(brk))], lty = 3, col = "gray50")</pre></div>
 library(broom)
 library(ggplot2)
 library(splines)
+
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+
+#          0 to 1), x (lateral position), z (height up the tree).
 
 n_int &lt;- 2
 brk   &lt;- seq(min(ants$z), max(ants$z), length.out = n_int + 2)
@@ -1390,6 +1424,13 @@ ggplot(fitted_ants, aes(z, x)) +
       <div class="rpane active" data-rpane="t2-base"><pre>library(splines)  # provides bs()
 library(mgcv)
 
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+#          0 to 1), x (lateral position), z (height up the tree).
+#   skel:  the tree centerline at each sample's t, columns x, z. Simulation
+#          only, as real data has no known centerline; Option 1 below is the
+#          only part that needs it.
+
 # bs(t, df = k, degree = 3) builds a cubic B-spline design matrix: an n x k
 # matrix whose columns are B-spline basis functions evaluated at each t value.
 # Passing it to lm() fits by OLS over that k-dimensional function space —
@@ -1433,6 +1474,13 @@ library(dplyr)
 library(purrr)
 library(tibble)
 
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+#          0 to 1), x (lateral position), z (height up the tree).
+#   skel:  the tree centerline at each sample's t, columns x, z. Simulation
+#          only, as real data has no known centerline; Option 1 below is the
+#          only part that needs it.
+
 # bs(t, df = k, degree = 3) constructs a cubic B-spline design matrix: k basis
 # functions evaluated at each t, used by lm() as predictors for OLS fitting.
 # This produces the same least-squares cubic B-spline (k free parameters) as
@@ -1446,12 +1494,12 @@ rss_sweep &lt;- tibble(df = 4:20) |&gt;
     fit_z = map(df, ~ lm(z ~ bs(t, df = .x, degree = 3), data = ants)),
     rss_data = map2_dbl(fit_x, fit_z, ~ {
       xh &lt;- predict(.x, newdata = ants)
-      zh &lt;- predict(.z, newdata = ants)
+      zh &lt;- predict(.y, newdata = ants)
       sum((ants$x - xh)^2 + (ants$z - zh)^2)
     }),
     rss_tree = map2_dbl(fit_x, fit_z, ~ {
       xh &lt;- predict(.x, newdata = ants)
-      zh &lt;- predict(.z, newdata = ants)
+      zh &lt;- predict(.y, newdata = ants)
       sum((skel$x  - xh)^2 + (skel$z  - zh)^2)
     })
   )
@@ -1460,8 +1508,8 @@ df_star &lt;- rss_sweep |&gt; slice_min(rss_tree) |&gt; pull(df)
 # Option 2a: sweep DF, pick by AIC / BIC
 ic &lt;- rss_sweep |&gt;
   mutate(
-    aic = map2_dbl(fit_x, fit_z, ~ AIC(.x) + AIC(.z)),
-    bic = map2_dbl(fit_x, fit_z, ~ BIC(.x) + BIC(.z))
+    aic = map2_dbl(fit_x, fit_z, ~ AIC(.x) + AIC(.y)),
+    bic = map2_dbl(fit_x, fit_z, ~ BIC(.x) + BIC(.y))
   )
 df_aic &lt;- ic |&gt; slice_min(aic) |&gt; pull(df)
 df_bic &lt;- ic |&gt; slice_min(bic) |&gt; pull(df)
@@ -1671,7 +1719,9 @@ edf &lt;- gx$edf + gz$edf</pre></div>
       <p>
         <b>log magnitude</b> &mdash; switch from linear to <code>log<sub>10</sub>(1+9v)</code> scaling
         of the spectrogram so weaker components become visible.
-        <b>Per-slice normalization</b> &mdash; rescale each <code>z</code>-slice to its own max,
+      </p>
+      <p>
+        <b>per-slice normalization</b> &mdash; rescale each <code>z</code>-slice to its own max,
         useful when overall power varies along the trunk. Read it with care: a slice whose absolute
         power is near zero gets its noise floor promoted to full brightness, and so bright high-frequency
         bands on quiet, straight stretches are the expected artifact of this option rather than a
@@ -1693,10 +1743,15 @@ edf &lt;- gx$edf + gz$edf</pre></div>
       </div>
       <div class="rpane active" data-rpane="t3-base"><pre>library(signal)
 
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+#          0 to 1), x (lateral position), z (height up the tree).
+
 # Lateral coordinate x resampled against HEIGHT z.  Grid spacing matches the
 # coarsest raw spacing in z, so the frequency axis stops where the samples stop
 # supporting it; a finer grid would only interpolate, and interpolation corners
 # are broadband.
+
 K      &lt;- round(diff(range(ants$z)) / max(diff(ants$z))) + 1
 z_grid &lt;- seq(min(ants$z), max(ants$z), length.out = K)
 xy     &lt;- approx(ants$z, ants$x, xout = z_grid)$y
@@ -1745,8 +1800,13 @@ library(tidyr)
 library(purrr)
 library(ggplot2)
 
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+#          0 to 1), x (lateral position), z (height up the tree).
+
 # Uniform grid in HEIGHT, spaced to match the coarsest raw spacing so the
 # frequency axis never runs past what the samples support.
+
 K      &lt;- round(diff(range(ants$z)) / max(diff(ants$z))) + 1
 z_grid &lt;- seq(min(ants$z), max(ants$z), length.out = K)
 xy     &lt;- approx(ants$z, ants$x, xout = z_grid)$y
@@ -1942,6 +2002,62 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
       </div>
     </div>
 
+    <div class="explainer">
+      <h4>What the controls do</h4>
+      <p>
+        <b>Morlet w<sub>0</sub></b> &mdash; how many oscillations fit under the Gaussian envelope,
+        and the only shape parameter the wavelet has. Raise it and each packet carries more cycles,
+        which sharpens the range of frequencies it responds to at the cost of blurring where in
+        height it responds; lower it for the opposite trade. This is the same trade the previous
+        tab makes with <code>W</code>, with one difference that is the whole point of this tab:
+        here it applies to every scale at once rather than being set once for all of them. The
+        value 6 is the usual default, and it is what makes a packet&rsquo;s scale and its wavelength
+        very nearly the same number, and so the scale axis can be read as a wavelength axis. Move it
+        to 3.8 and that correspondence stretches by about half, which is why the frequency range in
+        the readout shifts while the scale range does not.
+      </p>
+      <p>
+        <b>Voices per octave</b> &mdash; how many scales are computed per doubling of scale. More
+        voices give a smoother scalogram at more compute and no more information, as neighboring
+        scales overlap heavily, and so a blocky picture at a low setting is showing you the scale
+        sampling rather than a shortage of pixels.
+      </p>
+      <p>
+        <b>L<sub>bend</sub></b> &mdash; the same heuristic length scale as the previous tab, and the
+        same divide <code>f<sub>cut</sub> = 1/L<sub>bend</sub></code>. It also decides which scales
+        feed the fine-scale profile on the right, namely everything to the right of the line.
+      </p>
+      <p>
+        <b>Scale range</b> &mdash; read-only, and worth reading. Neither end is a choice: the narrow
+        end is two grid steps, the finest width the samples can represent, and the wide end is half
+        the height of the tree, beyond which the cone covers every position and leaves nothing to
+        measure. The count of scales then follows from those two ends and the voices setting.
+      </p>
+      <p>
+        <b>log magnitude</b> &mdash; rescale as <code>log<sub>10</sub>(1+9v)</code> so weak
+        components become visible. This is <em>on</em> by default here, unlike the previous tab,
+        because the tree&rsquo;s slow bending dominates the coarse scales, and without it the finer
+        scales carrying the ant signal sit too far down the color scale to read.
+      </p>
+      <p>
+        <b>per-slice normalization</b> &mdash; rescale every height slice to its own maximum. This is
+        <em>off</em> by default here, again unlike the previous tab, and it is worth leaving off. It
+        destroys the comparison this tab exists to make, which is how much fine-scale energy one
+        height carries relative to another. It is also worse than merely unhelpful: the deliberation
+        bump lifts the coarse scales too, which raises each row&rsquo;s maximum, and so the fine
+        scales are pushed <em>down</em> the color scale exactly where the signal is. On the default
+        trajectory it turns a contrast of 1.07 into 0.75, inverting it. The profile on the right is
+        unaffected either way, being computed from unnormalized magnitudes.
+      </p>
+      <p>
+        <b>shade cone of influence</b> &mdash; show the region where the wavelet at that scale reaches
+        past the end of the data. The cells inside it are not merely marked, as the <em>edge</em>
+        bands on the previous tab are: they are left out of the picture, out of the profile, and out
+        of the color normalization. Turn the shading off to see how much of the coarse end is
+        resting on padding rather than on observations.
+      </p>
+    </div>
+
     <div class="rblock">
       <div class="rblock-hdr">Wavelet scalogram in <span class="lab-r">R</span></div>
       <div class="rtabs">
@@ -1956,8 +2072,13 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
       </div>
       <div class="rpane active" data-rpane="t4-base"><pre>library(WaveletComp)
 
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+#          0 to 1), x (lateral position), z (height up the tree).
+
 # Uniform grid in HEIGHT, spaced to match the coarsest raw spacing in z so the
 # scale range never claims resolution the samples do not have.
+
 K      &lt;- round(diff(range(ants$z)) / max(diff(ants$z))) + 1
 z_grid &lt;- seq(min(ants$z), max(ants$z), length.out = K)
 xz     &lt;- approx(ants$z, ants$x, xout = z_grid)$y
@@ -2025,6 +2146,11 @@ library(tidyr)
 library(tibble)
 library(ggplot2)
 
+# Inputs
+#   ants:  one row per video frame, columns t (trajectory parameter running
+
+#          0 to 1), x (lateral position), z (height up the tree).
+
 K      &lt;- round(diff(range(ants$z)) / max(diff(ants$z))) + 1
 z_grid &lt;- seq(min(ants$z), max(ants$z), length.out = K)
 xz     &lt;- approx(ants$z, ants$x, xout = z_grid)$y
@@ -2070,7 +2196,9 @@ ggplot(scalo, aes(freq, z, fill = power)) +
 # na.rm drops the cone cells blanked above; without it every height the cone
 # touches comes back NA and the trace stops short at both ends.
 scalo |&gt;
-  filter(scale &lt; 0.15) |&gt;
+  # qualified because the previous tab's snippet attaches signal, whose filter()
+  # then masks dplyr's; a later library(dplyr) does not win the name back
+  dplyr::filter(scale &lt; 0.15) |&gt;
   summarise(fine_power = mean(power, na.rm = TRUE), .by = z) |&gt;
   ggplot(aes(fine_power, z)) +
   geom_path(color = "#6b21a8", linewidth = 1) +
