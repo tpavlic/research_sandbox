@@ -1,29 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Y-Tree Trajectory Detrending & Spectral Analysis</title>
-<meta name="description" content="Detrend and spectrally analyze the trajectories of collective-transport groups (weaver ants) moving loads vertically up trees, including forked trees, by projecting motion onto the tree.">
-
-<!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, etc.) -->
-<meta property="og:type" content="website">
-<meta property="og:title" content="Y-Tree Trajectory Detrending & Spectral Analysis">
-<meta property="og:description" content="Detrend and spectrally analyze the trajectories of collective-transport groups (weaver ants) moving loads vertically up trees, including forked trees, by projecting motion onto the tree.">
-<meta property="og:image" content="https://tpavlic.github.io/research_sandbox/ytree_detrend/ytree_detrend-preview.png">
-<meta property="og:image:width" content="1560">
-<meta property="og:image:height" content="704">
-<meta property="og:url" content="https://tpavlic.github.io/research_sandbox/ytree_detrend/ytree_detrend.html">
-<meta property="fb:app_id" content="2385695445236853">
-
-<!-- Twitter/X card -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Y-Tree Trajectory Detrending & Spectral Analysis">
-<meta name="twitter:description" content="Detrend and spectrally analyze the trajectories of collective-transport groups (weaver ants) moving loads vertically up trees, including forked trees, by projecting motion onto the tree.">
-<meta name="twitter:image" content="https://tpavlic.github.io/research_sandbox/ytree_detrend/ytree_detrend-preview.png">
-
-<!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-1GJE3Z9182"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -1035,7 +1009,7 @@ curve &lt;- curve |&gt;
 # computed directly as the 2D cross product tau x delta.
 resid &lt;- ants |&gt;
   mutate(
-    i_foot = map2_int(x, z, ~ which.min((curve$x - .x)^2 + (curve$z - .y)^2)),
+    i_foot = map2_int(x, z, ~ which.min((curve$x - .x)^2 + (curve$z - .z)^2)),
     d = curve$tx[i_foot] * (z - curve$z[i_foot]) -
         curve$tz[i_foot] * (x - curve$x[i_foot]),
     s = curve$s[i_foot]
@@ -1427,12 +1401,12 @@ rss_sweep &lt;- tibble(df = 4:20) |&gt;
     fit_z = map(df, ~ lm(z ~ bs(t, df = .x, degree = 3), data = ants)),
     rss_data = map2_dbl(fit_x, fit_z, ~ {
       xh &lt;- predict(.x, newdata = ants)
-      zh &lt;- predict(.y, newdata = ants)
+      zh &lt;- predict(.z, newdata = ants)
       sum((ants$x - xh)^2 + (ants$z - zh)^2)
     }),
     rss_tree = map2_dbl(fit_x, fit_z, ~ {
       xh &lt;- predict(.x, newdata = ants)
-      zh &lt;- predict(.y, newdata = ants)
+      zh &lt;- predict(.z, newdata = ants)
       sum((skel$x  - xh)^2 + (skel$z  - zh)^2)
     })
   )
@@ -1441,8 +1415,8 @@ df_star &lt;- rss_sweep |&gt; slice_min(rss_tree) |&gt; pull(df)
 # Option 2a: sweep DF, pick by AIC / BIC
 ic &lt;- rss_sweep |&gt;
   mutate(
-    aic = map2_dbl(fit_x, fit_z, ~ AIC(.x) + AIC(.y)),
-    bic = map2_dbl(fit_x, fit_z, ~ BIC(.x) + BIC(.y))
+    aic = map2_dbl(fit_x, fit_z, ~ AIC(.x) + AIC(.z)),
+    bic = map2_dbl(fit_x, fit_z, ~ BIC(.x) + BIC(.z))
   )
 df_aic &lt;- ic |&gt; slice_min(aic) |&gt; pull(df)
 df_bic &lt;- ic |&gt; slice_min(bic) |&gt; pull(df)
@@ -2013,13 +1987,13 @@ scalo |&gt;
       const T4_PLOT_H = T4_VH - T4_PAD_T - T4_PAD_B;
 
       // Top of the drawn tree in z. Also the top of both Tab 4 vertical axes.
-      function treeTopY(treeType, theta) {
+      function treeTopZ(treeType, theta) {
         return treeType === 'I'
           ? I_TOTAL_LEN
           : TRUNK_LEN + Math.cos(theta * Math.PI / 180) * BRANCH_LEN;
       }
-      function t4yToPy(y, yTop) {
-        return T4_PAD_T + T4_PLOT_H * (1 - y / yTop);
+      function t4zToPy(y, zTop) {
+        return T4_PAD_T + T4_PLOT_H * (1 - y / zTop);
       }
 
       // ─── PRNG ───────────────────────────────────────────
@@ -2126,9 +2100,9 @@ scalo |&gt;
       // ─── Tree geometry ──────────────────────────────────
       function treeSkeleton(treeType, theta) {
         if (treeType === 'I') {
-          const top = {x: 0, y: I_TOTAL_LEN};
+          const top = {x: 0, z: I_TOTAL_LEN};
           return {
-            trunk: [{x: 0, y: 0}, top],
+            trunk: [{x: 0, z: 0}, top],
             rightBranch: null,
             leftBranch: null,
             fork: null,
@@ -2136,11 +2110,11 @@ scalo |&gt;
           };
         }
         const tr = theta * Math.PI / 180;
-        const fork = {x: 0, y: TRUNK_LEN};
-        const rightEnd = {x: Math.sin(tr) * BRANCH_LEN, y: TRUNK_LEN + Math.cos(tr) * BRANCH_LEN};
-        const leftEnd  = {x: -Math.sin(tr) * BRANCH_LEN, y: TRUNK_LEN + Math.cos(tr) * BRANCH_LEN};
+        const fork = {x: 0, z: TRUNK_LEN};
+        const rightEnd = {x: Math.sin(tr) * BRANCH_LEN, z: TRUNK_LEN + Math.cos(tr) * BRANCH_LEN};
+        const leftEnd  = {x: -Math.sin(tr) * BRANCH_LEN, z: TRUNK_LEN + Math.cos(tr) * BRANCH_LEN};
         return {
-          trunk: [{x: 0, y: 0}, fork],
+          trunk: [{x: 0, z: 0}, fork],
           rightBranch: [fork, rightEnd],
           leftBranch: [fork, leftEnd],
           fork: fork,
@@ -2150,16 +2124,16 @@ scalo |&gt;
 
       function treeCenterline(t, theta, treeType) {
         if (treeType === 'I') {
-          return {x: 0, y: t * I_TOTAL_LEN, tx: 0, ty: 1};
+          return {x: 0, z: t * I_TOTAL_LEN, tx: 0, ty: 1};
         }
         const tr = theta * Math.PI / 180;
         if (t < 0.5) {
-          return {x: 0, y: 2 * t * TRUNK_LEN, tx: 0, ty: 1};
+          return {x: 0, z: 2 * t * TRUNK_LEN, tx: 0, ty: 1};
         }
         const u = 2 * (t - 0.5);
         return {
           x: Math.sin(tr) * u * BRANCH_LEN,
-          y: TRUNK_LEN + Math.cos(tr) * u * BRANCH_LEN,
+          z: TRUNK_LEN + Math.cos(tr) * u * BRANCH_LEN,
           tx: Math.sin(tr), ty: Math.cos(tr)
         };
       }
@@ -2224,7 +2198,7 @@ scalo |&gt;
           out[i] = {
             t,
             x: c.x + lat,
-            y: c.y,
+            z: c.z,
             lat: lat
           };
         }
@@ -2238,20 +2212,20 @@ scalo |&gt;
         const knots = makeKnots(tMin, tMax, df, 3);
         const X = bsplineDesign(ts, knots, 3, df);
         const betaX = solveRidge(X, samples.map(s => s.x), 1e-8);
-        const betaY = solveRidge(X, samples.map(s => s.y), 1e-8);
-        return {knots, betaX, betaY, df, tMin, tMax};
+        const betaZ = solveRidge(X, samples.map(s => s.z), 1e-8);
+        return {knots, betaX, betaZ, df, tMin, tMax};
       }
       function evalSpline(t, fit) {
         // Same right-boundary nudge as bsplineDesign — see comment there.
         const nudge = Math.max(1e-12, 1e-12 * (fit.tMax - fit.tMin));
         if (t >= fit.tMax) t = fit.tMax - nudge;
         if (t < fit.tMin) t = fit.tMin;
-        let x = 0, y = 0;
+        let x = 0, z = 0;
         for (let k = 0; k < fit.df; k++) {
           const b = coxDeBoor(t, k, 3, fit.knots);
-          x += b * fit.betaX[k]; y += b * fit.betaY[k];
+          x += b * fit.betaX[k]; z += b * fit.betaZ[k];
         }
-        return {x, y};
+        return {x, z};
       }
       function denseCurve(fit, K) {
         K = K || 600;
@@ -2259,11 +2233,11 @@ scalo |&gt;
         for (let i = 0; i < K; i++) {
           const t = fit.tMin + (fit.tMax - fit.tMin) * i / (K - 1);
           const p = evalSpline(t, fit);
-          pts[i] = {t, x: p.x, y: p.y, s: 0, tx: 0, ty: 1, nx: -1, ny: 0};
+          pts[i] = {t, x: p.x, z: p.z, s: 0, tx: 0, ty: 1, nx: -1, ny: 0};
         }
         for (let i = 0; i < K; i++) {
           const i0 = Math.max(0, i - 1), i1 = Math.min(K - 1, i + 1);
-          let dx = pts[i1].x - pts[i0].x, dy = pts[i1].y - pts[i0].y;
+          let dx = pts[i1].x - pts[i0].x, dy = pts[i1].z - pts[i0].z;
           const nrm = Math.sqrt(dx*dx + dy*dy);
           if (nrm > 1e-12) { dx /= nrm; dy /= nrm; }
           pts[i].tx = dx; pts[i].ty = dy;
@@ -2272,7 +2246,7 @@ scalo |&gt;
         let s = 0;
         pts[0].s = 0;
         for (let i = 1; i < K; i++) {
-          const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+          const dx = pts[i].x - pts[i-1].x, dy = pts[i].z - pts[i-1].z;
           s += Math.sqrt(dx*dx + dy*dy);
           pts[i].s = s;
         }
@@ -2281,13 +2255,13 @@ scalo |&gt;
       function projectPoint(p, dense) {
         let bestI = 0, bestD = Infinity;
         for (let i = 0; i < dense.length; i++) {
-          const dx = p.x - dense[i].x, dy = p.y - dense[i].y;
+          const dx = p.x - dense[i].x, dy = p.z - dense[i].z;
           const d2 = dx*dx + dy*dy;
           if (d2 < bestD) { bestD = d2; bestI = i; }
         }
         const c = dense[bestI];
-        const dx = p.x - c.x, dy = p.y - c.y;
-        return {i: bestI, t: c.t, s: c.s, d: dx * c.nx + dy * c.ny, foot: {x: c.x, y: c.y}};
+        const dx = p.x - c.x, dy = p.z - c.z;
+        return {i: bestI, t: c.t, s: c.s, d: dx * c.nx + dy * c.ny, foot: {x: c.x, z: c.z}};
       }
 
       // ─── Tree → SVG mapping ─────────────────────────────
@@ -2357,29 +2331,29 @@ scalo |&gt;
         svg += `<rect width="${svgW}" height="${svgH}" fill="white"/>`;
 
         if (S.showSkel) {
-          const tt = treeToSVG(skel.trunk[0].x, skel.trunk[0].y, L);
-          const tb = treeToSVG(skel.trunk[1].x, skel.trunk[1].y, L);
+          const tt = treeToSVG(skel.trunk[0].x, skel.trunk[0].z, L);
+          const tb = treeToSVG(skel.trunk[1].x, skel.trunk[1].z, L);
           svg += `<line x1="${tt.sx}" y1="${tt.sy}" x2="${tb.sx}" y2="${tb.sy}" stroke="#6b4a2a" stroke-width="${trunkPx}" stroke-linecap="round" opacity="0.92"/>`;
           if (skel.rightBranch) {
-            const rb0 = treeToSVG(skel.rightBranch[0].x, skel.rightBranch[0].y, L);
-            const rb1 = treeToSVG(skel.rightBranch[1].x, skel.rightBranch[1].y, L);
+            const rb0 = treeToSVG(skel.rightBranch[0].x, skel.rightBranch[0].z, L);
+            const rb1 = treeToSVG(skel.rightBranch[1].x, skel.rightBranch[1].z, L);
             svg += `<line x1="${rb0.sx}" y1="${rb0.sy}" x2="${rb1.sx}" y2="${rb1.sy}" stroke="#6b4a2a" stroke-width="${trunkPx * 0.86}" stroke-linecap="round" opacity="0.92"/>`;
           }
           if (skel.leftBranch) {
-            const lb0 = treeToSVG(skel.leftBranch[0].x, skel.leftBranch[0].y, L);
-            const lb1 = treeToSVG(skel.leftBranch[1].x, skel.leftBranch[1].y, L);
+            const lb0 = treeToSVG(skel.leftBranch[0].x, skel.leftBranch[0].z, L);
+            const lb1 = treeToSVG(skel.leftBranch[1].x, skel.leftBranch[1].z, L);
             svg += `<line x1="${lb0.sx}" y1="${lb0.sy}" x2="${lb1.sx}" y2="${lb1.sy}" stroke="#8a6843" stroke-width="${trunkPx * 0.78}" stroke-linecap="round" opacity="0.55" stroke-dasharray="3 4"/>`;
           }
           if (skel.fork) {
-            const fpt = treeToSVG(skel.fork.x, skel.fork.y, L);
+            const fpt = treeToSVG(skel.fork.x, skel.fork.z, L);
             svg += `<text x="${fpt.sx + trunkPx*0.55 + 4}" y="${fpt.sy + 4}" font-family="IBM Plex Mono, monospace" font-size="13" fill="#666">fork</text>`;
           }
         }
 
         if (S.showDevs) {
           for (let i = 0; i < samples.length; i++) {
-            const sp = treeToSVG(samples[i].x, samples[i].y, L);
-            const fp = treeToSVG(projs[i].foot.x, projs[i].foot.y, L);
+            const sp = treeToSVG(samples[i].x, samples[i].z, L);
+            const fp = treeToSVG(projs[i].foot.x, projs[i].foot.z, L);
             const inFork = hasFork && Math.abs(projs[i].s - forkS) < window;
             // When the tree skeleton is shown the lines sit on a dark brown trunk;
             // use white/warm-white so they pop off the background.  When the
@@ -2393,14 +2367,14 @@ scalo |&gt;
 
         // Sample dots drawn BEFORE the spline so the spline renders on top
         for (let i = 0; i < samples.length; i++) {
-          const sp = treeToSVG(samples[i].x, samples[i].y, L);
+          const sp = treeToSVG(samples[i].x, samples[i].z, L);
           svg += `<circle cx="${sp.sx}" cy="${sp.sy}" r="2.6" fill="#d97842" stroke="#fff" stroke-width="0.5"/>`;
         }
 
         if (S.showSpline) {
           let path = '';
           for (let i = 0; i < dense.length; i++) {
-            const p = treeToSVG(dense[i].x, dense[i].y, L);
+            const p = treeToSVG(dense[i].x, dense[i].z, L);
             path += (i === 0 ? 'M' : 'L') + p.sx.toFixed(1) + ' ' + p.sy.toFixed(1) + ' ';
           }
           // White halo first so the line is legible on the dark brown trunk
@@ -2413,7 +2387,7 @@ scalo |&gt;
           const interior = fit.knots.slice(4, fit.knots.length - 4);
           for (const tk of interior) {
             const p = evalSpline(tk, fit);
-            const sp = treeToSVG(p.x, p.y, L);
+            const sp = treeToSVG(p.x, p.z, L);
             svg += `<rect x="${sp.sx - 5}" y="${sp.sy - 5}" width="10" height="10" fill="#fff" stroke="#2f6b4a" stroke-width="1.8"/>`;
           }
         }
@@ -2531,17 +2505,17 @@ scalo |&gt;
         svg += `<rect width="${svgW}" height="${svgH}" fill="white"/>`;
 
         // Wide popsicle-stick trunk/branches (tree shape for context)
-        const tt = treeToSVG(skel.trunk[0].x, skel.trunk[0].y, L);
-        const tb = treeToSVG(skel.trunk[1].x, skel.trunk[1].y, L);
+        const tt = treeToSVG(skel.trunk[0].x, skel.trunk[0].z, L);
+        const tb = treeToSVG(skel.trunk[1].x, skel.trunk[1].z, L);
         svg += `<line x1="${tt.sx}" y1="${tt.sy}" x2="${tb.sx}" y2="${tb.sy}" stroke="#c4a78a" stroke-width="${trunkPx}" stroke-linecap="round" opacity="0.7"/>`;
         if (skel.rightBranch) {
-          const rb0 = treeToSVG(skel.rightBranch[0].x, skel.rightBranch[0].y, L);
-          const rb1 = treeToSVG(skel.rightBranch[1].x, skel.rightBranch[1].y, L);
+          const rb0 = treeToSVG(skel.rightBranch[0].x, skel.rightBranch[0].z, L);
+          const rb1 = treeToSVG(skel.rightBranch[1].x, skel.rightBranch[1].z, L);
           svg += `<line x1="${rb0.sx}" y1="${rb0.sy}" x2="${rb1.sx}" y2="${rb1.sy}" stroke="#c4a78a" stroke-width="${trunkPx * 0.86}" stroke-linecap="round" opacity="0.7"/>`;
         }
 
         for (let i = 0; i < samples.length; i++) {
-          const sp = treeToSVG(samples[i].x, samples[i].y, L);
+          const sp = treeToSVG(samples[i].x, samples[i].z, L);
           svg += `<circle cx="${sp.sx}" cy="${sp.sy}" r="2.0" fill="#d97842" opacity="0.6"/>`;
         }
 
@@ -2557,7 +2531,7 @@ scalo |&gt;
             const dense = denseCurve(fit, 400);
             let path = '';
             for (let i = 0; i < dense.length; i++) {
-              const p = treeToSVG(dense[i].x, dense[i].y, L);
+              const p = treeToSVG(dense[i].x, dense[i].z, L);
               path += (i === 0 ? 'M' : 'L') + p.sx.toFixed(1) + ' ' + p.sy.toFixed(1) + ' ';
             }
             svg += `<path d="${path}" stroke="${colors[k]}" stroke-width="1.6" fill="none" opacity="0.9"/>`;
@@ -2574,7 +2548,7 @@ scalo |&gt;
           const denseCur = denseCurve(fitCur, 500);
           let path = '';
           for (let i = 0; i < denseCur.length; i++) {
-            const p = treeToSVG(denseCur[i].x, denseCur[i].y, L);
+            const p = treeToSVG(denseCur[i].x, denseCur[i].z, L);
             path += (i === 0 ? 'M' : 'L') + p.sx.toFixed(1) + ' ' + p.sy.toFixed(1) + ' ';
           }
           svg += `<path d="${path}" stroke="${CUR_COL}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -2588,8 +2562,8 @@ scalo |&gt;
         const SKEL_DASH = '10 7';
         svg += `<line x1="${tt.sx}" y1="${tt.sy}" x2="${tb.sx}" y2="${tb.sy}" stroke="#7d3c14" stroke-width="4" stroke-dasharray="${SKEL_DASH}" stroke-linecap="butt" opacity="0.72"/>`;
         if (skel.rightBranch) {
-          const rbs = treeToSVG(skel.rightBranch[0].x, skel.rightBranch[0].y, L);
-          const rbe = treeToSVG(skel.rightBranch[1].x, skel.rightBranch[1].y, L);
+          const rbs = treeToSVG(skel.rightBranch[0].x, skel.rightBranch[0].z, L);
+          const rbe = treeToSVG(skel.rightBranch[1].x, skel.rightBranch[1].z, L);
           svg += `<line x1="${rbs.sx}" y1="${rbs.sy}" x2="${rbe.sx}" y2="${rbe.sy}" stroke="#7d3c14" stroke-width="4" stroke-dasharray="${SKEL_DASH}" stroke-linecap="butt" opacity="0.72"/>`;
         }
 
@@ -2602,7 +2576,7 @@ scalo |&gt;
         const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, S.alphaDelib, prng);
         const skelPts = samples.map(s => {
           const c = treeCenterline(s.t, S.branchAngle, S.treeType);
-          return {x: c.x, y: c.y};
+          return {x: c.x, z: c.z};
         });
         const dfRange = [];
         for (let df = 4; df <= 30; df++) dfRange.push(df);
@@ -2613,9 +2587,9 @@ scalo |&gt;
             let sd = 0, st = 0;
             for (let i = 0; i < samples.length; i++) {
               const sp = evalSpline(samples[i].t, fit);
-              const dx1 = sp.x - samples[i].x, dy1 = sp.y - samples[i].y;
+              const dx1 = sp.x - samples[i].x, dy1 = sp.z - samples[i].z;
               sd += dx1*dx1 + dy1*dy1;
-              const dx2 = sp.x - skelPts[i].x, dy2 = sp.y - skelPts[i].y;
+              const dx2 = sp.x - skelPts[i].x, dy2 = sp.z - skelPts[i].z;
               st += dx2*dx2 + dy2*dy2;
             }
             rssData.push(sd); rssTree.push(st);
@@ -2787,7 +2761,7 @@ scalo |&gt;
         };
       }
 
-      function renderTreeT4(samples, skel, yTop, wrapId, markerId, svgWIn) {
+      function renderTreeT4(samples, skel, zTop, wrapId, markerId, svgWIn) {
         const wrap = document.getElementById(wrapId || 'treeWrap-4');
         if (!wrap) return;
         const svgW = svgWIn || 200, svgH = T4_VH;
@@ -2799,12 +2773,12 @@ scalo |&gt;
           : TRUNK_THICK / 2 + 0.06;
         const txBound = Math.max(0.25, branchXMax);
         const L = { svgW, svgH, padL: 12, padR: 12, txMin: -txBound, txMax: txBound };
-        // Vertical mapping is t4yToPy, shared verbatim with the spectrogram, so
+        // Vertical mapping is t4zToPy, shared verbatim with the spectrogram, so
         // any height reads across the two panels at the same pixel row.
         function toSVG(tx, ty) {
           return {
             sx: L.padL + (tx - L.txMin) / (L.txMax - L.txMin) * (svgW - L.padL - L.padR),
-            sy: t4yToPy(ty, yTop)
+            sy: t4zToPy(ty, zTop)
           };
         }
         const trunkPx = (TRUNK_THICK / (L.txMax - L.txMin)) * (svgW - L.padL - L.padR);
@@ -2827,15 +2801,15 @@ scalo |&gt;
           return [{ sx: a.sx + ux * halfPx, sy: a.sy + uy * halfPx },
                   { sx: b.sx - ux * halfPx, sy: b.sy - uy * halfPx }];
         }
-        const tt0 = toSVG(skel.trunk[0].x, skel.trunk[0].y);
-        const tb0 = toSVG(skel.trunk[1].x, skel.trunk[1].y);
+        const tt0 = toSVG(skel.trunk[0].x, skel.trunk[0].z);
+        const tb0 = toSVG(skel.trunk[1].x, skel.trunk[1].z);
         // the trunk's top is a free end only when nothing branches off it
         const [tt, tbRaw] = capInset(tt0, tb0, trunkPx / 2);
         const tb = skel.rightBranch ? tb0 : tbRaw;
         svg += `<line x1="${tt.sx}" y1="${tt.sy}" x2="${tb.sx}" y2="${tb.sy}" stroke="#6b4a2a" stroke-width="${trunkPx}" stroke-linecap="round" opacity="0.92"/>`;
         if (skel.rightBranch) {
-          const rb0 = toSVG(skel.rightBranch[0].x, skel.rightBranch[0].y);
-          const rb1raw = toSVG(skel.rightBranch[1].x, skel.rightBranch[1].y);
+          const rb0 = toSVG(skel.rightBranch[0].x, skel.rightBranch[0].z);
+          const rb1raw = toSVG(skel.rightBranch[1].x, skel.rightBranch[1].z);
           const rb1 = capInset(rb0, rb1raw, trunkPx * 0.86 / 2)[1];
           svg += `<line x1="${rb0.sx}" y1="${rb0.sy}" x2="${rb1.sx}" y2="${rb1.sy}" stroke="#6b4a2a" stroke-width="${trunkPx * 0.86}" stroke-linecap="round" opacity="0.92"/>`;
         }
@@ -2843,29 +2817,29 @@ scalo |&gt;
           // Inset this tip too. The two branches end at the same height by
           // construction, and so insetting only the right one made the untaken
           // branch reach visibly higher than the taken one.
-          const lb0 = toSVG(skel.leftBranch[0].x, skel.leftBranch[0].y);
-          const lb1raw = toSVG(skel.leftBranch[1].x, skel.leftBranch[1].y);
+          const lb0 = toSVG(skel.leftBranch[0].x, skel.leftBranch[0].z);
+          const lb1raw = toSVG(skel.leftBranch[1].x, skel.leftBranch[1].z);
           const lb1 = capInset(lb0, lb1raw, trunkPx * 0.78 / 2)[1];
           svg += `<line x1="${lb0.sx}" y1="${lb0.sy}" x2="${lb1.sx}" y2="${lb1.sy}" stroke="#8a6843" stroke-width="${trunkPx * 0.78}" stroke-linecap="round" opacity="0.55" stroke-dasharray="3 4"/>`;
         }
         if (skel.fork) {
           // Fork guide, drawn identically in the spectrogram at the same pixel
           // row. This is the visual check that the two vertical axes agree.
-          const fy = t4yToPy(skel.fork.y, yTop);
+          const fy = t4zToPy(skel.fork.z, zTop);
           svg += `<line x1="${L.padL}" y1="${fy}" x2="${svgW - L.padR}" y2="${fy}" stroke="#d97842" stroke-width="1.6" stroke-dasharray="6 4" opacity="0.9"/>`;
-          const fpt = toSVG(skel.fork.x, skel.fork.y);
+          const fpt = toSVG(skel.fork.x, skel.fork.z);
           svg += `<text x="${fpt.sx + trunkPx*0.55 + 3}" y="${fpt.sy - 5}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#d97842">fork</text>`;
         }
 
         // Samples on tree
         for (let i = 0; i < samples.length; i++) {
-          const sp = toSVG(samples[i].x, samples[i].y);
+          const sp = toSVG(samples[i].x, samples[i].z);
           svg += `<circle cx="${sp.sx}" cy="${sp.sy}" r="2.2" fill="#d97842" stroke="#fff" stroke-width="0.4"/>`;
         }
 
         // "up the tree" arrow, spanning exactly the shared plot band
         const ax = svgW - 12;
-        svg += `<line x1="${ax}" y1="${t4yToPy(0, yTop)}" x2="${ax}" y2="${t4yToPy(yTop, yTop) + 14}" stroke="#bbb" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#${mkId})"/>`;
+        svg += `<line x1="${ax}" y1="${t4zToPy(0, zTop)}" x2="${ax}" y2="${t4zToPy(zTop, zTop) + 14}" stroke="#bbb" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#${mkId})"/>`;
         svg += '</svg>';
         wrap.innerHTML = svg;
       }
@@ -2877,8 +2851,8 @@ scalo |&gt;
         const prng = makePRNG(S.internalSeed);
         const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, S.alphaDelib, prng);
         const skel = treeSkeleton(S.treeType, S.branchAngle);
-        const yTop = treeTopY(S.treeType, S.branchAngle);
-        renderTreeT4(samples, skel, yTop);
+        const zTop = treeTopZ(S.treeType, S.branchAngle);
+        renderTreeT4(samples, skel, zTop);
 
         // ─── Resample the OBSERVED lateral coordinate onto a uniform height grid ─
         //
@@ -2900,10 +2874,10 @@ scalo |&gt;
         // branch's sideways ramp is trend, and trend belongs on the low-frequency
         // side of the line. Per-window linear removal below keeps that ramp from
         // saturating the color scale without needing to know where the tree is.
-        const yRaw = samples.map(s => s.y);
+        const zRaw = samples.map(s => s.z);
         const xRaw = samples.map(s => s.x);
         const hasFork = (S.treeType === 'Y');
-        const yFork = hasFork ? TRUNK_LEN : -1;
+        const zFork = hasFork ? TRUNK_LEN : -1;
 
         // Grid spacing is set by the COARSEST raw spacing in y, so the analysis
         // never claims resolution the samples do not have. Samples are uniform in
@@ -2914,28 +2888,28 @@ scalo |&gt;
         // broadband. That fabricated floor is invisible where the signal is strong
         // and dominates wherever the signal is weak, which is precisely how a
         // straight, quiet stretch of trunk ends up painted as high-frequency.
-        const yLo = yRaw[0], yHi = yRaw[yRaw.length - 1];
-        let dyMax = 0;
-        for (let i = 1; i < yRaw.length; i++) dyMax = Math.max(dyMax, yRaw[i] - yRaw[i-1]);
-        const K = Math.max(16, Math.round((yHi - yLo) / dyMax) + 1);
+        const zLo = zRaw[0], zHi = zRaw[zRaw.length - 1];
+        let dzMax = 0;
+        for (let i = 1; i < zRaw.length; i++) dzMax = Math.max(dzMax, zRaw[i] - zRaw[i-1]);
+        const K = Math.max(16, Math.round((zHi - zLo) / dzMax) + 1);
 
         // W cannot exceed the grid, and a few columns are needed to see anything.
         const hop = S.hop;
         const W = Math.max(8, Math.min(S.W, K - 3 * hop));
         const wClamped = (W !== S.W);
 
-        const yGrid = new Array(K), xGrid = new Array(K);
-        for (let i = 0; i < K; i++) yGrid[i] = yLo + (yHi - yLo) * i / (K - 1);
+        const zGrid = new Array(K), xGrid = new Array(K);
+        for (let i = 0; i < K; i++) zGrid[i] = zLo + (zHi - zLo) * i / (K - 1);
         function interp(y) {
-          if (y <= yRaw[0]) return xRaw[0];
-          if (y >= yRaw[yRaw.length - 1]) return xRaw[xRaw.length - 1];
-          let lo = 0, hi = yRaw.length - 1;
-          while (hi - lo > 1) { const m = (lo + hi) >> 1; if (yRaw[m] <= y) lo = m; else hi = m; }
-          const f = (y - yRaw[lo]) / (yRaw[hi] - yRaw[lo]);
+          if (y <= zRaw[0]) return xRaw[0];
+          if (y >= zRaw[zRaw.length - 1]) return xRaw[xRaw.length - 1];
+          let lo = 0, hi = zRaw.length - 1;
+          while (hi - lo > 1) { const m = (lo + hi) >> 1; if (zRaw[m] <= y) lo = m; else hi = m; }
+          const f = (y - zRaw[lo]) / (zRaw[hi] - zRaw[lo]);
           return xRaw[lo] * (1 - f) + xRaw[hi] * f;
         }
-        for (let i = 0; i < K; i++) xGrid[i] = interp(yGrid[i]);
-        const dz = (yHi - yLo) / (K - 1);
+        for (let i = 0; i < K; i++) xGrid[i] = interp(zGrid[i]);
+        const dz = (zHi - zLo) / (K - 1);
         const Fs = 1 / dz;
         const nyq = Fs / 2;
 
@@ -3019,7 +2993,7 @@ scalo |&gt;
 
         // ─── Canvas: vertical = height z, horizontal = f ───
         // Height, padding, and z range are shared with the tree SVG (T4_VH,
-        // T4_PAD_T, T4_PAD_B, t4yToPy), so the wide-screen CSS rule scales both to
+        // T4_PAD_T, T4_PAD_B, t4zToPy), so the wide-screen CSS rule scales both to
         // one rendered height and a given height lands on the same pixel row in
         // both panels. Changing any of those four here without changing the SVG
         // silently breaks the alignment.
@@ -3047,7 +3021,7 @@ scalo |&gt;
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, cssW, cssH);
 
-        const zToPy = y => t4yToPy(y, yTop);
+        const zToPy = y => t4zToPy(y, zTop);
         function fToPx(f) { return padL + (f / nyq) * plotW; }
 
         const cmap = getColormap(S.cmap);
@@ -3060,9 +3034,9 @@ scalo |&gt;
         // statement about coverage. The real caveat at the ends is the reflected
         // window, and that is already marked, at a scale (W/2) far larger than this.
         for (let c = 0; c < nCols; c++) {
-          const yc = yLo + ctr[c] * dz;
-          const hi = (c === nCols - 1) ? yTop : yc + hop * dz / 2;
-          const lo = (c === 0)         ? 0    : yc - hop * dz / 2;
+          const zc = zLo + ctr[c] * dz;
+          const hi = (c === nCols - 1) ? zTop : zc + hop * dz / 2;
+          const lo = (c === 0)         ? 0    : zc - hop * dz / 2;
           const yA = zToPy(hi);
           const yB = zToPy(lo);
           const cellH = Math.max(1.2, yB - yA);
@@ -3081,7 +3055,7 @@ scalo |&gt;
         // Edge-affected bands: within W/2 of either end, part of the window is
         // reflected data rather than observed data. Mark the boundary rather than
         // leaving the region blank, so the axis stays full but the caveat is visible.
-        const edgeLo = yLo + pad * dz, edgeHi = yHi - pad * dz;
+        const edgeLo = zLo + pad * dz, edgeHi = zHi - pad * dz;
         if (edgeLo < edgeHi) {
           ctx.save();
           ctx.strokeStyle = 'rgba(255,255,255,0.55)';
@@ -3108,19 +3082,19 @@ scalo |&gt;
         ctx.strokeRect(padL, padT, plotW, plotH);
 
         // Fork: HORIZONTAL line at y = 1.0, the same row as in the tree panel
-        if (hasFork && yFork > 0 && yFork <= yTop) {
+        if (hasFork && zFork > 0 && zFork <= zTop) {
           ctx.strokeStyle = '#d97842';
           ctx.lineWidth = 2.0;
           ctx.setLineDash([6, 4]);
           ctx.beginPath();
-          ctx.moveTo(padL, zToPy(yFork));
-          ctx.lineTo(padL + plotW, zToPy(yFork));
+          ctx.moveTo(padL, zToPy(zFork));
+          ctx.lineTo(padL + plotW, zToPy(zFork));
           ctx.stroke();
           ctx.setLineDash([]);
           ctx.fillStyle = '#d97842';
           ctx.font = '600 12px "IBM Plex Mono", monospace';
           ctx.textAlign = 'right';
-          ctx.fillText('fork', padL + plotW - 6, zToPy(yFork) - 5);
+          ctx.fillText('fork', padL + plotW - 6, zToPy(zFork) - 5);
         }
 
         // f_cut: VERTICAL line at f = 1/L_bend
@@ -3161,10 +3135,10 @@ scalo |&gt;
         // Y axis (height z) — left
         ctx.textAlign = 'right';
         for (let i = 0; i <= 5; i++) {
-          const yv = yTop * i / 5;
-          const py = zToPy(yv);
+          const zv = zTop * i / 5;
+          const py = zToPy(zv);
           ctx.beginPath(); ctx.moveTo(padL - 5, py); ctx.lineTo(padL, py); ctx.stroke();
-          ctx.fillText(yv.toFixed(2), padL - 8, py + 4);
+          ctx.fillText(zv.toFixed(2), padL - 8, py + 4);
         }
 
         // Axis labels
@@ -3190,9 +3164,9 @@ scalo |&gt;
 
       // ─── Tab 3: one cubic per stretch, and what that lets the fit follow ─────
       // Evaluate a fitted cubic spline at an arbitrary height.
-      function evalSplineAt(y, knots, degree, df, beta, yLo, yHi) {
-        const nudge = Math.max(1e-12, 1e-12 * (yHi - yLo));
-        const yy = y >= yHi ? yHi - nudge : (y < yLo ? yLo : y);
+      function evalSplineAt(y, knots, degree, df, beta, zLo, zHi) {
+        const nudge = Math.max(1e-12, 1e-12 * (zHi - zLo));
+        const yy = y >= zHi ? zHi - nudge : (y < zLo ? zLo : y);
         let v = 0;
         for (let k = 0; k < df; k++) v += coxDeBoor(yy, k, degree, knots) * beta[k];
         return v;
@@ -3206,22 +3180,22 @@ scalo |&gt;
         const DEG = 3, df = S.df;
         const prng = makePRNG(S.internalSeed);
         const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, S.alphaDelib, prng);
-        const yLo = samples[0].y, yHi = samples[samples.length - 1].y;
-        const span = yHi - yLo;
+        const zLo = samples[0].z, zHi = samples[samples.length - 1].z;
+        const span = zHi - zLo;
         const nInt = Math.max(0, df - DEG - 1);       // DF = n + 4
         const nStretch = nInt + 1;
         const h = span / nStretch;
-        const knots = makeKnots(yLo, yHi, df, DEG);
+        const knots = makeKnots(zLo, zHi, df, DEG);
         const interior = [];
-        for (let i = 1; i <= nInt; i++) interior.push(yLo + span * i / (nInt + 1));
+        for (let i = 1; i <= nInt; i++) interior.push(zLo + span * i / (nInt + 1));
 
         // ─── shared geometry for both panels ───
         const W = 720, mL = 46, mR = 16;
         const plotW = W - mL - mR;
-        const xToPx = y => mL + (y - yLo) / span * plotW;
+        const xToPx = y => mL + (y - zLo) / span * plotW;
         const band = (i) => {           // pixel span of stretch i
-          const a = i === 0 ? yLo : interior[i - 1];
-          const b = i === nStretch - 1 ? yHi : interior[i];
+          const a = i === 0 ? zLo : interior[i - 1];
+          const b = i === nStretch - 1 ? zHi : interior[i];
           return [xToPx(a), xToPx(b)];
         };
         function stretchBands(top, height) {
@@ -3243,7 +3217,7 @@ scalo |&gt;
         function heightAxis(yBase) {
           let g = `<line x1="${mL}" y1="${yBase}" x2="${W - mR}" y2="${yBase}" stroke="#222" stroke-width="1"/>`;
           for (let i = 0; i <= 4; i++) {
-            const y = yLo + span * i / 4;
+            const y = zLo + span * i / 4;
             g += `<line x1="${xToPx(y)}" y1="${yBase}" x2="${xToPx(y)}" y2="${yBase + 4}" stroke="#222" stroke-width="1"/>`;
             g += `<text x="${xToPx(y)}" y="${yBase + 15}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="#666">${y.toFixed(2)}</text>`;
           }
@@ -3252,8 +3226,8 @@ scalo |&gt;
 
         // ─── Panel 1: the fit, with one shaded band per cubic ───
         const H1 = 250, mT = 26, plotH = 168;
-        const ys = samples.map(s => s.y), xs = samples.map(s => s.x);
-        const X = bsplineDesign(ys, knots, DEG, df);
+        const zs = samples.map(s => s.z), xs = samples.map(s => s.x);
+        const X = bsplineDesign(zs, knots, DEG, df);
         const beta = solveRidge(X, xs, 1e-8);
         let vMin = Math.min.apply(null, xs), vMax = Math.max.apply(null, xs);
         const padV = 0.12 * (vMax - vMin || 1);
@@ -3265,12 +3239,12 @@ scalo |&gt;
         svg += stretchBands(mT, plotH);
         svg += knotLines(mT, mT + plotH);
         for (let i = 0; i < samples.length; i++) {
-          svg += `<circle cx="${xToPx(ys[i])}" cy="${vToPx(xs[i])}" r="1.7" fill="#bbb"/>`;
+          svg += `<circle cx="${xToPx(zs[i])}" cy="${vToPx(xs[i])}" r="1.7" fill="#bbb"/>`;
         }
         let path = '';
         for (let i = 0; i < 320; i++) {
-          const y = yLo + span * i / 319;
-          const v = evalSplineAt(y, knots, DEG, df, beta, yLo, yHi);
+          const y = zLo + span * i / 319;
+          const v = evalSplineAt(y, knots, DEG, df, beta, zLo, zHi);
           path += `${i === 0 ? 'M' : 'L'}${xToPx(y).toFixed(2)},${vToPx(v).toFixed(2)} `;
         }
         svg += `<path d="${path.trim()}" fill="none" stroke="#6b21a8" stroke-width="2.4"/>`;
@@ -3292,12 +3266,12 @@ scalo |&gt;
         const lam = S.testLambda;
         const H2 = 236, wT = 22, wH = 132, barY = wT + wH + 34;
         const NW = 420;
-        const wy = [], wv = [];
+        const wz = [], wv = [];
         for (let i = 0; i < NW; i++) {
-          const y = yLo + span * i / (NW - 1);
-          wy.push(y); wv.push(Math.sin(2 * Math.PI * (y - yLo) / lam));
+          const y = zLo + span * i / (NW - 1);
+          wz.push(y); wv.push(Math.sin(2 * Math.PI * (y - zLo) / lam));
         }
-        const Xw = bsplineDesign(wy, knots, DEG, df);
+        const Xw = bsplineDesign(wz, knots, DEG, df);
         const bw = solveRidge(Xw, wv, 1e-10);
         // amplitude actually retained, over the interior so the clamped ends do not flatter it
         let num = 0, den = 0;
@@ -3315,10 +3289,10 @@ scalo |&gt;
         s2 += knotLines(wT, wT + wH);
         let tp = '', fp = '';
         for (let i = 0; i < NW; i++) {
-          tp += `${i === 0 ? 'M' : 'L'}${xToPx(wy[i]).toFixed(2)},${wToPx(wv[i]).toFixed(2)} `;
+          tp += `${i === 0 ? 'M' : 'L'}${xToPx(wz[i]).toFixed(2)},${wToPx(wv[i]).toFixed(2)} `;
           let f = 0;
           for (let k = 0; k < df; k++) f += Xw[i][k] * bw[k];
-          fp += `${i === 0 ? 'M' : 'L'}${xToPx(wy[i]).toFixed(2)},${wToPx(f).toFixed(2)} `;
+          fp += `${i === 0 ? 'M' : 'L'}${xToPx(wz[i]).toFixed(2)},${wToPx(f).toFixed(2)} `;
         }
         s2 += `<path d="${tp.trim()}" fill="none" stroke="#b9b9b9" stroke-width="1.8"/>`;
         s2 += `<path d="${fp.trim()}" fill="none" stroke="#6b21a8" stroke-width="2.4"/>`;
@@ -3390,7 +3364,7 @@ scalo |&gt;
         const prng = makePRNG(S.internalSeed);
         const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, S.alphaDelib, prng);
         const skel = treeSkeleton(S.treeType, S.branchAngle);
-        const yTop = treeTopY(S.treeType, S.branchAngle);
+        const zTop = treeTopZ(S.treeType, S.branchAngle);
         // The tree shares its rendered HEIGHT with the other two panels (the
         // wide-screen rule pins all three at 590px), so its rendered width follows
         // from the viewBox aspect and cannot be capped with max-width without
@@ -3405,23 +3379,23 @@ scalo |&gt;
           const availW = treeWrap.clientWidth;
           if (availW > 20) treeSvgW = Math.max(110, Math.floor(availW * T4_VH / 590) - 2);
         }
-        renderTreeT4(samples, skel, yTop, 'treeWrap-5', 'arrUp-5', treeSvgW);
+        renderTreeT4(samples, skel, zTop, 'treeWrap-5', 'arrUp-5', treeSvgW);
 
         // Same height grid as Tab 4, so the two tabs analyse identical data.
-        const yRaw = samples.map(p => p.y), xRaw = samples.map(p => p.x);
-        const yLo = yRaw[0], yHi = yRaw[yRaw.length - 1];
-        let dyMax = 0;
-        for (let i = 1; i < yRaw.length; i++) dyMax = Math.max(dyMax, yRaw[i] - yRaw[i - 1]);
-        const K = Math.max(16, Math.round((yHi - yLo) / dyMax) + 1);
-        const dz = (yHi - yLo) / (K - 1);
+        const zRaw = samples.map(p => p.z), xRaw = samples.map(p => p.x);
+        const zLo = zRaw[0], zHi = zRaw[zRaw.length - 1];
+        let dzMax = 0;
+        for (let i = 1; i < zRaw.length; i++) dzMax = Math.max(dzMax, zRaw[i] - zRaw[i - 1]);
+        const K = Math.max(16, Math.round((zHi - zLo) / dzMax) + 1);
+        const dz = (zHi - zLo) / (K - 1);
         const xGrid = new Array(K);
         for (let i = 0; i < K; i++) {
-          const y = yLo + (yHi - yLo) * i / (K - 1);
-          if (y <= yRaw[0]) { xGrid[i] = xRaw[0]; continue; }
-          if (y >= yRaw[yRaw.length - 1]) { xGrid[i] = xRaw[xRaw.length - 1]; continue; }
-          let lo = 0, hi = yRaw.length - 1;
-          while (hi - lo > 1) { const m = (lo + hi) >> 1; if (yRaw[m] <= y) lo = m; else hi = m; }
-          const f = (y - yRaw[lo]) / (yRaw[hi] - yRaw[lo]);
+          const y = zLo + (zHi - zLo) * i / (K - 1);
+          if (y <= zRaw[0]) { xGrid[i] = xRaw[0]; continue; }
+          if (y >= zRaw[zRaw.length - 1]) { xGrid[i] = xRaw[xRaw.length - 1]; continue; }
+          let lo = 0, hi = zRaw.length - 1;
+          while (hi - lo > 1) { const m = (lo + hi) >> 1; if (zRaw[m] <= y) lo = m; else hi = m; }
+          const f = (y - zRaw[lo]) / (zRaw[hi] - zRaw[lo]);
           xGrid[i] = xRaw[lo] * (1 - f) + xRaw[hi] * f;
         }
 
@@ -3429,7 +3403,7 @@ scalo |&gt;
         // past that the cone of influence covers every position, so the scalogram
         // would be showing padding rather than data.
         const w0 = S.w0, ff = morletFourierFactor(w0);
-        const record = yHi - yLo;
+        const record = zHi - zLo;
         const s0 = 2 * dz, sMax = Math.max(s0 * 2, record / 2);
         const dj = 1 / S.voices;
         const nOct = Math.log2(sMax / s0);
@@ -3475,7 +3449,7 @@ scalo |&gt;
         const fMin = freqs[freqs.length - 1], fMax = freqs[0];
         const lg = v => Math.log10(v);
         const fToPx = f => padL + (lg(f) - lg(fMin)) / (lg(fMax) - lg(fMin)) * plotW;
-        const yToPy = y => t4yToPy(y, yTop);
+        const zToPy = y => t4zToPy(y, zTop);
 
         // per-slice normalization is computed over the scales, per height
         const cmap = getColormap(S.cmap);
@@ -3520,7 +3494,7 @@ scalo |&gt;
             let v = W[j][n] / denom;
             if (S.cwtLog) v = Math.log10(1 + 9 * v);
             v = Math.max(0, Math.min(1, v));
-            const yA = yToPy(yLo + (n + 0.5) * dz), yB = yToPy(yLo + (n - 0.5) * dz);
+            const yA = zToPy(zLo + (n + 0.5) * dz), yB = zToPy(zLo + (n - 0.5) * dz);
             ctx.fillStyle = cmap(v);
             ctx.fillRect(xA, yA, (xB - xA) + 0.6, (yB - yA) + 0.6);
           }
@@ -3541,13 +3515,13 @@ scalo |&gt;
             let started = false;
             for (let j = scales.length - 1; j >= 0; j--) {
               const reach = Math.SQRT2 * scales[j];
-              const yEdge = side === 'bottom' ? Math.min(yHi, yLo + reach) : Math.max(yLo, yHi - reach);
-              const pxx = fToPx(freqs[j]), pyy = yToPy(yEdge);
+              const zEdge = side === 'bottom' ? Math.min(zHi, zLo + reach) : Math.max(zLo, zHi - reach);
+              const pxx = fToPx(freqs[j]), pyy = zToPy(zEdge);
               if (!started) { ctx.moveTo(pxx, pyy); started = true; } else ctx.lineTo(pxx, pyy);
             }
-            const yCorner = side === 'bottom' ? yLo : yHi;
-            ctx.lineTo(fToPx(fMax), yToPy(yCorner));
-            ctx.lineTo(fToPx(fMin), yToPy(yCorner));
+            const zCorner = side === 'bottom' ? zLo : zHi;
+            ctx.lineTo(fToPx(fMax), zToPy(zCorner));
+            ctx.lineTo(fToPx(fMin), zToPy(zCorner));
             ctx.closePath();
             ctx.fill();
           }
@@ -3559,8 +3533,8 @@ scalo |&gt;
             let started = false;
             for (let j = scales.length - 1; j >= 0; j--) {
               const reach = Math.SQRT2 * scales[j];
-              const yEdge = side === 'bottom' ? Math.min(yHi, yLo + reach) : Math.max(yLo, yHi - reach);
-              const pxx = fToPx(freqs[j]), pyy = yToPy(yEdge);
+              const zEdge = side === 'bottom' ? Math.min(zHi, zLo + reach) : Math.max(zLo, zHi - reach);
+              const pxx = fToPx(freqs[j]), pyy = zToPy(zEdge);
               if (!started) { ctx.moveTo(pxx, pyy); started = true; } else ctx.lineTo(pxx, pyy);
             }
             ctx.stroke();
@@ -3578,12 +3552,12 @@ scalo |&gt;
         ctx.strokeRect(padL, padT, plotW, plotH);
 
         // fork line, same row as the tree
-        if (S.treeType === 'Y' && TRUNK_LEN <= yTop) {
+        if (S.treeType === 'Y' && TRUNK_LEN <= zTop) {
           ctx.strokeStyle = '#d97842'; ctx.lineWidth = 2.0; ctx.setLineDash([6, 4]);
-          ctx.beginPath(); ctx.moveTo(padL, yToPy(TRUNK_LEN)); ctx.lineTo(padL + plotW, yToPy(TRUNK_LEN)); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(padL, zToPy(TRUNK_LEN)); ctx.lineTo(padL + plotW, zToPy(TRUNK_LEN)); ctx.stroke();
           ctx.setLineDash([]);
           ctx.fillStyle = '#d97842'; ctx.font = '600 12px "IBM Plex Mono", monospace'; ctx.textAlign = 'right';
-          ctx.fillText('fork', padL + plotW - 6, yToPy(TRUNK_LEN) - 5);
+          ctx.fillText('fork', padL + plotW - 6, zToPy(TRUNK_LEN) - 5);
         }
         // the divide
         if (fCut > fMin && fCut < fMax) {
@@ -3619,9 +3593,9 @@ scalo |&gt;
         }
         ctx.textAlign = 'right';
         for (let i = 0; i <= 5; i++) {
-          const yv = yTop * i / 5, pyy = yToPy(yv);
+          const zv = zTop * i / 5, pyy = zToPy(zv);
           ctx.beginPath(); ctx.moveTo(padL - 5, pyy); ctx.lineTo(padL, pyy); ctx.stroke();
-          ctx.fillText(yv.toFixed(2), padL - 8, pyy + 4);
+          ctx.fillText(zv.toFixed(2), padL - 8, pyy + 4);
         }
         ctx.fillStyle = '#222'; ctx.font = '14px "IBM Plex Mono", monospace'; ctx.textAlign = 'center';
         ctx.fillText('spatial frequency  (1/length, log)', padL + plotW / 2, cssH - 10);
@@ -3661,7 +3635,7 @@ scalo |&gt;
         let open = false;
         for (let n = 0; n < K; n++) {
           if (!profOK[n]) continue;
-          const X = vToPx(prof[n]), Y = yToPy(yLo + n * dz);
+          const X = vToPx(prof[n]), Y = zToPy(zLo + n * dz);
           if (!open) { pctx.moveTo(X, Y); open = true; } else pctx.lineTo(X, Y);
         }
         pctx.stroke();
@@ -3670,7 +3644,7 @@ scalo |&gt;
         let firstY = 0, lastY = 0;
         for (let n = 0; n < K; n++) {
           if (!profOK[n]) continue;
-          const X = vToPx(prof[n]), Y = yToPy(yLo + n * dz);
+          const X = vToPx(prof[n]), Y = zToPy(zLo + n * dz);
           if (!open) { pctx.moveTo(qL, Y); firstY = Y; open = true; }
           pctx.lineTo(X, Y); lastY = Y;
         }
@@ -3678,9 +3652,9 @@ scalo |&gt;
 
         pctx.strokeStyle = '#222'; pctx.lineWidth = 1.2;
         pctx.strokeRect(qL, padT, qW, plotH);
-        if (S.treeType === 'Y' && TRUNK_LEN <= yTop) {
+        if (S.treeType === 'Y' && TRUNK_LEN <= zTop) {
           pctx.strokeStyle = '#d97842'; pctx.lineWidth = 2.0; pctx.setLineDash([6, 4]);
-          pctx.beginPath(); pctx.moveTo(qL, yToPy(TRUNK_LEN)); pctx.lineTo(qL + qW, yToPy(TRUNK_LEN)); pctx.stroke();
+          pctx.beginPath(); pctx.moveTo(qL, zToPy(TRUNK_LEN)); pctx.lineTo(qL + qW, zToPy(TRUNK_LEN)); pctx.stroke();
           pctx.setLineDash([]);
         }
         pctx.fillStyle = '#222'; pctx.font = '11px "IBM Plex Mono", monospace'; pctx.textAlign = 'center';
@@ -4024,5 +3998,3 @@ scalo |&gt;
 <script>
 if (window.self !== window.top) { var f = document.getElementById('back-link-footer'); if (f) f.style.display = 'none'; }
 </script>
-</body>
-</html>
