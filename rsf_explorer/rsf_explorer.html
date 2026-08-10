@@ -219,8 +219,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .ext-note{font-size:11px;color:var(--muted);font-style:italic;line-height:1.5;padding:6px 10px;background:var(--cream-dk);border-radius:5px;border-left:3px solid var(--border);margin:6px 0}
 
 /* ── Footer ──────────────────────────────── */
-footer{background:var(--cream-dk);border-top:1px solid var(--border);padding:6px 16px;font-family:var(--mono);font-size:10px;color:var(--muted);flex-shrink:0;line-height:1.7}
-footer div{max-width:1020px;margin:0 auto;text-align:center}
+/* Scoped away from #back-link-footer, which is a <footer> too: the band styling
+   below is the copyright bar's, and the back link keeps the shared template's
+   own inline styling so it matches the other excursions. */
+footer:not(#back-link-footer){background:var(--cream-dk);border-top:1px solid var(--border);padding:6px 16px;font-family:var(--mono);font-size:10px;color:var(--muted);flex-shrink:0;line-height:1.7}
+footer:not(#back-link-footer) div{max-width:1020px;margin:0 auto;text-align:center}
 footer:not(#back-link-footer) a{color:var(--green);text-decoration:underline;text-underline-offset:2px}
 
 /* ── Responsive ──────────────────────────── */
@@ -595,8 +598,10 @@ footer:not(#back-link-footer) a{color:var(--green);text-decoration:underline;tex
     <span style="white-space:nowrap">© 2026 Theodore&nbsp;P.&nbsp;Pavlic</span><span class="footer-sep"> · </span><br class="footer-br"><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener" style="color:var(--green);text-decoration:none;white-space:nowrap" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">MIT&nbsp;License</a>
   </div>
 </footer>
-<footer id="back-link-footer" style="border-top:none;padding-top:0">
-  <div style="text-align:left"><a href="../" style="color:#2d5a27;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><span style="font-family:sans-serif">&larr;</span> All excursions</a></div>
+<footer id="back-link-footer" style="padding:0 16px 1.5rem;flex-shrink:0;">
+  <div style="max-width:1020px;margin:0 auto;padding-top:0.35rem;font-size:0.8rem;color:#888;">
+    <a href="../" style="color:#2d5a27;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><span style="font-family:sans-serif">&larr;</span> All excursions</a>
+  </div>
 </footer>
 </div><!-- /app -->
 

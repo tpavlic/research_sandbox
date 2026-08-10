@@ -195,6 +195,42 @@ light background is often unreadable on a dark banner). Bring body/reference lin
 behavior via the page's global `a{}` rule (`a{…;text-decoration:none} a:hover{text-decoration:underline}`)
 so the whole page is consistent.
 
+**"Readable" means at least 4.5:1 against the background the link actually sits on.** Footer links
+are normal-size text, not large text, so WCAG AA asks 4.5:1; measure it rather than trusting that a
+color which looks fine is fine. Current back-link contrasts are 7.49:1 (`rsf_explorer`), 7.51:1
+(`social-cue-ql`), 6.32:1 (`ytree_detrend`), and 4.55:1 (`v2v_swarm_explorer`).
+
+A page whose accent is tuned for fills and headings is often far too light for text: `v2v`'s
+`--accent` `#d97e3b` reached only 2.58:1, and its `--accent-dark` `#b86426` only 3.70:1. When that
+happens, do not retune the accent itself, which would change every button and heading using it, and
+do not darken only the back-link, which would leave it mismatched against the page's other links.
+Add a **link-only token** beside the accent, derived by holding hue and saturation and dropping
+lightness until it clears 4.5:1 – `--accent-link: #a35820` keeps `--accent`'s 25.6 deg and 67%
+saturation at 38% lightness – then point every link-colored rule at it. Non-link uses of the accent
+stay untouched, and the links stay recognizably the page's own color.
+
+Two things worth checking whenever a link color changes: a `:hover` rule that shifts to the *old*
+accent will now **lighten** the link and undo the fix, so drop the color shift and keep the
+hover-underline; and the count of affected links is usually far larger than the footer, since one
+citation or reference rule can feed dozens. Enumerate them from the rendered page rather than by
+grepping – on `v2v` this was 89 anchors, 87 of them from a single `.cite a` rule:
+
+```js
+const lum = (r, g, b) => { [r, g, b] = [r, g, b].map(c => { c /= 255;
+  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const p = s => s.match(/\d+(\.\d+)?/g).map(Number);
+const bgOf = e => { for (let n = e; n && n !== document.documentElement; n = n.parentElement) {
+  const c = getComputedStyle(n).backgroundColor, q = p(c);
+  if (!(q.length > 3 && q[3] === 0)) return c; } return 'rgb(255,255,255)'; };
+const cr = (f, b) => { const F = p(f), B = p(b);
+  const [hi, lo] = [lum(...F.slice(0, 3)), lum(...B.slice(0, 3))].sort((x, y) => y - x);
+  return +((hi + 0.05) / (lo + 0.05)).toFixed(2); };
+[...document.querySelectorAll('a')].map(a => {
+  const c = getComputedStyle(a); return { color: c.color, size: c.fontSize,
+    contrast: cr(c.color, bgOf(a)) }; });
+```
+
 **At most one hard rule in the footer area.** The copyright block and the `#back-link-footer` can
 each carry a `border-top`, and having both stacks two rules bracketing the copyright, which reads as
 too much. Keep at most one. If the page body is built from panels with hard edges, no footer rule is
