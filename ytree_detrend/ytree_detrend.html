@@ -115,6 +115,7 @@ a { color: var(--accent); }
   flex-wrap: wrap;
 }
 .tab {
+  flex: 0 0 auto;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -266,6 +267,14 @@ a { color: var(--accent); }
 .toggle input { margin: 0; accent-color: var(--green-dark); }
 .toggle-disabled { opacity: 0.35; pointer-events: none; }
 .ctrl-disabled   { opacity: 0.35; pointer-events: none; }
+
+.tablink {
+  color: var(--green-dark);
+  text-decoration: none;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+}
+.tablink:hover { text-decoration: underline; }
 
 /* ── Help tooltips ───────────────────────────────────────────────────────────
    The affordance is a dotted underline on the label text. The bubble itself is a
@@ -477,6 +486,20 @@ a { color: var(--accent); }
 .footer-sep { display: inline; }
 .footer-lic { display: inline; }
 
+/* Panels in these two grids align their plots by sharing a rendered height, which
+   only holds if their headings occupy the same box. A heading that wraps in a
+   narrow column would otherwise push its plot down and break the alignment, so
+   reserve two lines for all of them. */
+.tab4-grid > .panel > h3,
+.tab5-grid > .panel > h3 { height: 2.9em; min-height: 0; overflow: hidden; }
+
+.tab5-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.44fr) minmax(0, 1fr) minmax(0, 0.28fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
 /* Wide-screen Tab 4: fix both panels to the same height so tree and spectrogram are visually aligned */
 @media (min-width: 881px) {
   #treeWrap-4 svg {
@@ -492,23 +515,41 @@ a { color: var(--accent); }
     display: block;
     margin: 0 auto;
   }
+  /* Tab 5: tree, scalogram and profile all share the one rendered height, which is
+     what keeps a given height on the same pixel row across all three. */
+  #treeWrap-5 svg {
+    width: auto;
+    height: 590px;
+    display: block;
+    margin: 0 auto;
+  }
+  #cwtWrap-5 canvas, #profWrap-5 canvas {
+    width: auto !important;
+    height: 590px !important;
+    max-width: 100% !important;
+    display: block;
+    margin: 0 auto;
+  }
 }
 
 @media (max-width: 880px) {
   .grid { grid-template-columns: 1fr; }
   .tab4-grid { grid-template-columns: 1fr; }
+  .tab5-grid { grid-template-columns: 1fr; }
   /* Cap tree SVG width so height stays roughly constant when the 2-column
      grid reflws to 1 column.  At the breakpoint the tree panel is ~450 px
      wide in wide-screen mode; capping at 460 px here keeps the height
      nearly unchanged as the viewport narrows through that transition. */
   #treeWrap-1, #treeWrap-3 { max-width: 460px; margin-left: auto; margin-right: auto; }
   /* Tab 4 tree has a narrow viewBox (200×540); cap at its natural max width. */
-  #treeWrap-4 { max-width: 220px; margin-left: auto; margin-right: auto; }
+  #treeWrap-4, #treeWrap-5 { max-width: 220px; margin-left: auto; margin-right: auto; }
 }
 
 @media (max-width: 600px) {
   .widget { padding: 18px 14px 36px; }
   .phdr h1 { font-size: 1.3rem; }
+  /* Fallback only. initTabFit measures the bar and sets these inline, which wins
+     over this rule; without script this at least gives the dropdown when narrow. */
   .tabs { display: none; }
   .tabs-select-wrap { display: block; }
   .rtabs { display: none; }
@@ -531,7 +572,7 @@ a { color: var(--accent); }
       deliberation, drift &mdash; one first needs to subtract the trend. This widget illustrates two complementary
       ways to do it: (1) fit a smooth spline to the trajectory and study the perpendicular residuals
       <code>d(s)</code>, or (2) compute a windowed Fourier transform of lateral position
-      <code>x(y)</code> against height and treat low spatial frequencies as the trend. The second route
+      <code>x(z)</code> against height and treat low spatial frequencies as the trend. The second route
       is the model-free one: it never estimates where the tree is.
     </p>
     <p class="lede" style="font-size: 0.85rem; color: var(--muted);">
@@ -546,15 +587,19 @@ a { color: var(--accent); }
   <div class="tabs" role="tablist">
     <button class="tab active" data-tab="0">Detrending overview</button>
     <button class="tab"        data-tab="1">Perpendicular projection</button>
-    <button class="tab"        data-tab="2">Choosing the DF</button>
-    <button class="tab"        data-tab="3">Windowed Fourier transform</button>
+    <button class="tab"        data-tab="2">Choosing spline parameters</button>
+    <button class="tab"        data-tab="3">Data-driven parameters</button>
+    <button class="tab"        data-tab="4">Windowed Fourier transform</button>
+    <button class="tab"        data-tab="5">Wavelet scalogram</button>
   </div>
   <div class="tabs-select-wrap">
     <select class="tabs-select" id="mainTabSelect">
       <option value="0">1. Detrending overview</option>
       <option value="1">2. Perpendicular projection</option>
-      <option value="2">3. Choosing the DF</option>
-      <option value="3">4. Windowed Fourier transform</option>
+      <option value="2">3. Choosing spline parameters</option>
+      <option value="3">4. Data-driven parameters</option>
+      <option value="4">5. Windowed Fourier transform</option>
+      <option value="5">6. Wavelet scalogram</option>
     </select>
   </div>
 
@@ -581,14 +626,14 @@ a { color: var(--accent); }
         <h3>Controls</h3>
         <div class="ctrls">
           <div class="ctrl">
-            <label><span class="tip" data-tip="Y gives a forked tree, so the centreline kinks at the fork and there is a fork height to look for signal near. I is a straight trunk with no kink, useful as a control: any structure you see there cannot be the fork.">Tree type</span> <span class="v" id="v-treeType">Y</span></label>
+            <label><span class="tip" data-tip="Y gives a forked tree, and so the centreline kinks at the fork and there is a fork height to look for signal near. I is a straight trunk with no kink, useful as a control: any structure you see there cannot be the fork.">Tree type</span> <span class="v" id="v-treeType">Y</span></label>
             <select id="treeType">
               <option value="Y" selected>Y &mdash; forked</option>
               <option value="I">I &mdash; straight</option>
             </select>
           </div>
           <div class="ctrl">
-            <label><span class="tip" data-tip="Angle of the branch away from vertical. A wider angle makes the kink at the fork sharper and the branch&#39;s sideways ramp steeper, so it puts more tree power into the low-frequency band.">Branch angle</span> <span class="v" id="v-theta">35&deg;</span></label>
+            <label><span class="tip" data-tip="Angle of the branch away from vertical. A wider angle makes the kink at the fork sharper and the branch&#39;s sideways ramp steeper, and so it puts more tree power into the low-frequency band.">Branch angle</span> <span class="v" id="v-theta">35&deg;</span></label>
             <input type="range" id="theta" min="15" max="65" value="35">
           </div>
 
@@ -597,8 +642,8 @@ a { color: var(--accent); }
             <input type="range" id="N" min="40" max="240" value="100">
           </div>
           <div class="ctrl">
-            <label><span class="tip" data-tip="Degrees of freedom of the cubic B-spline used by the other tabs. More DF lets the spline follow the trajectory more closely, eventually absorbing the ant behaviour you are trying to measure. This is the spline route&#39;s tuning knob, the counterpart of L_bend here.">Spline DF (cubic)</span> <span class="v" id="v-df">6</span></label>
-            <input type="range" id="df" min="4" max="14" value="6">
+            <label><span class="tip" data-tip="Degrees of freedom of the cubic B-spline used by the other tabs. More DF lets the spline follow the trajectory more closely, eventually absorbing the ant behaviour you are trying to measure. This is the spline route&#39;s tuning knob, the counterpart of L_{bend} here.">Spline DF (cubic)</span> <span class="v" id="v-df">6</span></label>
+            <input type="range" id="df" min="4" max="30" value="6">
           </div>
 
           <div class="ctrl">
@@ -620,13 +665,19 @@ a { color: var(--accent); }
 
         <div class="sec-divider"></div>
         <p style="font-size:0.78rem; color:var(--muted); margin:0 0 10px; line-height:1.55;">
-          <b style="color:var(--text);">What is DF?</b> Degrees of freedom = number of B-spline basis
-          functions. A single cubic (degree&nbsp;3) polynomial has <b style="color:var(--text);">4</b>
-          free parameters (the coefficients of 1, <em>t</em>, <em>t</em>&sup2;, <em>t</em>&sup3;),
-          so DF&nbsp;=&nbsp;4 corresponds to zero interior knots &mdash; one unbroken polynomial
-          spanning the whole trajectory.
-          Interior knots = DF&nbsp;&minus;&nbsp;4 &nbsp;(i.e.&nbsp;DF&nbsp;&minus;&nbsp;(degree&nbsp;+&nbsp;1)),
-          so DF&nbsp;=&nbsp;5 has 1&nbsp;knot; DF&nbsp;=&nbsp;6 has 2; DF&nbsp;=&nbsp;14 has 10.
+          <b style="color:var(--text);">What is DF?</b> These points are fit with a
+          <b style="color:var(--text);">cubic spline</b>, a smooth chain of cubic polynomials, and DF
+          counts the degrees of freedom, meaning the free parameters available to shape that fit.
+          The <a class="tablink" data-goto="2">Choosing spline parameters</a> tab takes the idea apart
+          in full, and the <a class="tablink" data-goto="1">Perpendicular projection</a> tab shows what
+          the residuals off such a fit are measuring.
+          In short, a single cubic (a polynomial reaching an exponent of 3) carries
+          <b style="color:var(--text);">4</b> free parameters, the coefficients of 1, <em>t</em>,
+          <em>t</em>&sup2;, and <em>t</em>&sup3;, and so DF&nbsp;=&nbsp;4 leaves zero interior knots,
+          one unbroken polynomial spanning the whole trajectory.
+          The number of interior knots is DF&nbsp;&minus;&nbsp;4, that is
+          DF&nbsp;&minus;&nbsp;(degree&nbsp;+&nbsp;1): DF&nbsp;=&nbsp;5 has 1&nbsp;knot,
+          DF&nbsp;=&nbsp;6 has 2, and DF&nbsp;=&nbsp;14 has 10.
           Toggle <em>Spline knots</em> to see them marked.
         </p>
         <div class="toggles">
@@ -662,15 +713,15 @@ a { color: var(--accent); }
       <p>
         The smoothing is a Goldilocks choice: too few degrees of freedom and the spline cuts across
         the bend, dumping tree shape into the residual; too many and it threads through the
-        deliberation, hiding the signal. See the <b>Choosing the DF</b> tab.
+        deliberation, hiding the signal. See the <a class="tablink" data-goto="3">Data-driven parameters</a> tab.
       </p>
       <p style="font-size:0.88em; color:var(--muted);">
-        <b>On the smoothing parameter.</b> For an ordinary least-squares fit to a cubic B-spline basis
-        (what you get from <code>splines::bs(t, df = k, degree = 3)</code> followed by <code>lm()</code>),
-        DF is the only knob &mdash; it sets the number of basis functions. <em>Smoothing</em> splines
-        (e.g.&nbsp;<code>mgcv::gam(y &sim; s(t))</code>) take a different route: a large fixed basis
-        plus a wiggliness penalty <span class="greek">&lambda;</span> chosen by GCV or REML.
-        DF and <span class="greek">&lambda;</span> are two parameterizations of the same trade-off.
+        <b>On the smoothing parameter.</b> How closely the spline is allowed to follow the trajectory
+        rests on a single dial. Here you set it directly, as the DF of the fit, which the
+        <a class="tablink" data-goto="2">Choosing spline parameters</a> tab takes apart. Some packages
+        (<code>mgcv::gam</code>, say) instead have you set how heavily wiggliness is charged for, and
+        let the flexibility follow from that; the <a class="tablink" data-goto="3">Data-driven parameters</a> tab shows why those are
+        the same choice approached from opposite ends.
       </p>
     </div>
 
@@ -688,42 +739,42 @@ a { color: var(--accent); }
       </div>
       <div class="rpane active" data-rpane="t0-base"><pre>library(splines)
 
-# `ants` columns: t (parameter), x, y (load position).
-# Fit cubic B-splines to x and y independently as functions of t.
-df <- 6
-fit_x <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
-fit_y <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
+# `ants` columns: t (parameter), x, z (load position).
+# Fit cubic B-splines to x and z independently as functions of t.
+df &lt;- 6
+fit_x &lt;- lm(x ~ bs(t, df = df, degree = 3), data = ants)
+fit_z &lt;- lm(z ~ bs(t, df = df, degree = 3), data = ants)
 
 # Dense evaluation of the curve r(t) = (x_hat, y_hat)
-t_grid <- seq(min(ants$t), max(ants$t), length.out = 600)
-curve  <- data.frame(
+t_grid &lt;- seq(min(ants$t), max(ants$t), length.out = 600)
+curve  &lt;- data.frame(
   t = t_grid,
   x = predict(fit_x, newdata = data.frame(t = t_grid)),
-  y = predict(fit_y, newdata = data.frame(t = t_grid))
+  z = predict(fit_z, newdata = data.frame(t = t_grid))
 )
 
 # Cumulative arc length along the curve
-ds        <- sqrt(diff(curve$x)^2 + diff(curve$y)^2)
-curve$s   <- c(0, cumsum(ds))</pre></div>
+ds        &lt;- sqrt(diff(curve$x)^2 + diff(curve$z)^2)
+curve$s   &lt;- c(0, cumsum(ds))</pre></div>
       <div class="rpane" data-rpane="t0-tidy"><pre>library(splines)
 library(dplyr)
 library(tibble)
 
-df <- 6
-fit_x <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
-fit_y <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
+df &lt;- 6
+fit_x &lt;- lm(x ~ bs(t, df = df, degree = 3), data = ants)
+fit_z &lt;- lm(z ~ bs(t, df = df, degree = 3), data = ants)
 
-curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
+curve &lt;- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |&gt;
   mutate(
     x = predict(fit_x, newdata = pick(t)),
-    y = predict(fit_y, newdata = pick(t))
-  ) |>
+    z = predict(fit_z, newdata = pick(t))
+  ) |&gt;
   mutate(
     dx = x - lag(x, default = first(x)),
-    dy = y - lag(y, default = first(y)),
-    s  = cumsum(sqrt(dx^2 + dy^2))
-  ) |>
-  select(-dx, -dy)</pre></div>
+    dz = z - lag(z, default = first(z)),
+    s  = cumsum(sqrt(dx^2 + dz^2))
+  ) |&gt;
+  select(-dx, -dz)</pre></div>
     </div>
 
   </div>
@@ -873,7 +924,7 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
     <div class="explainer">
       <h4>The three computations</h4>
       <p>
-        Each sample <code>p<sub>i</sub> = (x<sub>i</sub>, y<sub>i</sub>)</code> is mapped to two scalars:
+        Each sample <code>p<sub>i</sub> = (x<sub>i</sub>, z<sub>i</sub>)</code> is mapped to two scalars:
         a signed deviation <code>d<sub>i</sub></code> from the fitted curve and an arc length
         <code>s<sub>i</sub></code> giving its position along the curve.
       </p>
@@ -883,7 +934,7 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
       <p style="font-size:0.88em; color:var(--muted); margin-top:3px;">
         where &Vert;&thinsp;&middot;&thinsp;&Vert; is the Euclidean distance &mdash;
         the ordinary straight-line distance
-        &radic;[(x<sub>1</sub>&minus;x<sub>2</sub>)&sup2; + (y<sub>1</sub>&minus;y<sub>2</sub>)&sup2;].
+        &radic;[(x<sub>1</sub>&minus;x<sub>2</sub>)&sup2; + (z<sub>1</sub>&minus;z<sub>2</sub>)&sup2;].
       </p>
       <p>
         In practice we evaluate <code>r(t)</code> at a few hundred equally spaced parameter
@@ -912,7 +963,7 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
       <p>
         Because r(t<sub>i</sub><sup>&#8727;</sup>) is the <em>nearest</em> point on the curve to
         p<sub>i</sub>, the displacement (p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>)) is
-        perpendicular to &tau;(t<sub>i</sub><sup>&#8727;</sup>), so sgn(&theta;<sub>i</sub>)&nbsp;=&nbsp;&plusmn;1 exactly.
+        perpendicular to &tau;(t<sub>i</sub><sup>&#8727;</sup>), and so sgn(&theta;<sub>i</sub>)&nbsp;=&nbsp;&plusmn;1 exactly.
         The signed scalar distance is then:
       </p>
       <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; &#x2016;p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016; &middot; sgn(&theta;<sub>i</sub>)</span>
@@ -942,73 +993,274 @@ curve <- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |>
           <option value="t1-tidy">Tidyverse</option>
         </select>
       </div>
-      <div class="rpane active" data-rpane="t1-base"><pre># Project samples (x, y) onto a dense evaluation of the fitted
-# spline (curve$x, curve$y) and compute the SCALAR d_i and s_i.
+      <div class="rpane active" data-rpane="t1-base"><pre># Project samples (x, z) onto a dense evaluation of the fitted
+# spline (curve$x, curve$z) and compute the SCALAR d_i and s_i.
 
-K <- nrow(curve)
+K &lt;- nrow(curve)
 
 # Unit tangent tau at each curve point (central difference)
-i_prev <- pmax(seq_len(K) - 1, 1)
-i_next <- pmin(seq_len(K) + 1, K)
-tx <- curve$x[i_next] - curve$x[i_prev]
-ty <- curve$y[i_next] - curve$y[i_prev]
-mag <- sqrt(tx^2 + ty^2)
-tx <- tx / mag;  ty <- ty / mag
+i_prev &lt;- pmax(seq_len(K) - 1, 1)
+i_next &lt;- pmin(seq_len(K) + 1, K)
+tx &lt;- curve$x[i_next] - curve$x[i_prev]
+tz &lt;- curve$z[i_next] - curve$z[i_prev]
+mag &lt;- sqrt(tx^2 + tz^2)
+tx &lt;- tx / mag;  tz &lt;- tz / mag
 
 # For each sample, find nearest curve point (foot)
-project_one <- function(px, py) which.min((curve$x - px)^2 + (curve$y - py)^2)
-i_foot <- mapply(project_one, ants$x, ants$y)
+project_one &lt;- function(px, pz) which.min((curve$x - px)^2 + (curve$z - pz)^2)
+i_foot &lt;- mapply(project_one, ants$x, ants$z)
 
 # Signed scalar distance: 2D cross product of unit tangent with gap vector.
 # Equals ||p_i - r(t_i*)|| * sin(theta_i) where theta_i is the signed angle
 # from tau to the displacement.  Positive on the left of the oriented curve.
-d_i <- tx[i_foot] * (ants$y - curve$y[i_foot]) -
-       ty[i_foot] * (ants$x - curve$x[i_foot])
-s_i <- curve$s[i_foot]
+d_i &lt;- tx[i_foot] * (ants$z - curve$z[i_foot]) -
+       tz[i_foot] * (ants$x - curve$x[i_foot])
+s_i &lt;- curve$s[i_foot]
 
-resid <- data.frame(s = s_i, d = d_i)</pre></div>
+resid &lt;- data.frame(s = s_i, d = d_i)</pre></div>
       <div class="rpane" data-rpane="t1-tidy"><pre>library(dplyr)
 library(purrr)
 
 # Add unit tangent columns to the curve tibble
-curve <- curve |>
+curve &lt;- curve |&gt;
   mutate(
     tx = lead(x, default = last(x)) - lag(x, default = first(x)),
-    ty = lead(y, default = last(y)) - lag(y, default = first(y)),
-    mag = sqrt(tx^2 + ty^2),
+    tz = lead(z, default = last(z)) - lag(z, default = first(z)),
+    mag = sqrt(tx^2 + tz^2),
     tx  = tx / mag,
-    ty  = ty / mag
+    tz  = tz / mag
   )
 
 # Project each sample; d_i = ||p_i - r(t_i*)|| * sin(theta_i)
 # computed directly as the 2D cross product tau x delta.
-resid <- ants |>
+resid &lt;- ants |&gt;
   mutate(
-    i_foot = map2_int(x, y, ~ which.min((curve$x - .x)^2 + (curve$y - .y)^2)),
-    d = curve$tx[i_foot] * (y - curve$y[i_foot]) -
-        curve$ty[i_foot] * (x - curve$x[i_foot]),
+    i_foot = map2_int(x, z, ~ which.min((curve$x - .x)^2 + (curve$z - .y)^2)),
+    d = curve$tx[i_foot] * (z - curve$z[i_foot]) -
+        curve$tz[i_foot] * (x - curve$x[i_foot]),
     s = curve$s[i_foot]
   )</pre></div>
     </div>
 
   </div>
 
-  <!-- ═════════════════ TAB 3: Choosing the DF ═════════════════ -->
+  <!-- ═════════════════ TAB 3: Choosing spline parameters ═════════════════ -->
   <div class="tabpane" data-pane="2">
+
+    <div class="explainer" style="margin-top:0;">
+      <h4>From one cubic to a spline</h4>
+      <p>
+        When the relationship between two quantities does not appear to follow a straight line, the
+        usual first move is to model it with a <b>polynomial</b>: a weighted sum of powers of whatever
+        you are treating as the input. That is a modeling choice and not a claim about what the
+        relationship really is; a polynomial is simply a shape flexible enough to be bent into
+        agreement with the data. One power alone gives a straight line, adding a squared term lets the
+        curve bend, adding a cubed term lets that bend reverse, and the weights are what pick one
+        shape out of the family.
+      </p>
+      <p>
+        A <b>cubic</b> is the polynomial that stops at the third power, and so four weights describe it
+        completely. Throughout this widget <code>z</code> is the height up the tree and <code>x</code>
+        is the load&rsquo;s lateral position, and it is the lateral position we are modeling as the
+        height changes, and so a cubic here reads:
+      </p>
+      <p style="text-align:center; font-family:var(--mono); font-size:0.95em;">
+        x &nbsp;=&nbsp; a &nbsp;+&nbsp; b&thinsp;z &nbsp;+&nbsp; c&thinsp;z<sup>2</sup> &nbsp;+&nbsp; d&thinsp;z<sup>3</sup>
+      </p>
+      <p>
+        There is nothing else to adjust. <code>a</code> shifts the whole curve sideways, <code>b</code>
+        tilts it, and <code>c</code> and <code>d</code> bend it; the four panels below are that one
+        expression under four different sets of numbers. What no choice of the four can do is wiggle
+        much: a cubic turns at most twice, and reverses which way it curves at most once.
+      </p>
+      <div class="viz-wrap" style="border:none;margin:6px 0 2px;"><svg viewBox="0 0 668 144" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="display:block;width:100%;height:auto;">
+<rect width="668" height="144" fill="white"/>
+<rect x="10" y="10" width="150" height="104" fill="#fbfaf8" stroke="#e2e2e2"/>
+<line x1="19" y1="99.1" x2="151" y2="99.1" stroke="#dcdcdc" stroke-width="1"/>
+<path d="M19.0,99.1 L21.2,97.8 L23.4,96.6 L25.6,95.4 L27.8,94.1 L30.0,92.9 L32.2,91.7 L34.4,90.4 L36.6,89.2 L38.8,87.9 L41.0,86.7 L43.2,85.5 L45.4,84.2 L47.6,83.0 L49.8,81.8 L52.0,80.5 L54.2,79.3 L56.4,78.1 L58.6,76.8 L60.8,75.6 L63.0,74.4 L65.2,73.1 L67.4,71.9 L69.6,70.6 L71.8,69.4 L74.0,68.2 L76.2,66.9 L78.4,65.7 L80.6,64.5 L82.8,63.2 L85.0,62.0 L87.2,60.8 L89.4,59.5 L91.6,58.3 L93.8,57.1 L96.0,55.8 L98.2,54.6 L100.4,53.4 L102.6,52.1 L104.8,50.9 L107.0,49.6 L109.2,48.4 L111.4,47.2 L113.6,45.9 L115.8,44.7 L118.0,43.5 L120.2,42.2 L122.4,41.0 L124.6,39.8 L126.8,38.5 L129.0,37.3 L131.2,36.1 L133.4,34.8 L135.6,33.6 L137.8,32.3 L140.0,31.1 L142.2,29.9 L144.4,28.6 L146.6,27.4 L148.8,26.2 L151.0,24.9" fill="none" stroke="#6b21a8" stroke-width="2.2"/>
+<text x="85.0" y="129" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#555">x = z</text>
+<rect x="176" y="10" width="150" height="104" fill="#fbfaf8" stroke="#e2e2e2"/>
+<line x1="185" y1="99.1" x2="317" y2="99.1" stroke="#dcdcdc" stroke-width="1"/>
+<path d="M185.0,99.1 L187.2,94.2 L189.4,89.5 L191.6,85.0 L193.8,80.6 L196.0,76.4 L198.2,72.4 L200.4,68.5 L202.6,64.8 L204.8,61.3 L207.0,57.9 L209.2,54.7 L211.4,51.6 L213.6,48.7 L215.8,46.0 L218.0,43.5 L220.2,41.1 L222.4,38.9 L224.6,36.8 L226.8,34.9 L229.0,33.2 L231.2,31.6 L233.4,30.2 L235.6,29.0 L237.8,27.9 L240.0,27.0 L242.2,26.2 L244.4,25.7 L246.6,25.3 L248.8,25.0 L251.0,24.9 L253.2,25.0 L255.4,25.3 L257.6,25.7 L259.8,26.2 L262.0,27.0 L264.2,27.9 L266.4,29.0 L268.6,30.2 L270.8,31.6 L273.0,33.2 L275.2,34.9 L277.4,36.8 L279.6,38.9 L281.8,41.1 L284.0,43.5 L286.2,46.0 L288.4,48.7 L290.6,51.6 L292.8,54.7 L295.0,57.9 L297.2,61.3 L299.4,64.8 L301.6,68.5 L303.8,72.4 L306.0,76.4 L308.2,80.6 L310.4,85.0 L312.6,89.5 L314.8,94.2 L317.0,99.1" fill="none" stroke="#6b21a8" stroke-width="2.2"/>
+<text x="251.0" y="129" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#555">x = 4z &minus; 4z²</text>
+<rect x="342" y="10" width="150" height="104" fill="#fbfaf8" stroke="#e2e2e2"/>
+<line x1="351" y1="99.1" x2="483" y2="99.1" stroke="#dcdcdc" stroke-width="1"/>
+<path d="M351.0,99.1 L353.2,99.0 L355.4,98.8 L357.6,98.5 L359.8,98.1 L362.0,97.6 L364.2,97.0 L366.4,96.3 L368.6,95.5 L370.8,94.6 L373.0,93.6 L375.2,92.5 L377.4,91.4 L379.6,90.1 L381.8,88.8 L384.0,87.5 L386.2,86.1 L388.4,84.6 L390.6,83.1 L392.8,81.5 L395.0,79.8 L397.2,78.2 L399.4,76.5 L401.6,74.7 L403.8,73.0 L406.0,71.2 L408.2,69.4 L410.4,67.5 L412.6,65.7 L414.8,63.9 L417.0,62.0 L419.2,60.1 L421.4,58.3 L423.6,56.5 L425.8,54.6 L428.0,52.8 L430.2,51.0 L432.4,49.3 L434.6,47.5 L436.8,45.8 L439.0,44.2 L441.2,42.5 L443.4,40.9 L445.6,39.4 L447.8,37.9 L450.0,36.5 L452.2,35.2 L454.4,33.9 L456.6,32.6 L458.8,31.5 L461.0,30.4 L463.2,29.4 L465.4,28.5 L467.6,27.7 L469.8,27.0 L472.0,26.4 L474.2,25.9 L476.4,25.5 L478.6,25.2 L480.8,25.0 L483.0,24.9" fill="none" stroke="#6b21a8" stroke-width="2.2"/>
+<text x="417.0" y="129" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#555">x = 3z² &minus; 2z³</text>
+<rect x="508" y="10" width="150" height="104" fill="#fbfaf8" stroke="#e2e2e2"/>
+<line x1="517" y1="99.1" x2="649" y2="99.1" stroke="#dcdcdc" stroke-width="1"/>
+<path d="M517.0,99.1 L519.2,88.4 L521.4,78.8 L523.6,70.0 L525.8,62.1 L528.0,55.1 L530.2,49.0 L532.4,43.6 L534.6,38.9 L536.8,35.0 L539.0,31.8 L541.2,29.2 L543.4,27.3 L545.6,26.0 L547.8,25.2 L550.0,24.9 L552.2,25.2 L554.4,25.9 L556.6,27.0 L558.8,28.5 L561.0,30.4 L563.2,32.6 L565.4,35.2 L567.6,37.9 L569.8,40.9 L572.0,44.2 L574.2,47.5 L576.4,51.0 L578.6,54.6 L580.8,58.3 L583.0,62.0 L585.2,65.7 L587.4,69.4 L589.6,73.0 L591.8,76.5 L594.0,79.8 L596.2,83.1 L598.4,86.1 L600.6,88.8 L602.8,91.4 L605.0,93.6 L607.2,95.5 L609.4,97.0 L611.6,98.1 L613.8,98.8 L616.0,99.1 L618.2,98.8 L620.4,98.0 L622.6,96.7 L624.8,94.8 L627.0,92.2 L629.2,89.0 L631.4,85.1 L633.6,80.4 L635.8,75.0 L638.0,68.9 L640.2,61.9 L642.4,54.0 L644.6,45.2 L646.8,35.6 L649.0,24.9" fill="none" stroke="#6b21a8" stroke-width="2.2"/>
+<text x="583.0" y="129" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#555">x = 9z &minus; 24z² + 16z³</text>
+</svg></div>
+      <p class="viz-cap" style="margin-bottom:14px;">
+        Four cubics, each labelled with the numbers that produce it. Horizontal is the height
+        <code>z</code>; vertical is the lateral position <code>x</code>; the faint line is
+        <code>x&nbsp;=&nbsp;0</code>. The second has no <code>z&sup3;</code> term at all, which is
+        what leaves it a plain parabola &mdash; the cubic family contains the simpler shapes too.
+      </p>
+      <p>
+        A load carried up a tree wanders far more than that, and so one cubic will not do. Cut the height
+        range into stretches and give each stretch its own cubic. The cut points are the
+        <b>knots</b>, and they are the real decision: they say where the curve is allowed to change
+        what it is doing.
+      </p>
+      <p>
+        Fitted independently, neighbouring cubics would disagree wherever they meet &mdash; a step, a
+        kink, or an abrupt change of curvature. A <b>spline</b> is that same chain with the
+        disagreements forbidden: at every join the two cubics must match in height, in slope, and in
+        curvature. Three conditions per join, and that is the whole of the machinery.
+      </p>
+      <p>
+        Which is where the parameter count comes from. With <code>n</code> knots there are
+        <code>n+1</code> stretches, each carrying its own four numbers, so <code>4(n+1)</code> to begin
+        with; the three conditions at each of the <code>n</code> joins take <code>3n</code> away:
+      </p>
+      <p style="text-align:center; font-family:var(--mono); font-size:0.95em;">
+        DF &nbsp;=&nbsp; 4(n+1) &minus; 3n &nbsp;=&nbsp; n + 4
+      </p>
+      <p>
+        So the fit has <code>n + 4</code> numbers free to move, its <b>degrees of freedom</b>. The 4 is
+        the four numbers of a single cubic, sitting there because you always have at least one; each
+        knot after that buys exactly one more.
+      </p>
+      <p>
+        <b>Why the knots are a filtering choice.</b> Each stretch is one cubic, and so it can turn once.
+        Reproducing a wiggle therefore takes about two stretches, one for each way it turns. Wiggles
+        longer than that come through the fit; shorter ones get flattened, and the second panel below
+        lets you watch the changeover. That is the whole heuristic: choosing knots per metre is
+        choosing how much detail per metre you are willing to treat as trend rather than signal.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h3>Spline setting</h3>
+      <div class="ctrls">
+        <div class="ctrl" style="grid-column: 1 / -1;"
+             data-tip="Degrees of freedom of the cubic fit, shared with the next tab. For a cubic spline this is the number of interior knots plus 4, and so raising it adds knots and shortens the stretch between them.">
+          <label class="lab-tight"><span class="tip">Spline DF (cubic)</span><span class="lab-vals"><span class="v" id="v-df2">6</span></span></label>
+          <input type="range" id="df2" min="4" max="30" value="6">
+        </div>
+        <div class="ctrl" style="grid-column: 1 / -1;"
+             data-tip="Read-only, all implied by DF. The stretches are the cubics being chained; h is the knot spacing in height; and knots per unit height is the density that carries over to a tree of a different size.">
+          <label class="lab-tight"><span class="tip">Implied by DF</span><span class="lab-vals"><span class="v" id="v-knotinfo">&mdash;</span></span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <h3>One cubic per stretch</h3>
+      <div class="viz-wrap" id="knotWrap-3"></div>
+      <div class="viz-cap">
+        Height runs left to right. Each shaded band is one stretch between knots, carrying one cubic,
+        and the dashed lines are the knots themselves. Counting the bands counts the cubics: the fit
+        is allowed to change what it is doing about once per band, and no more often.
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <h3>What this spline can follow</h3>
+      <div class="ctrls" style="margin-bottom:12px;">
+        <div class="ctrl" style="grid-column: 1 / -1;"
+             data-tip="Wavelength of the test wiggle below, in the same height units as the knot spacing. Drag it down through roughly two knot spacings and watch the fit stop following.">
+          <label class="lab-tight"><span class="tip">Test wiggle wavelength</span><span class="lab-vals"><span class="v" id="v-lam">0.40</span></span></label>
+          <input type="range" id="lam" min="4" max="120" value="40">
+        </div>
+      </div>
+      <div class="viz-wrap" id="wiggleWrap-3"></div>
+      <div class="viz-cap">
+        A test wiggle of the wavelength you set, in grey, with the same spline&rsquo;s best attempt at
+        it in purple. The bars underneath compare that wavelength against two knot spacings. Shorten
+        the wiggle past that mark and the fit gives up and flattens, which is the filtering the knot
+        spacing performs, seen directly rather than as a frequency axis.
+      </div>
+    </div>
+
+    <div class="rblock">
+      <div class="rblock-hdr">Cubic spline fit in <span class="lab-r">R</span></div>
+      <div class="rtabs">
+        <button class="rtab active" data-rtab="t5-base">Base R</button>
+        <button class="rtab"        data-rtab="t5-tidy">Tidyverse</button>
+      </div>
+      <div class="rtabs-select-wrap">
+        <select class="rtabs-select" data-rtabs-for="t5">
+          <option value="t5-base" selected>Base R</option>
+          <option value="t5-tidy">Tidyverse</option>
+        </select>
+      </div>
+      <div class="rpane active" data-rpane="t5-base"><pre>library(splines)
+
+# df = interior knots + 4 for a cubic, so df = 6 puts 2 knots inside the range.
+fit &lt;- lm(x ~ bs(z, df = 6, degree = 3, intercept = TRUE), data = ants)
+
+ants$trend &lt;- fitted(fit)
+ants$resid &lt;- resid(fit)
+
+# Left alone, bs() puts knots at quantiles of z, so their spacing follows the
+# data. Pass them explicitly for uniform spacing, so the fit smooths away
+# detail finer than one knot gap evenly over the whole tree.
+n_int &lt;- 2
+brk   &lt;- seq(min(ants$z), max(ants$z), length.out = n_int + 2)
+fit2  &lt;- lm(x ~ bs(z, knots = brk[-c(1, length(brk))],
+                   degree = 3, intercept = TRUE), data = ants)
+
+plot(ants$z, ants$x, pch = 16, col = "grey70",
+     xlab = "height z", ylab = "lateral x")
+lines(ants$z, fitted(fit2), col = "#6b21a8", lwd = 2)
+abline(v = brk[-c(1, length(brk))], lty = 3, col = "grey50")</pre></div>
+      <div class="rpane" data-rpane="t5-tidy"><pre>library(dplyr)
+library(broom)
+library(ggplot2)
+library(splines)
+
+n_int &lt;- 2
+brk   &lt;- seq(min(ants$z), max(ants$z), length.out = n_int + 2)
+knots &lt;- brk[-c(1, length(brk))]
+
+fitted_ants &lt;- lm(x ~ bs(z, knots = knots, degree = 3, intercept = TRUE),
+                  data = ants) |&gt;
+  augment(data = ants) |&gt;
+  rename(trend = .fitted, resid = .resid)
+
+ggplot(fitted_ants, aes(z, x)) +
+  geom_point(colour = "grey70") +
+  geom_line(aes(y = trend), colour = "#6b21a8", linewidth = 1) +
+  geom_vline(xintercept = knots, linetype = 3, colour = "grey50") +
+  labs(x = "height z", y = "lateral x") +
+  theme_minimal()</pre></div>
+    </div>
+
+  </div>
+  <!-- ═════════════════ TAB 4: Data-driven parameters (was "Choosing the DF") ═════════════════ -->
+  <div class="tabpane" data-pane="3">
 
     <div class="explainer" style="margin-top:0;">
       <h4>The model-selection problem</h4>
 
       <p>
-        <b>DF and smoothness &lambda; &mdash; two sides of the same coin.</b>
-        Ordinary least-squares fitting (used here and in <code>splines::bs()</code>&thinsp;+&thinsp;<code>lm()</code>)
-        specifies <b>DF</b>, the number of basis functions, which directly fixes the number of
-        interior knots and the flexibility of the curve.
-        Penalized splines (e.g.&nbsp;<code>mgcv::gam</code>) instead start from a large fixed basis
-        and add a wiggliness penalty &lambda;&thinsp;&middot;&thinsp;&int;|f&prime;&prime;(t)|&sup2;&thinsp;dt.
-        Large &lambda; suppresses oscillations (low effective DF); small &lambda; allows high
-        flexibility (high effective DF). Increasing DF &hArr; decreasing &lambda;. The rest
-        of this tab discusses DF-based selection; identical logic applies to &lambda;.
+        <b>Where DF can come from.</b> The previous tab set it from what you already know about the
+        tree: a bend scale, or a knot density per metre coarse enough that anything finer must be the
+        ants. That is the right route whenever such prior knowledge exists. When it does not, the
+        alternative is to let the trajectory itself decide, reading DF off patterns in the data. That
+        is <b>model selection</b>, and it comes in two families, differing in whether DF is set
+        directly or allowed to emerge.
+      </p>
+      <p>
+        <b>Let the penalty settle it.</b> A penalized spline (e.g.&nbsp;<code>mgcv::gam</code>) keeps
+        plenty of knots throughout and charges the fit for how much it wiggles, letting the size of
+        that charge decide what it can afford: a heavy charge buys a smooth curve with few effective
+        degrees of freedom, a light one buys a flexible curve with many. The charge is usually written
+        &lambda;, and raising DF is the same move as easing &lambda; off, and so the two are
+        parameterizations of one trade-off rather than rival methods. <b>GCV</b> then picks &lambda;
+        without being told, by minimizing an approximation of leave-one-out prediction error, and the
+        effective DF settles only as high as the data warrant. Nothing has to be swept, which is why
+        this is the shorter road when you have no prior knowledge to bring.
+      </p>
+      <p>
+        <b>Or sweep DF and score every fit.</b> Ordinary least squares, used here and in
+        <code>splines::bs()</code>&thinsp;+&thinsp;<code>lm()</code>, fixes DF before it fits, and so
+        choosing DF means fitting at every DF on a grid and scoring the results. That needs a score,
+        and the rest of this tab builds one. It is more setup than the penalized route, and it earns
+        that setup by making the failure visible: you can watch overfitting begin.
       </p>
 
       <p>
@@ -1024,7 +1276,7 @@ resid <- ants |>
       <p>
         &bull;&nbsp;<b>RSS(spline, data)</b> &mdash; spline points vs.&nbsp;<em>sample
         positions</em>. Decreases monotonically with DF (more flexibility always reduces
-        in-sample error, reaching zero when DF &ge; N). It has <em>no minimum</em>, so it
+        in-sample error, reaching zero when DF &ge; N). It has <em>no minimum</em>, and so it
         cannot choose DF on its own. RSS(spline,&nbsp;data) is shown not because it picks DF,
         but as a foil: its relentless decrease illustrates why a monotone fit criterion is
         insufficient and a complexity penalty is needed.
@@ -1067,15 +1319,8 @@ resid <- ants |>
         (heavier penalty, sparser; usually preferable for large N).
         Both AIC and BIC are minimized over a grid of DF values.
       </p>
-      <p>
-        &bull;&nbsp;<b>GCV</b> from <code>mgcv::gam</code> avoids that grid search entirely by
-        working in the &lambda; domain: it fits a penalized spline and automatically chooses the
-        smoothness &lambda; to minimize an approximation of leave-one-out prediction error. Because
-        &lambda; and DF are equivalent parameterizations of the same flexibility/smoothness
-        trade-off, GCV is solving the same model-selection problem &mdash; just without the sweep.
-      </p>
       <p style="font-size:0.88em; color:var(--muted);">
-        All three criteria enforce complexity penalties for the same reason: a spline with enough DF
+        AIC, BIC, and GCV all penalize complexity for the same reason: a spline with enough DF
         can pass through every sample (RSS&nbsp;=&nbsp;0), but that spline is useless &mdash; it
         captures noise, not tree shape. The penalty mimics the U-shape of RSS(spline,&nbsp;tree)
         that arises for non-straight trees, without needing the true skeleton.
@@ -1134,35 +1379,35 @@ library(mgcv)
 # df = k = (degree + 1) + number_of_interior_knots = 4 + interior knots.
 
 # Option 1: compare RSS(spline, data) vs RSS(spline, tree) across a DF grid.
-# `skel` holds the tree-centerline (x, y) at each sample's t value.
+# `skel` holds the tree-centerline (x, z) at each sample's t value.
 # RSS(spline, data) always decreases; RSS(spline, tree) is U-shaped for Y-trees.
-rss_df <- function(df) {
-  fit_x <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
-  fit_y <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
-  xh <- predict(fit_x, newdata = ants)
-  yh <- predict(fit_y, newdata = ants)
-  c(data = sum((ants$x - xh)^2 + (ants$y - yh)^2),
-    tree = sum((skel$x  - xh)^2 + (skel$y  - yh)^2))
+rss_df &lt;- function(df) {
+  fit_x &lt;- lm(x ~ bs(t, df = df, degree = 3), data = ants)
+  fit_z &lt;- lm(z ~ bs(t, df = df, degree = 3), data = ants)
+  xh &lt;- predict(fit_x, newdata = ants)
+  zh &lt;- predict(fit_z, newdata = ants)
+  c(data = sum((ants$x - xh)^2 + (ants$z - zh)^2),
+    tree = sum((skel$x  - xh)^2 + (skel$z  - zh)^2))
 }
-rss_mat <- sapply(4:20, rss_df)
-colnames(rss_mat) <- 4:20
-df_star <- as.integer(colnames(rss_mat)[which.min(rss_mat["tree", ])])
+rss_mat &lt;- sapply(4:20, rss_df)
+colnames(rss_mat) &lt;- 4:20
+df_star &lt;- as.integer(colnames(rss_mat)[which.min(rss_mat["tree", ])])
 
 # Option 2a: sweep DF, pick by AIC or BIC
-ic <- sapply(4:20, function(df) {
-  fx <- lm(x ~ bs(t, df = df, degree = 3), data = ants)
-  fy <- lm(y ~ bs(t, df = df, degree = 3), data = ants)
-  c(aic = AIC(fx) + AIC(fy),
-    bic = BIC(fx) + BIC(fy))
+ic &lt;- sapply(4:20, function(df) {
+  fx &lt;- lm(x ~ bs(t, df = df, degree = 3), data = ants)
+  fz &lt;- lm(z ~ bs(t, df = df, degree = 3), data = ants)
+  c(aic = AIC(fx) + AIC(fz),
+    bic = BIC(fx) + BIC(fz))
 })
-colnames(ic) <- 4:20
-df_aic <- as.integer(colnames(ic)[which.min(ic["aic", ])])
-df_bic <- as.integer(colnames(ic)[which.min(ic["bic", ])])
+colnames(ic) &lt;- 4:20
+df_aic &lt;- as.integer(colnames(ic)[which.min(ic["aic", ])])
+df_bic &lt;- as.integer(colnames(ic)[which.min(ic["bic", ])])
 
 # Option 2b: penalized cubic regression spline, smoothness by GCV
-gx <- gam(x ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
-gy <- gam(y ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
-edf <- gx$edf + gy$edf   # effective DF from GCV</pre></div>
+gx &lt;- gam(x ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
+gz &lt;- gam(z ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
+edf &lt;- gx$edf + gz$edf   # effective DF from GCV</pre></div>
       <div class="rpane" data-rpane="t2-tidy"><pre>library(splines)  # provides bs()
 library(mgcv)
 library(dplyr)
@@ -1176,58 +1421,58 @@ library(tibble)
 # df = k = 4 + number_of_interior_knots.
 
 # Option 1: compare RSS(spline, data) vs RSS(spline, tree) across a DF grid.
-rss_sweep <- tibble(df = 4:20) |>
+rss_sweep &lt;- tibble(df = 4:20) |&gt;
   mutate(
     fit_x = map(df, ~ lm(x ~ bs(t, df = .x, degree = 3), data = ants)),
-    fit_y = map(df, ~ lm(y ~ bs(t, df = .x, degree = 3), data = ants)),
-    rss_data = map2_dbl(fit_x, fit_y, ~ {
-      xh <- predict(.x, newdata = ants)
-      yh <- predict(.y, newdata = ants)
-      sum((ants$x - xh)^2 + (ants$y - yh)^2)
+    fit_z = map(df, ~ lm(z ~ bs(t, df = .x, degree = 3), data = ants)),
+    rss_data = map2_dbl(fit_x, fit_z, ~ {
+      xh &lt;- predict(.x, newdata = ants)
+      zh &lt;- predict(.y, newdata = ants)
+      sum((ants$x - xh)^2 + (ants$z - zh)^2)
     }),
-    rss_tree = map2_dbl(fit_x, fit_y, ~ {
-      xh <- predict(.x, newdata = ants)
-      yh <- predict(.y, newdata = ants)
-      sum((skel$x  - xh)^2 + (skel$y  - yh)^2)
+    rss_tree = map2_dbl(fit_x, fit_z, ~ {
+      xh &lt;- predict(.x, newdata = ants)
+      zh &lt;- predict(.y, newdata = ants)
+      sum((skel$x  - xh)^2 + (skel$z  - zh)^2)
     })
   )
-df_star <- rss_sweep |> slice_min(rss_tree) |> pull(df)
+df_star &lt;- rss_sweep |&gt; slice_min(rss_tree) |&gt; pull(df)
 
 # Option 2a: sweep DF, pick by AIC / BIC
-ic <- rss_sweep |>
+ic &lt;- rss_sweep |&gt;
   mutate(
-    aic = map2_dbl(fit_x, fit_y, ~ AIC(.x) + AIC(.y)),
-    bic = map2_dbl(fit_x, fit_y, ~ BIC(.x) + BIC(.y))
+    aic = map2_dbl(fit_x, fit_z, ~ AIC(.x) + AIC(.y)),
+    bic = map2_dbl(fit_x, fit_z, ~ BIC(.x) + BIC(.y))
   )
-df_aic <- ic |> slice_min(aic) |> pull(df)
-df_bic <- ic |> slice_min(bic) |> pull(df)
+df_aic &lt;- ic |&gt; slice_min(aic) |&gt; pull(df)
+df_bic &lt;- ic |&gt; slice_min(bic) |&gt; pull(df)
 
 # Option 2b: GCV-chosen smoothness via mgcv::gam
-gx  <- gam(x ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
-gy  <- gam(y ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
-edf <- gx$edf + gy$edf</pre></div>
+gx  &lt;- gam(x ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
+gz  &lt;- gam(z ~ s(t, bs = "cr"), data = ants, method = "GCV.Cp")
+edf &lt;- gx$edf + gz$edf</pre></div>
     </div>
 
   </div>
 
   <!-- ═════════════════ TAB 4: Windowed Fourier transform ═════════════════ -->
-  <div class="tabpane" data-pane="3">
+  <div class="tabpane" data-pane="4">
 
     <div class="explainer" style="margin-top:0;">
       <h4>Separating by scale instead of detrending</h4>
       <p>
         Instead of fitting a spline and subtracting it, we can move directly into the spatial-frequency
-        domain. Let <code>x(y)</code> be the observed lateral coordinate as a function of height
+        domain. Let <code>x(z)</code> be the observed lateral coordinate as a function of height
         <code>y</code>, resampled onto a uniform grid. Nothing about the tree is used: the tree&rsquo;s
         shape is precisely what the spline tabs have to estimate, and the point of this route is to
         avoid estimating it. The trunk&rsquo;s gentle curvature, the branch&rsquo;s sideways ramp, and
         the trajectory&rsquo;s slow drift all contribute power at <em>low</em> spatial frequencies;
         deliberation contributes faster side-to-side movement, and therefore power at <em>higher</em>
-        frequencies. A windowed Fourier transform of <code>x(y)</code> exposes both at once.
+        frequencies. A windowed Fourier transform of <code>x(z)</code> exposes both at once.
       </p>
       <p>
         Nothing is subtracted off first. That is the whole point: the transform is what does the
-        separating, so the trend has to be left in for the divide to have anything to separate, and the
+        separating, and so the trend has to be left in for the divide to have anything to separate, and the
         tree shows up as the bright band along the left edge. The one exception is each window&rsquo;s
         mean, which is not a trend at all, being wherever the horizontal origin happens to sit. Leaving
         it in would put a single DC bin about 17 times above anything past the divide and flatten the
@@ -1242,16 +1487,16 @@ edf <- gx$edf + gy$edf</pre></div>
         the dashed line as the load approaches the fork.
       </p>
       <p style="font-size:0.88em; color:var(--muted);">
-        <b>Why vertical = y.</b> Height is directly observable and, unlike distance travelled along the
+        <b>Why vertical = z.</b> Height is directly observable and, unlike distance travelled along the
         trajectory, is unaffected by the wobble being measured. Parameterizing by path length would let
         a bout of wide side-to-side movement advance the axis faster, stretching that bout to a longer
         apparent wavelength and pushing it the wrong way across the cutoff. Height also lets this panel
-        share a vertical axis with the tree beside it, so the dashed fork line falls at the same place
+        share a vertical axis with the tree beside it, and so the dashed fork line falls at the same place
         in both and any height can be read straight across.
       </p>
       <p style="font-size:0.88em; color:var(--muted);">
-        <b>Two things to be wary of.</b> The fork is a kink in the trend itself, so the tree alone puts
-        a broadband smudge at that height; its energy falls off like <code>1/f&sup2;</code>, so most of
+        <b>Two things to be wary of.</b> The fork is a kink in the trend itself, and so the tree alone puts
+        a broadband smudge at that height; its energy falls off like <code>1/f&sup2;</code>, and so most of
         it should stay left of the cutoff, but the streak at the fork row is not evidence of behavior.
         And the frequency axis stops at the Nyquist limit of the raw samples, not beyond it: resampling
         onto a finer grid would only interpolate, and interpolation corners are broadband, producing a
@@ -1266,7 +1511,7 @@ edf <- gx$edf + gy$edf</pre></div>
         <h3>Tree with samples</h3>
         <div class="viz-wrap" id="treeWrap-4"></div>
         <div class="viz-cap">
-          The current trajectory drawn on the tree. The lateral position <code>x(y)</code> used
+          The current trajectory drawn on the tree. The lateral position <code>x(z)</code> used
           by the spectrogram on the right is the horizontal coordinate of these samples.
           The dashed orange fork line is drawn at the same height in both panels, and on the
           same pixel row wherever the two sit side by side.
@@ -1279,15 +1524,15 @@ edf <- gx$edf + gy$edf</pre></div>
       </div>
 
       <div class="panel">
-        <h3>Spectrogram of <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">x(y)</span> &mdash; lateral position</h3>
+        <h3>Spectrogram of <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">x(z)</span> &mdash; lateral position</h3>
         <div class="viz-wrap" id="wftWrap-4"></div>
         <div class="viz-cap">
           Magnitude of the windowed Fourier transform of the observed lateral coordinate
-          <code>x(y)</code>, as a function of height&nbsp;<code>y</code>. No knowledge of the tree is
+          <code>x(z)</code>, as a function of height&nbsp;<code>z</code>. No knowledge of the tree is
           used, and nothing is detrended: the trend stays in, which is why the bright band on the far
           left is the tree itself. Only each window&rsquo;s mean is subtracted, and that is an arbitrary
           coordinate origin rather than a trend.
-          Vertical axis is height <code>y</code>, shared with the tree on the left; horizontal axis
+          Vertical axis is height <code>z</code>, shared with the tree on the left; horizontal axis
           is spatial frequency, stopping at the raw samples&rsquo; Nyquist limit. The horizontal orange
           line marks the fork. The dashed white vertical line is the predicted divide
           <code>f<sub>cut</sub> = 1/L<sub>bend</sub></code> in spatial frequency between power
@@ -1296,7 +1541,7 @@ edf <- gx$edf + gy$edf</pre></div>
           <em>edge</em> sit <code>W/2</code> (half of the window length) from the top and bottom of the
           tree, and more specifically of the trajectory data. Between the edges of the tree and those
           <em>edge</em> lines, part of the <code>W</code> window is not reflective of the trajectory
-          data, so read those bands with caution.
+          data, and so read those bands with caution.
         </div>
       </div>
     </div>
@@ -1323,7 +1568,7 @@ edf <- gx$edf + gy$edf</pre></div>
           </select>
         </div>
         <div class="ctrl">
-          <label><span class="tip" data-tip="Colour scale for magnitude. viridis and magma are perceptually uniform, so equal colour steps mean equal magnitude steps; gray is there for print.">Colormap</span> <span class="v" id="v-cmap">viridis</span></label>
+          <label><span class="tip" data-tip="Colour scale for magnitude. viridis and magma are perceptually uniform, and so equal colour steps mean equal magnitude steps; gray is there for print.">Colormap</span> <span class="v" id="v-cmap">viridis</span></label>
           <select id="cmap">
             <option value="viridis" selected>viridis</option>
             <option value="magma">magma</option>
@@ -1332,7 +1577,7 @@ edf <- gx$edf + gy$edf</pre></div>
         </div>
 
         <div class="ctrl" style="grid-column: 1 / -1;">
-          <label class="lab-tight"><span class="tip" data-tip="A heuristic length scale: changes slower than L_bend are treated as tree, faster as ant. The divide sits at f_cut = 1/L_bend. It is a judgement about the trajectory, not a property of the analysis, and does not depend on the window in any way. Window length affects only how sharply the two sides can be told apart, never where the divide belongs.">Bend length scale L<sub>bend</sub></span><span class="lab-vals"><span class="v" id="v-Lbend">0.150</span> &middot; cutoff f<sub>cut</sub> = <span class="v" id="v-fcut">6.67</span></span></label>
+          <label class="lab-tight"><span class="tip" data-tip="A heuristic length scale: changes slower than L_{bend} are treated as tree, faster as ant, and the divide sits at f_{cut} = 1/L_{bend}. Treat that division as approximate rather than guaranteed. L_{bend} is judged from the tree you can see, whereas the real boundary between what the tree forces and what the ants do themselves may sit somewhat to either side of it, which is why this stays adjustable instead of being fixed for you. It is a judgement about the trajectory rather than a property of the analysis, and it does not depend on the window. Window length affects only how sharply the two sides can be told apart, never where the divide belongs.">Bend length scale L<sub>bend</sub></span><span class="lab-vals"><span class="v" id="v-Lbend">0.150</span> &middot; cutoff f<sub>cut</sub> = <span class="v" id="v-fcut">6.67</span></span></label>
           <input type="range" id="Lbend" min="5" max="60" value="15">
         </div>
         <div class="ctrl" style="grid-column: 1 / -1;">
@@ -1347,7 +1592,7 @@ edf <- gx$edf + gy$edf</pre></div>
       <div class="sec-divider"></div>
       <div class="toggles">
         <label class="toggle"><input type="checkbox" id="tg-log"> <span class="tip" data-tip="Rescale magnitude as log10(1 + 9v) so weak components become visible. Worth trying when the low-frequency band still dominates a slice and you want to see faint structure to the right of the divide.">log magnitude</span></label>
-        <label class="toggle"><input type="checkbox" id="tg-perCol" checked> <span class="tip" data-tip="ON by default. Rescales every height slice to its own maximum, so what you compare between heights is the SHAPE of the spectrum rather than its loudness. Without it the branch dominates, because its sideways ramp is genuinely large: the top of the plot washes out and the trunk goes dark. It changes only the picture, never the numbers, since the tree/ant split is a ratio within each slice. One caveat: a slice with almost no power gets its noise floor promoted to full brightness.">per-slice normalization</span></label>
+        <label class="toggle"><input type="checkbox" id="tg-perCol" checked> <span class="tip" data-tip="ON by default. Rescales every height slice to its own maximum, and so what you compare between heights is the SHAPE of the spectrum rather than its loudness. Without it the branch dominates, because its sideways ramp is genuinely large: the top of the plot washes out and the trunk goes dark. It changes only the picture, never the numbers, since the tree/ant split is a ratio within each slice. One caveat: a slice with almost no power gets its noise floor promoted to full brightness.">per-slice normalization</span></label>
       </div>
     </div>
 
@@ -1355,11 +1600,11 @@ edf <- gx$edf + gy$edf</pre></div>
       <h4>What the controls do</h4>
       <p>
         <b>Window length W</b> &mdash; number of samples in each STFT slice. Larger <code>W</code>
-        gives better frequency resolution but coarser localization in <code>y</code>; a Heisenberg-style
+        gives better frequency resolution but coarser localization in <code>z</code>; a Heisenberg-style
         trade-off, and one you can see directly, as the <em>edge</em> bands at the top and bottom of the
         spectrogram are each <code>W/2</code> deep and grow as you widen the window. The uniform grid
         <code>K</code> is not a free parameter: it is set so the grid spacing matches the coarsest
-        spacing of the raw samples in <code>y</code>, which is what fixes the right-hand end of the
+        spacing of the raw samples in <code>z</code>, which is what fixes the right-hand end of the
         frequency axis. Both <code>K</code> and the resulting Nyquist limit are reported under the
         <code>L<sub>bend</sub></code> slider, along with a note if <code>W</code> had to be capped
         to fit the grid.
@@ -1389,9 +1634,9 @@ edf <- gx$edf + gy$edf</pre></div>
       <p>
         <b>log magnitude</b> &mdash; switch from linear to <code>log<sub>10</sub>(1+9v)</code> scaling
         of the spectrogram so weaker components become visible.
-        <b>Per-slice normalization</b> &mdash; rescale each <code>y</code>-slice to its own max,
+        <b>Per-slice normalization</b> &mdash; rescale each <code>z</code>-slice to its own max,
         useful when overall power varies along the trunk. Read it with care: a slice whose absolute
-        power is near zero gets its noise floor promoted to full brightness, so bright high-frequency
+        power is near zero gets its noise floor promoted to full brightness, and so bright high-frequency
         bands on quiet, straight stretches are the expected artifact of this option rather than a
         finding. Cross-check anything interesting with the option off.
       </p>
@@ -1411,40 +1656,40 @@ edf <- gx$edf + gy$edf</pre></div>
       </div>
       <div class="rpane active" data-rpane="t3-base"><pre>library(signal)
 
-# Lateral coordinate x resampled against HEIGHT y.  Grid spacing matches the
-# coarsest raw spacing in y, so the frequency axis stops where the samples stop
+# Lateral coordinate x resampled against HEIGHT z.  Grid spacing matches the
+# coarsest raw spacing in z, so the frequency axis stops where the samples stop
 # supporting it; a finer grid would only interpolate, and interpolation corners
 # are broadband.
-K      <- round(diff(range(ants$y)) / max(diff(ants$y))) + 1
-y_grid <- seq(min(ants$y), max(ants$y), length.out = K)
-xy     <- approx(ants$y, ants$x, xout = y_grid)$y
-dy     <- diff(y_grid)[1]
+K      &lt;- round(diff(range(ants$z)) / max(diff(ants$z))) + 1
+z_grid &lt;- seq(min(ants$z), max(ants$z), length.out = K)
+xy     &lt;- approx(ants$z, ants$x, xout = z_grid)$y
+dz     &lt;- diff(z_grid)[1]
 
-W <- 20; hop <- 4              # W spans about one deliberation bout
-sp <- specgram(xy, n = W, Fs = 1/dy, window = hanning(W), overlap = W - hop)
+W &lt;- 20; hop &lt;- 4              # W spans about one deliberation bout
+sp &lt;- specgram(xy, n = W, Fs = 1/dz, window = hanning(W), overlap = W - hop)
 
 # specgram reports frame STARTS in sp$t, as offsets from the first sample.
 # Shift to frame centres, expressed as height:
-y_c <- min(ants$y) + sp$t + (W %/% 2 - 1) * dy
+z_c &lt;- min(ants$z) + sp$t + (W %/% 2 - 1) * dz
 
 # Drop the DC row.  It is the window mean, i.e. wherever the x-origin happens to
 # sit, and it runs ~32x the rest of the spectrum.  Dropping it does the same job
 # as subtracting each window's mean: the next bin up is inflated only ~1.4x by
 # leakage and the bins beyond that not at all.  The trend itself is NOT removed,
 # and shows up as the bright band at the left.
-mag <- Mod(sp$S)[-1, ]
-f   <- sp$f[-1]
+mag &lt;- Mod(sp$S)[-1, ]
+f   &lt;- sp$f[-1]
 
-y_fork <- 1                    # height of the geometric fork
-L_bend <- 0.15                 # length scale treated as tree rather than ant
-f_cut  <- 1 / L_bend           # the divide, in 1/length
+z_fork &lt;- 1                    # height of the geometric fork
+L_bend &lt;- 0.15                 # length scale treated as tree rather than ant
+f_cut  &lt;- 1 / L_bend           # the divide, in 1/length
 
-# VERTICAL = y, so it reads against a drawing of the tree
-image(x = f, y = y_c, z = mag,
+# VERTICAL = z, so it reads against a drawing of the tree
+image(x = f, y = z_c, z = mag,
       col   = hcl.colors(64, "viridis"),
       xlab  = "spatial frequency  (1/length)",
-      ylab  = "height y")
-abline(h = y_fork, col = "darkorange", lwd = 2)
+      ylab  = "height z")
+abline(h = z_fork, col = "darkorange", lwd = 2)
 abline(v = f_cut,  col = "white", lty = 2, lwd = 1.5)
 
 # This covers only the middle ~67% of the tree, and that is not a bug: specgram
@@ -1461,35 +1706,245 @@ library(ggplot2)
 
 # Uniform grid in HEIGHT, spaced to match the coarsest raw spacing so the
 # frequency axis never runs past what the samples support.
-K      <- round(diff(range(ants$y)) / max(diff(ants$y))) + 1
-y_grid <- seq(min(ants$y), max(ants$y), length.out = K)
-xy     <- approx(ants$y, ants$x, xout = y_grid)$y
-dy     <- diff(y_grid)[1]
+K      &lt;- round(diff(range(ants$z)) / max(diff(ants$z))) + 1
+z_grid &lt;- seq(min(ants$z), max(ants$z), length.out = K)
+xy     &lt;- approx(ants$z, ants$x, xout = z_grid)$y
+dz     &lt;- diff(z_grid)[1]
 
-W <- 20; hop <- 4              # W spans about one deliberation bout
-win <- hanning(W)
-pad <- W %/% 2
-xp  <- c(numeric(pad), xy, numeric(pad))
+W &lt;- 20; hop &lt;- 4              # W spans about one deliberation bout
+win &lt;- hanning(W)
+pad &lt;- W %/% 2
+xp  &lt;- c(numeric(pad), xy, numeric(pad))
 
 # Frames centred on grid points, each window's mean removed
-spec_df <- tibble(ctr = seq(1, K, by = hop)) |>
+spec_df &lt;- tibble(ctr = seq(1, K, by = hop)) |&gt;
   mutate(
-    y = y_grid[ctr],
+    z = z_grid[ctr],
     mag = map(ctr, \(i) {
-      seg <- xp[i:(i + W - 1)]
-      tibble(f         = (0:(W %/% 2)) / (W * dy),
+      seg &lt;- xp[i:(i + W - 1)]
+      tibble(f         = (0:(W %/% 2)) / (W * dz),
              magnitude = Mod(fft((seg - mean(seg)) * win))[1:(W %/% 2 + 1)])
     })
-  ) |>
+  ) |&gt;
   unnest(mag)
 
-# Vertical axis = height y, horizontal axis = spatial frequency
-ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
+# Vertical axis = height z, horizontal axis = spatial frequency
+ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
   geom_raster() +
   geom_hline(yintercept = 1,        color = "darkorange", linewidth = 1.2) +
   geom_vline(xintercept = 1 / 0.15, color = "white",      linetype  = "dashed") +
   scale_fill_viridis_c() +
-  labs(x = "spatial freq  (1/length)", y = "height y") +
+  labs(x = "spatial freq  (1/length)", y = "height z") +
+  theme_minimal()</pre></div>
+    </div>
+
+  </div>
+
+  <!-- ═════════════════ TAB 5: Wavelet scalogram ═════════════════ -->
+  <div class="tabpane" data-pane="5">
+
+    <div class="explainer" style="margin-top:0;">
+      <h4>One transform for every scale</h4>
+      <p>
+        The previous tab has to commit to a window length <code>W</code> before it can look at
+        anything, and that one choice serves two incompatible masters. A window long enough to
+        contain a slow bend of the tree is longer than the deliberation bout you are trying to
+        localize, and so the bout gets smeared across many slices; a window short enough to pin the
+        bout down cannot represent the bend at all. There is no <code>W</code> that does both,
+        and no amount of extra data fixes it: both requirements are stated in <em>height</em>, and
+        shrinking the sample spacing changes neither.
+      </p>
+      <p>
+        A <b>wavelet transform</b> refuses the choice. Instead of one window reused at every
+        frequency, it takes a single wave packet &mdash; here a <b>Morlet</b> wavelet, a
+        sine wave inside a Gaussian envelope &mdash; and stretches or squeezes it to each scale
+        it probes. Coarse scales get a long packet, and so they have the reach to see a slow bend;
+        fine scales get a short one, and so they stay sharply localized in height. Each scale is
+        measured with a window suited to that scale, which is exactly the thing a fixed window
+        cannot do.
+      </p>
+      <p>
+        <b>A scalogram is the picture that comes out</b>, and it is the wavelet counterpart of
+        the spectrogram on the previous tab: magnitude plotted against position (height, up the
+        page) and scale (across the page, here converted to the equivalent spatial frequency so
+        the two tabs read the same way). Where a spectrogram has one resolution everywhere, a
+        scalogram trades resolution smoothly along its horizontal axis, fine in height at the
+        right, fine in frequency at the left.
+      </p>
+      <p style="font-size:0.88em; color:var(--muted);">
+        <b>No mean to remove, and edge effects that shrink with scale.</b>
+        The Morlet wavelet has essentially no mean, and so nothing on
+        this tab has to subtract a DC term or remove a per-window mean. The arbitrary horizontal
+        origin simply never enters.
+        And the untrustworthy region near the ends is no longer a straight band but a
+        <b>cone</b> (shaded below) because a long coarse packet runs off the end of the data much
+        sooner than a short fine one. That C-shaped opening is the wavelet&rsquo;s version of the
+        windowing effect from the previous tab, and it is worth reading carefully: the coarse
+        scales along the left can only be measured well away from both ends, in the middle stretch
+        of the tree, whereas the fine scales on the right stay usable almost to the trunk base and
+        the branch tip.
+      </p>
+      <p style="font-size:0.88em; color:var(--muted);">
+        <b>What this does not fix.</b> The cone eats any scale approaching the height of the tree
+        you measured. That is a limit of the data and not of the method: a trajectory only a couple
+        of bend-lengths tall cannot support a statement about bends, whatever transform you point at
+        it. The heuristic divide is therefore useful only when it sits well below the height of the
+        tree, which makes it a claim about how smooth the tree is rather than about where its fork
+        happens to be.
+      </p>
+    </div>
+
+    <div class="tab5-grid">
+      <div class="panel">
+        <h3>Tree with samples</h3>
+        <div class="viz-wrap" id="treeWrap-5"></div>
+        <div class="viz-cap">
+          The same trajectory as the previous tab, on the same height axis.
+        </div>
+        <div class="ctrl-row" style="margin-top:10px;">
+          <button class="btn" id="btn-resim-5"
+                  data-tip="Draws a fresh AR(1) noise realization from a new random seed, with every other setting unchanged. Use it to check whether a feature is a real consequence of the settings or one lucky draw.">New realization</button>
+          <span style="font-size:0.78rem; color:var(--muted);">fresh AR(1) draw</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Scalogram of <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">x(z)</span></h3>
+        <div class="viz-wrap" id="cwtWrap-5"></div>
+        <div class="viz-cap">
+          Magnitude of the Morlet wavelet transform of the observed lateral coordinate
+          <code>x(z)</code>. Vertical axis is height, shared with the tree; horizontal axis is the
+          spatial frequency equivalent to each wavelet scale, on a log axis, since scales are
+          probed in constant ratios rather than constant steps. The shaded wedges are the
+          <b>cone of influence</b>, where the wavelet at that scale overruns the end of the data.
+          The dashed white line is the same heuristic divide <code>f<sub>cut</sub></code> as the
+          previous tab.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Fine-scale energy</h3>
+        <div class="viz-wrap" id="profWrap-5"></div>
+        <div class="viz-cap">
+          Mean magnitude at every scale to the <em>right</em> of the divide, as a function of
+          height, with cone-affected scales left out. This is the leading indicator: a bulge
+          below the fork line means the load began moving in shorter, quicker strokes before it
+          arrived at the fork.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <h3>Controls</h3>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label><span class="tip" data-tip="Central frequency of the Morlet wavelet, the number of oscillations under its Gaussian envelope. It sets how the transform splits its resolution: a HIGHER value packs more cycles into each packet, sharpening scale resolution and blurring height; a LOWER value does the reverse. This is the same trade-off the window length governs on the previous tab, but here it is chosen once and applies proportionally at every scale rather than absolutely.">Morlet <span class="greek">&omega;</span><sub>0</sub></span><span class="v" id="v-w0">6.0</span></label>
+          <input type="range" id="w0" min="30" max="120" step="2" value="60">
+        </div>
+        <div class="ctrl">
+          <label><span class="tip" data-tip="Number of scales computed per doubling of scale (per octave). More voices give a smoother scalogram at more compute; they add no information, since neighbouring scales overlap heavily, and so a coarse-looking scalogram at a low setting is showing you the scale sampling rather than a lack of pixels.">Voices per octave</span><span class="v" id="v-voices">12</span></label>
+          <input type="range" id="voices" min="2" max="24" step="1" value="12">
+        </div>
+        <div class="ctrl" style="grid-column: 1 / -1;">
+          <label class="lab-tight"><span class="tip" data-tip="The same heuristic divide as the previous tab, shared with it: changes slower than L_{bend} are treated as tree, faster as ant, and everything to its right feeds the fine-scale energy profile. Treat that division as approximate rather than guaranteed. L_{bend} is judged from the tree you can see, whereas the real boundary between what the tree forces and what the ants do themselves may sit somewhat to either side of it, which is why this stays adjustable instead of being fixed for you. It does not depend on the wavelet or on any window.">Bend length scale L<sub>bend</sub></span><span class="lab-vals"><span class="v" id="v-Lbend5">0.150</span> &middot; divide f<sub>cut</sub> = <span class="v" id="v-fcut5">6.67</span></span></label>
+          <input type="range" id="Lbend5" min="5" max="60" value="15">
+        </div>
+        <div class="ctrl" style="grid-column: 1 / -1;">
+          <label class="lab-tight"><span class="tip" data-tip="Read-only. The scale range actually computed, and the equivalent spatial frequencies it spans. The coarse end is capped at half the height of the record, because the cone of influence leaves nothing measurable beyond that.">Scale range</span><span class="lab-vals"><span class="v" id="v-cwtinfo">&mdash;</span></span></label>
+        </div>
+      </div>
+
+      <div class="sec-divider"></div>
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" id="tg-cwtlog" checked> <span class="tip" data-tip="ON by default here. Rescale magnitude as log10(1 + 9v) so weak components become visible. The tree&#39;s slow bending dominates the coarse scales, and without this the finer scales carrying the ant signal sit too far down the colour scale to read.">log magnitude</span></label>
+        <label class="toggle"><input type="checkbox" id="tg-cwtPerCol"> <span class="tip" data-tip="OFF by default here, unlike the previous tab, and worth leaving off. Rescaling every height slice to its own maximum destroys the very comparison this tab is about, namely how much fine-scale energy one height carries relative to another. It is worse than merely unhelpful: the bump lifts the coarse scales too, raising each row&#39;s maximum, and so the fine scales are pushed DOWN the colour scale exactly where the signal is. Measured on the default trajectory it turns a contrast of 1.07 into 0.75, inverting it. The profile on the right is unaffected either way, being computed from unnormalized magnitudes.">per-slice normalization</span></label>
+        <label class="toggle"><input type="checkbox" id="tg-cone" checked> <span class="tip" data-tip="Shade the cone of influence, the region where the wavelet at that scale reaches past the end of the data. Turn it off to see how much of the coarse end of the scalogram is resting on padding rather than on observations.">shade cone of influence</span></label>
+      </div>
+    </div>
+
+    <div class="rblock">
+      <div class="rblock-hdr">Wavelet scalogram in <span class="lab-r">R</span></div>
+      <div class="rtabs">
+        <button class="rtab active" data-rtab="t4-base">Base R</button>
+        <button class="rtab"        data-rtab="t4-tidy">Tidyverse</button>
+      </div>
+      <div class="rtabs-select-wrap">
+        <select class="rtabs-select" data-rtabs-for="t4">
+          <option value="t4-base" selected>Base R</option>
+          <option value="t4-tidy">Tidyverse</option>
+        </select>
+      </div>
+      <div class="rpane active" data-rpane="t4-base"><pre>library(WaveletComp)
+
+# Uniform grid in HEIGHT, spaced to match the coarsest raw spacing in z so the
+# scale range never claims resolution the samples do not have.
+K      &lt;- round(diff(range(ants$z)) / max(diff(ants$z))) + 1
+z_grid &lt;- seq(min(ants$z), max(ants$z), length.out = K)
+xz     &lt;- approx(ants$z, ants$x, xout = z_grid)$y
+dz     &lt;- diff(z_grid)[1]
+
+# analyze.wavelet works in steps of one sample, so periods come back in samples;
+# multiply by dz for height.  make.pval tests against a red-noise null, which
+# matters here: an AR(1) trajectory has more coarse-scale power than white noise,
+# and so "bright" is not the same as "surprising".
+wt &lt;- analyze.wavelet(data.frame(x = xz), "x",
+                      dt = 1, dj = 1/12,
+                      lowerPeriod = 2, upperPeriod = K/2,
+                      make.pval = TRUE, n.sim = 100)
+
+wt.image(wt, color.key = "quantile",
+         legend.params = list(lab = "wavelet power"),
+         periodlab = "period  (samples; x dz for height)")
+
+# Fine-scale energy against height: the leading indicator.  Everything shorter
+# than L_bend counts as ant rather than tree.
+L_bend &lt;- 0.15
+fine   &lt;- wt$Period * dz &lt; L_bend
+prof   &lt;- colMeans(wt$Power[fine, , drop = FALSE])
+
+plot(prof, z_grid, type = "l", xlab = "fine-scale power", ylab = "height z")
+abline(h = 1, col = "darkorange", lwd = 2)   # fork height</pre></div>
+      <div class="rpane" data-rpane="t4-tidy"><pre>library(WaveletComp)
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(ggplot2)
+
+K      &lt;- round(diff(range(ants$z)) / max(diff(ants$z))) + 1
+z_grid &lt;- seq(min(ants$z), max(ants$z), length.out = K)
+xz     &lt;- approx(ants$z, ants$x, xout = z_grid)$y
+dz     &lt;- diff(z_grid)[1]
+
+wt &lt;- analyze.wavelet(data.frame(x = xz), "x",
+                      dt = 1, dj = 1/12,
+                      lowerPeriod = 2, upperPeriod = K/2,
+                      make.pval = TRUE, n.sim = 100)
+
+# Tidy the power matrix: one row per (height, scale)
+scalo &lt;- as_tibble(t(wt$Power), .name_repair = "minimal") |&gt;
+  setNames(as.character(wt$Period * dz)) |&gt;
+  mutate(z = z_grid) |&gt;
+  pivot_longer(-z, names_to = "scale", values_to = "power",
+               names_transform = list(scale = as.numeric)) |&gt;
+  mutate(freq = 1 / scale)
+
+ggplot(scalo, aes(freq, z, fill = power)) +
+  geom_raster() +
+  scale_x_log10() +
+  scale_fill_viridis_c(trans = "log10") +
+  geom_hline(yintercept = 1, colour = "darkorange", linewidth = 1) +
+  geom_vline(xintercept = 1 / 0.15, colour = "white", linetype = 2) +
+  labs(x = "spatial frequency  (1/length, log)", y = "height z") +
+  theme_minimal()
+
+# The same fine-scale profile, as a summary rather than a second plot
+scalo |&gt;
+  filter(scale &lt; 0.15) |&gt;
+  summarise(fine_power = mean(power), .by = z) |&gt;
+  ggplot(aes(fine_power, z)) +
+  geom_path(colour = "#6b21a8", linewidth = 1) +
+  geom_hline(yintercept = 1, colour = "darkorange", linewidth = 1) +
+  labs(x = "fine-scale power", y = "height z") +
   theme_minimal()</pre></div>
     </div>
 
@@ -1527,6 +1982,8 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
         // narrower and there are too few bins below f_cut to read the split.
         W: 20, hop: 4, win: 'hann', cmap: 'viridis',
         alphaDelib: 0.55,       // AR(1) coefficient inside the deliberation bump (= ALPHA_DELIB)
+        w0: 6.0, voices: 12, cwtLog: true, cwtPerCol: false, showCone: true,
+        testLambda: 0.40,       // wavelength of the probe wiggle on the spline tab
         Lbend: 0.150, logMag: false, perCol: true,
         mainTab: 0,
         rTab: {t0: 't0-base', t1: 't1-base', t2: 't2-base', t3: 't3-base'}
@@ -1545,7 +2002,7 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
       const ALPHA_DELIB = 0.55;   // initial value of the Deliberation quickness slider
 
       // ─── Shared vertical geometry for Tab 4 ─────────────────────────────────
-      // The tree SVG and the spectrogram canvas must map height y to the SAME
+      // The tree SVG and the spectrogram canvas must map height z to the SAME
       // pixel band, or the two panels cannot be read across. That requires three
       // things to agree: the intrinsic height (viewBox height for the SVG, CSS
       // height for the canvas), the top/bottom padding, and the y range. The
@@ -1554,7 +2011,7 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
       const T4_VH = 540, T4_PAD_T = 22, T4_PAD_B = 48;
       const T4_PLOT_H = T4_VH - T4_PAD_T - T4_PAD_B;
 
-      // Top of the drawn tree in y. Also the top of both Tab 4 vertical axes.
+      // Top of the drawn tree in z. Also the top of both Tab 4 vertical axes.
       function treeTopY(treeType, theta) {
         return treeType === 'I'
           ? I_TOTAL_LEN
@@ -1739,8 +2196,13 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
           // be worth anything, and a window straddling t = 0.5 (as an earlier
           // version had) cannot show that. A raised sine gives a smooth bump with
           // no corners of its own to contribute spurious high frequencies.
+          // A straight trunk has no fork, and so there is no decision to approach and
+          // no deliberation to show. Running the bump anyway put a signature at the
+          // height where a fork would have been, which contradicted the whole point
+          // of the I tree: it is the control where any structure you find cannot be
+          // the fork.
           const u = (t - (0.5 - delibWidth)) / delibWidth;   // 0 -> 1 across the approach
-          const w = (u > 0 && u < 1) ? Math.sin(Math.PI * u) : 0;
+          const w = (treeType === 'Y' && u > 0 && u < 1) ? Math.sin(Math.PI * u) : 0;
           const alpha = ALPHA_BASE + (alphaDelib - ALPHA_BASE) * w;
           const tgtStd = sBase + sDel * w;
           const sigE = tgtStd * Math.sqrt(1 - alpha * alpha);   // excitation σ
@@ -2142,7 +2604,7 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
           return {x: c.x, y: c.y};
         });
         const dfRange = [];
-        for (let df = 4; df <= 16; df++) dfRange.push(df);
+        for (let df = 4; df <= 30; df++) dfRange.push(df);
         const rssData = [], rssTree = [];
         for (const df of dfRange) {
           try {
@@ -2264,6 +2726,42 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
         } else { for (let i = 0; i < W; i++) w[i] = 1; }
         return w;
       }
+      // Canvas 2D has no rich text, so subscripts are drawn by hand: "f_{cut}"
+      // renders the braced part smaller and dropped below the baseline. Returns the
+      // total advance so callers can align right or centre.
+      function subRuns(str) {
+        const runs = []; let i = 0; const re = /_\{([^}]*)\}/g; let m;
+        while ((m = re.exec(str))) {
+          if (m.index > i) runs.push([str.slice(i, m.index), false]);
+          runs.push([m[1], true]);
+          i = re.lastIndex;
+        }
+        if (i < str.length) runs.push([str.slice(i), false]);
+        return runs;
+      }
+      function subWidth(ctx, runs, baseFont, subFont) {
+        let w = 0;
+        for (const [t, sub] of runs) { ctx.font = sub ? subFont : baseFont; w += ctx.measureText(t).width; }
+        return w;
+      }
+      // align: 'left' | 'center' | 'right'; stroke draws an outline first, for
+      // labels that sit on top of the colormap.
+      function fillTextSub(ctx, str, x, y, baseFont, subFont, align, stroke) {
+        const runs = subRuns(str);
+        const w = subWidth(ctx, runs, baseFont, subFont);
+        let cx = align === 'right' ? x - w : (align === 'center' ? x - w / 2 : x);
+        const prevAlign = ctx.textAlign;
+        ctx.textAlign = 'left';
+        for (const [t, sub] of runs) {
+          ctx.font = sub ? subFont : baseFont;
+          const yy = y + (sub ? 2.5 : 0);
+          if (stroke) ctx.strokeText(t, cx, yy);
+          ctx.fillText(t, cx, yy);
+          cx += ctx.measureText(t).width;
+        }
+        ctx.textAlign = prevAlign;
+      }
+
       function getColormap(name) {
         let stops;
         if (name === 'viridis') stops = [
@@ -2288,10 +2786,10 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
         };
       }
 
-      function renderTreeT4(samples, skel, yTop) {
-        const wrap = document.getElementById('treeWrap-4');
+      function renderTreeT4(samples, skel, yTop, wrapId, markerId, svgWIn) {
+        const wrap = document.getElementById(wrapId || 'treeWrap-4');
         if (!wrap) return;
-        const svgW = 200, svgH = T4_VH;
+        const svgW = svgWIn || 200, svgH = T4_VH;
         // Compute the horizontal extent of the tree at the current branch angle so
         // the SVG layout never clips the branches, even at large angles.
         const sinTr = Math.sin(S.branchAngle * Math.PI / 180);
@@ -2311,15 +2809,33 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
         const trunkPx = (TRUNK_THICK / (L.txMax - L.txMin)) * (svgW - L.padL - L.padR);
 
         let svg = `<svg viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
-        svg += `<defs>${arrowMarkerDef('arrUp-4', '#bbb')}</defs>`;
+        const mkId = markerId || 'arrUp-4';
+        svg += `<defs>${arrowMarkerDef(mkId, '#bbb')}</defs>`;
         svg += `<rect width="${svgW}" height="${svgH}" fill="white"/>`;
 
-        const tt = toSVG(skel.trunk[0].x, skel.trunk[0].y);
-        const tb = toSVG(skel.trunk[1].x, skel.trunk[1].y);
+        // A round linecap sticks out half a stroke width past the endpoint, so a line
+        // drawn all the way to z = 0 or z = zTop bulges outside the plot band and the
+        // wrap's overflow:hidden shears it off. It bites hardest on the straight
+        // trunk, which is the widest stroke and points straight at the boundary.
+        // Pull the free ends in by half a cap so the drawn silhouette spans exactly
+        // the axis, which is also what makes the drawing line up with the plots.
+        function capInset(a, b, halfPx) {
+          const dx = b.sx - a.sx, dy = b.sy - a.sy;
+          const len = Math.hypot(dx, dy) || 1;
+          const ux = dx / len, uy = dy / len;
+          return [{ sx: a.sx + ux * halfPx, sy: a.sy + uy * halfPx },
+                  { sx: b.sx - ux * halfPx, sy: b.sy - uy * halfPx }];
+        }
+        const tt0 = toSVG(skel.trunk[0].x, skel.trunk[0].y);
+        const tb0 = toSVG(skel.trunk[1].x, skel.trunk[1].y);
+        // the trunk's top is a free end only when nothing branches off it
+        const [tt, tbRaw] = capInset(tt0, tb0, trunkPx / 2);
+        const tb = skel.rightBranch ? tb0 : tbRaw;
         svg += `<line x1="${tt.sx}" y1="${tt.sy}" x2="${tb.sx}" y2="${tb.sy}" stroke="#6b4a2a" stroke-width="${trunkPx}" stroke-linecap="round" opacity="0.92"/>`;
         if (skel.rightBranch) {
           const rb0 = toSVG(skel.rightBranch[0].x, skel.rightBranch[0].y);
-          const rb1 = toSVG(skel.rightBranch[1].x, skel.rightBranch[1].y);
+          const rb1raw = toSVG(skel.rightBranch[1].x, skel.rightBranch[1].y);
+          const rb1 = capInset(rb0, rb1raw, trunkPx * 0.86 / 2)[1];
           svg += `<line x1="${rb0.sx}" y1="${rb0.sy}" x2="${rb1.sx}" y2="${rb1.sy}" stroke="#6b4a2a" stroke-width="${trunkPx * 0.86}" stroke-linecap="round" opacity="0.92"/>`;
         }
         if (skel.leftBranch) {
@@ -2344,7 +2860,7 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
 
         // "up the tree" arrow, spanning exactly the shared plot band
         const ax = svgW - 12;
-        svg += `<line x1="${ax}" y1="${t4yToPy(0, yTop)}" x2="${ax}" y2="${t4yToPy(yTop, yTop) + 14}" stroke="#bbb" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrUp-4)"/>`;
+        svg += `<line x1="${ax}" y1="${t4yToPy(0, yTop)}" x2="${ax}" y2="${t4yToPy(yTop, yTop) + 14}" stroke="#bbb" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#${mkId})"/>`;
         svg += '</svg>';
         wrap.innerHTML = svg;
       }
@@ -2363,7 +2879,7 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
         //
         // Two deliberate choices here, both of which earlier versions got wrong.
         //
-        // (1) The vertical axis is height y, not arc length along the trajectory.
+        // (1) The vertical axis is height z, not arc length along the trajectory.
         // Path length is contaminated by the very wobble being measured: a bout of
         // wide side-to-side movement adds sideways distance, so z advances faster
         // exactly where the ants are most active, stretching that bout to a longer
@@ -2496,8 +3012,8 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
           gMax = 1;
         }
 
-        // ─── Canvas: vertical = height y, horizontal = f ───
-        // Height, padding, and y range are shared with the tree SVG (T4_VH,
+        // ─── Canvas: vertical = height z, horizontal = f ───
+        // Height, padding, and z range are shared with the tree SVG (T4_VH,
         // T4_PAD_T, T4_PAD_B, t4yToPy), so the wide-screen CSS rule scales both to
         // one rendered height and a given height lands on the same pixel row in
         // both panels. Changing any of those four here without changing the SVG
@@ -2534,7 +3050,7 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
         // Each column is drawn at its window CENTRE, one hop tall. The first and last
         // are extended to the ends of the AXIS rather than to the first and last
         // sample. Samples are cell-centred in t, at (i+0.5)/N, so they stop half a
-        // spacing short of y = 0 and of the treetop; leaving that uncovered draws a
+        // spacing short of z = 0 and of the treetop; leaving that uncovered draws a
         // few pixels of white that read as a rendering seam rather than as a
         // statement about coverage. The real caveat at the ends is the reflected
         // window, and that is already marked, at a scale (W/2) far larger than this.
@@ -2617,9 +3133,10 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
           ctx.textAlign = 'left';
           ctx.lineWidth = 3.5;
           ctx.strokeStyle = 'rgba(0,0,0,0.75)';
-          ctx.strokeText('f_cut = 1/L_bend', fToPx(fCut) + 6, padT + 14);
           ctx.fillStyle = 'white';
-          ctx.fillText('f_cut = 1/L_bend', fToPx(fCut) + 6, padT + 14);
+          fillTextSub(ctx, 'f_{cut} = 1/L_{bend}', fToPx(fCut) + 6, padT + 14,
+                      '600 11px "IBM Plex Mono", monospace', '600 8px "IBM Plex Mono", monospace',
+                      'left', true);
         }
 
         // ─── Axis ticks ───
@@ -2636,7 +3153,7 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
           ctx.beginPath(); ctx.moveTo(px, padT + plotH); ctx.lineTo(px, padT + plotH + 5); ctx.stroke();
           ctx.fillText(f.toFixed(1), px, padT + plotH + 19);
         }
-        // Y axis (height y) — left
+        // Y axis (height z) — left
         ctx.textAlign = 'right';
         for (let i = 0; i <= 5; i++) {
           const yv = yTop * i / 5;
@@ -2654,7 +3171,7 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
         ctx.translate(18, padT + plotH / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.textAlign = 'center';
-        ctx.fillText('height  y  up the tree', 0, 0);
+        ctx.fillText('height  z  up the tree', 0, 0);
         ctx.restore();
 
         document.getElementById('v-fcut').textContent = fCut.toFixed(2);
@@ -2666,19 +3183,538 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
         }
       }
 
+      // ─── Tab 3: one cubic per stretch, and what that lets the fit follow ─────
+      // Evaluate a fitted cubic spline at an arbitrary height.
+      function evalSplineAt(y, knots, degree, df, beta, yLo, yHi) {
+        const nudge = Math.max(1e-12, 1e-12 * (yHi - yLo));
+        const yy = y >= yHi ? yHi - nudge : (y < yLo ? yLo : y);
+        let v = 0;
+        for (let k = 0; k < df; k++) v += coxDeBoor(yy, k, degree, knots) * beta[k];
+        return v;
+      }
+
+      function renderTabKnots() {
+        const kw = document.getElementById('knotWrap-3');
+        const ww = document.getElementById('wiggleWrap-3');
+        if (!kw || !ww) return;
+
+        const DEG = 3, df = S.df;
+        const prng = makePRNG(S.internalSeed);
+        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, S.alphaDelib, prng);
+        const yLo = samples[0].y, yHi = samples[samples.length - 1].y;
+        const span = yHi - yLo;
+        const nInt = Math.max(0, df - DEG - 1);       // DF = n + 4
+        const nStretch = nInt + 1;
+        const h = span / nStretch;
+        const knots = makeKnots(yLo, yHi, df, DEG);
+        const interior = [];
+        for (let i = 1; i <= nInt; i++) interior.push(yLo + span * i / (nInt + 1));
+
+        // ─── shared geometry for both panels ───
+        const W = 720, mL = 46, mR = 16;
+        const plotW = W - mL - mR;
+        const xToPx = y => mL + (y - yLo) / span * plotW;
+        const band = (i) => {           // pixel span of stretch i
+          const a = i === 0 ? yLo : interior[i - 1];
+          const b = i === nStretch - 1 ? yHi : interior[i];
+          return [xToPx(a), xToPx(b)];
+        };
+        function stretchBands(top, height) {
+          let g = '';
+          for (let i = 0; i < nStretch; i++) {
+            if (i % 2) continue;                       // alternate, so bands are countable
+            const [a, b] = band(i);
+            g += `<rect x="${a}" y="${top}" width="${b - a}" height="${height}" fill="#6b21a8" opacity="0.055"/>`;
+          }
+          return g;
+        }
+        function knotLines(top, bottom) {
+          let g = '';
+          for (const k of interior) {
+            g += `<line x1="${xToPx(k)}" y1="${top}" x2="${xToPx(k)}" y2="${bottom}" stroke="#9a9a9a" stroke-width="1" stroke-dasharray="3 3"/>`;
+          }
+          return g;
+        }
+        function heightAxis(yBase) {
+          let g = `<line x1="${mL}" y1="${yBase}" x2="${W - mR}" y2="${yBase}" stroke="#222" stroke-width="1"/>`;
+          for (let i = 0; i <= 4; i++) {
+            const y = yLo + span * i / 4;
+            g += `<line x1="${xToPx(y)}" y1="${yBase}" x2="${xToPx(y)}" y2="${yBase + 4}" stroke="#222" stroke-width="1"/>`;
+            g += `<text x="${xToPx(y)}" y="${yBase + 15}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="#666">${y.toFixed(2)}</text>`;
+          }
+          return g;
+        }
+
+        // ─── Panel 1: the fit, with one shaded band per cubic ───
+        const H1 = 250, mT = 26, plotH = 168;
+        const ys = samples.map(s => s.y), xs = samples.map(s => s.x);
+        const X = bsplineDesign(ys, knots, DEG, df);
+        const beta = solveRidge(X, xs, 1e-8);
+        let vMin = Math.min.apply(null, xs), vMax = Math.max.apply(null, xs);
+        const padV = 0.12 * (vMax - vMin || 1);
+        vMin -= padV; vMax += padV;
+        const vToPx = v => mT + plotH - (v - vMin) / (vMax - vMin) * plotH;
+
+        let svg = `<svg viewBox="0 0 ${W} ${H1}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
+        svg += `<rect width="${W}" height="${H1}" fill="white"/>`;
+        svg += stretchBands(mT, plotH);
+        svg += knotLines(mT, mT + plotH);
+        for (let i = 0; i < samples.length; i++) {
+          svg += `<circle cx="${xToPx(ys[i])}" cy="${vToPx(xs[i])}" r="1.7" fill="#bbb"/>`;
+        }
+        let path = '';
+        for (let i = 0; i < 320; i++) {
+          const y = yLo + span * i / 319;
+          const v = evalSplineAt(y, knots, DEG, df, beta, yLo, yHi);
+          path += `${i === 0 ? 'M' : 'L'}${xToPx(y).toFixed(2)},${vToPx(v).toFixed(2)} `;
+        }
+        svg += `<path d="${path.trim()}" fill="none" stroke="#6b21a8" stroke-width="2.4"/>`;
+        // label each band with its index so they are countable at a glance
+        if (nStretch <= 16) {
+          for (let i = 0; i < nStretch; i++) {
+            const [a, b] = band(i);
+            if (b - a < 13) continue;      // too narrow to letter legibly
+            svg += `<text x="${(a + b) / 2}" y="${mT - 8}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="#9b7cb8">${i + 1}</text>`;
+          }
+        }
+        svg += heightAxis(mT + plotH);
+        svg += `<text x="${mL + plotW / 2}" y="${H1 - 6}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#222">height  z</text>`;
+        svg += `<text x="11" y="${mT + plotH / 2}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#666" transform="rotate(-90 11 ${mT + plotH / 2})">lateral x</text>`;
+        svg += '</svg>';
+        kw.innerHTML = svg;
+
+        // ─── Panel 2: can the fit follow a wiggle of this wavelength? ───
+        const lam = S.testLambda;
+        const H2 = 236, wT = 22, wH = 132, barY = wT + wH + 34;
+        const NW = 420;
+        const wy = [], wv = [];
+        for (let i = 0; i < NW; i++) {
+          const y = yLo + span * i / (NW - 1);
+          wy.push(y); wv.push(Math.sin(2 * Math.PI * (y - yLo) / lam));
+        }
+        const Xw = bsplineDesign(wy, knots, DEG, df);
+        const bw = solveRidge(Xw, wv, 1e-10);
+        // amplitude actually retained, over the interior so the clamped ends do not flatter it
+        let num = 0, den = 0;
+        for (let i = Math.floor(NW * 0.15); i < Math.ceil(NW * 0.85); i++) {
+          let f = 0;
+          for (let k = 0; k < df; k++) f += Xw[i][k] * bw[k];
+          num += f * f; den += wv[i] * wv[i];
+        }
+        const kept = den > 0 ? Math.sqrt(num / den) : 0;
+        const wToPx = v => wT + wH / 2 - v * (wH / 2) * 0.92;
+
+        let s2 = `<svg viewBox="0 0 ${W} ${H2}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
+        s2 += `<rect width="${W}" height="${H2}" fill="white"/>`;
+        s2 += stretchBands(wT, wH);
+        s2 += knotLines(wT, wT + wH);
+        let tp = '', fp = '';
+        for (let i = 0; i < NW; i++) {
+          tp += `${i === 0 ? 'M' : 'L'}${xToPx(wy[i]).toFixed(2)},${wToPx(wv[i]).toFixed(2)} `;
+          let f = 0;
+          for (let k = 0; k < df; k++) f += Xw[i][k] * bw[k];
+          fp += `${i === 0 ? 'M' : 'L'}${xToPx(wy[i]).toFixed(2)},${wToPx(f).toFixed(2)} `;
+        }
+        s2 += `<path d="${tp.trim()}" fill="none" stroke="#b9b9b9" stroke-width="1.8"/>`;
+        s2 += `<path d="${fp.trim()}" fill="none" stroke="#6b21a8" stroke-width="2.4"/>`;
+        s2 += `<text x="${mL}" y="${wT - 7}" font-family="var(--sans), sans-serif" font-size="10" fill="#999">test wiggle</text>`;
+        s2 += `<text x="${mL + 78}" y="${wT - 7}" font-family="var(--sans), sans-serif" font-size="10" fill="#6b21a8">what the spline manages</text>`;
+        const verdict = kept > 0.8 ? 'followed' : (kept > 0.35 ? 'partly flattened' : 'flattened away');
+        s2 += `<text x="${W - mR}" y="${wT - 7}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="10" fill="#444">${(100 * kept).toFixed(0)}% of the amplitude kept &mdash; ${verdict}</text>`;
+        s2 += heightAxis(wT + wH);
+
+        // scale bars: the wavelength against two knot spacings
+        const barLen = v => (v / span) * plotW;
+        const twoH = 2 * h;
+        s2 += `<line x1="${mL}" y1="${barY}" x2="${mL + Math.min(plotW, barLen(lam))}" y2="${barY}" stroke="#8a8a8a" stroke-width="3"/>`;
+        s2 += `<text x="${mL + Math.min(plotW, barLen(lam)) + 7}" y="${barY + 4}" font-family="IBM Plex Mono, monospace" font-size="10" fill="#666">wavelength ${lam.toFixed(2)}</text>`;
+        s2 += `<line x1="${mL}" y1="${barY + 18}" x2="${mL + Math.min(plotW, barLen(twoH))}" y2="${barY + 18}" stroke="#6b21a8" stroke-width="3"/>`;
+        s2 += `<text x="${mL + Math.min(plotW, barLen(twoH)) + 7}" y="${barY + 22}" font-family="IBM Plex Mono, monospace" font-size="10" fill="#6b21a8">two stretches ${twoH.toFixed(2)}</text>`;
+        s2 += '</svg>';
+        ww.innerHTML = s2;
+
+        document.getElementById('v-knotinfo').textContent =
+          `${nInt} interior knot${nInt === 1 ? '' : 's'}, ${nStretch} stretches, `
+          + `h = ${h.toFixed(3)}, ${(nInt / span).toFixed(1)} knots per unit height`;
+      }
+
+      // ─── Tab 5: Morlet continuous wavelet transform ─────
+      //
+      // The Morlet wavelet is a plane wave under a Gaussian envelope,
+      //   psi(eta) = pi^-1/4 * exp(i*w0*eta) * exp(-eta^2/2),
+      // and the transform correlates the signal against that packet stretched to
+      // each scale s. Two consequences do real work here. Its mean is negligible
+      // for w0 >= 5, and so unlike the STFT there is no DC term to remove and no per-window
+      // mean to subtract: the arbitrary horizontal origin never enters. And the
+      // packet's length is proportional to s, so coarse scales are measured with a
+      // long window and fine scales with a short one, which is the whole reason
+      // this tab exists.
+      function morletFourierFactor(w0) {
+        // scale -> Fourier wavelength, so that f_equivalent = 1/(factor * s)
+        return 4 * Math.PI / (w0 + Math.sqrt(2 + w0 * w0));
+      }
+      function cwtMorlet(x, K, dz, scales, w0) {
+        const out = new Array(scales.length);
+        for (let j = 0; j < scales.length; j++) {
+          const s = scales[j];
+          const half = Math.min(K, Math.ceil(4 * s / dz));   // Gaussian is dead by 4 sigma
+          const norm = Math.sqrt(dz / s) * Math.pow(Math.PI, -0.25);
+          const row = new Float64Array(K);
+          for (let n = 0; n < K; n++) {
+            let re = 0, im = 0;
+            for (let k = n - half; k <= n + half; k++) {
+              // hold the edge value past the ends, as Tab 4 does
+              const v = x[k < 0 ? 0 : (k >= K ? K - 1 : k)];
+              const eta = (k - n) * dz / s;
+              const g = Math.exp(-0.5 * eta * eta);
+              re += v * g * Math.cos(w0 * eta);
+              im -= v * g * Math.sin(w0 * eta);
+            }
+            row[n] = Math.hypot(re, im) * norm;
+          }
+          out[j] = row;
+        }
+        return out;
+      }
+
+      function renderTab5() {
+        const cwtWrap = document.getElementById('cwtWrap-5');
+        const profWrap = document.getElementById('profWrap-5');
+        if (!cwtWrap || !profWrap) return;
+
+        const prng = makePRNG(S.internalSeed);
+        const samples = generateTrajectory(S.N, S.treeType, S.branchAngle, S.sBase, S.sDel, S.delibWidth, S.alphaDelib, prng);
+        const skel = treeSkeleton(S.treeType, S.branchAngle);
+        const yTop = treeTopY(S.treeType, S.branchAngle);
+        // The tree shares its rendered HEIGHT with the other two panels (the
+        // wide-screen rule pins all three at 590px), so its rendered width follows
+        // from the viewBox aspect and cannot be capped with max-width without
+        // breaking that shared height. In this three-column layout that width
+        // overran the column and the branches were clipped by the wrap's
+        // overflow:hidden. Choose the logical width to fit the measured column
+        // instead; the tree ends up horizontally tighter than on Tab 4, which costs
+        // nothing since only its height has to correspond to anything.
+        const treeWrap = document.getElementById('treeWrap-5');
+        let treeSvgW = 200;
+        if (treeWrap && window.innerWidth >= 881) {
+          const availW = treeWrap.clientWidth;
+          if (availW > 20) treeSvgW = Math.max(110, Math.floor(availW * T4_VH / 590) - 2);
+        }
+        renderTreeT4(samples, skel, yTop, 'treeWrap-5', 'arrUp-5', treeSvgW);
+
+        // Same height grid as Tab 4, so the two tabs analyse identical data.
+        const yRaw = samples.map(p => p.y), xRaw = samples.map(p => p.x);
+        const yLo = yRaw[0], yHi = yRaw[yRaw.length - 1];
+        let dyMax = 0;
+        for (let i = 1; i < yRaw.length; i++) dyMax = Math.max(dyMax, yRaw[i] - yRaw[i - 1]);
+        const K = Math.max(16, Math.round((yHi - yLo) / dyMax) + 1);
+        const dz = (yHi - yLo) / (K - 1);
+        const xGrid = new Array(K);
+        for (let i = 0; i < K; i++) {
+          const y = yLo + (yHi - yLo) * i / (K - 1);
+          if (y <= yRaw[0]) { xGrid[i] = xRaw[0]; continue; }
+          if (y >= yRaw[yRaw.length - 1]) { xGrid[i] = xRaw[xRaw.length - 1]; continue; }
+          let lo = 0, hi = yRaw.length - 1;
+          while (hi - lo > 1) { const m = (lo + hi) >> 1; if (yRaw[m] <= y) lo = m; else hi = m; }
+          const f = (y - yRaw[lo]) / (yRaw[hi] - yRaw[lo]);
+          xGrid[i] = xRaw[lo] * (1 - f) + xRaw[hi] * f;
+        }
+
+        // Scales in constant ratios. The coarse end is capped at half the record:
+        // past that the cone of influence covers every position, so the scalogram
+        // would be showing padding rather than data.
+        const w0 = S.w0, ff = morletFourierFactor(w0);
+        const record = yHi - yLo;
+        const s0 = 2 * dz, sMax = Math.max(s0 * 2, record / 2);
+        const dj = 1 / S.voices;
+        const nOct = Math.log2(sMax / s0);
+        const scales = [];
+        for (let j = 0; j <= Math.round(nOct / dj); j++) scales.push(s0 * Math.pow(2, j * dj));
+        const freqs = scales.map(s => 1 / (ff * s));            // descending
+        const W = cwtMorlet(xGrid, K, dz, scales, w0);
+        const fCut = 1 / S.Lbend;
+
+        // ─── Fine-scale profile: mean magnitude right of the divide, cone excluded
+        const prof = new Float64Array(K);
+        const profOK = new Uint8Array(K);
+        for (let n = 0; n < K; n++) {
+          let acc = 0, cnt = 0;
+          for (let j = 0; j < scales.length; j++) {
+            if (freqs[j] <= fCut) continue;
+            const reach = Math.SQRT2 * scales[j];
+            if (n * dz < reach || (K - 1 - n) * dz < reach) continue;
+            acc += W[j][n]; cnt++;
+          }
+          if (cnt) { prof[n] = acc / cnt; profOK[n] = 1; }
+        }
+        let profMax = 0;
+        for (let n = 0; n < K; n++) if (profOK[n] && prof[n] > profMax) profMax = prof[n];
+
+        // ─── Scalogram canvas ───
+        const cssW = 360, cssH = T4_VH;
+        const padL = 58, padR = 20, padT = T4_PAD_T, padB = T4_PAD_B;
+        const plotW = cssW - padL - padR, plotH = T4_PLOT_H;
+        const dpr = window.devicePixelRatio || 1;
+        cwtWrap.innerHTML = `<canvas id="cwtCanvas" style="display:block;max-width:${cssW}px;width:100%;height:auto;margin:0 auto;"></canvas>`;
+        const cv = document.getElementById('cwtCanvas');
+        cv.style.aspectRatio = `${cssW} / ${cssH}`;
+        const rect = cv.getBoundingClientRect();
+        const up = rect.height > 1 ? rect.height / cssH : 1;
+        const px = dpr * up;
+        cv.width = Math.round(cssW * px); cv.height = Math.round(cssH * px);
+        const ctx = cv.getContext('2d');
+        ctx.setTransform(px, 0, 0, px, 0, 0);
+        ctx.fillStyle = 'white'; ctx.fillRect(0, 0, cssW, cssH);
+
+        // log frequency axis, low frequency on the left as on Tab 4
+        const fMin = freqs[freqs.length - 1], fMax = freqs[0];
+        const lg = v => Math.log10(v);
+        const fToPx = f => padL + (lg(f) - lg(fMin)) / (lg(fMax) - lg(fMin)) * plotW;
+        const yToPy = y => t4yToPy(y, yTop);
+
+        // per-slice normalization is computed over the scales, per height
+        const cmap = getColormap(S.cmap);
+        let gMax = 0;
+        if (!S.cwtPerCol) {
+          for (let j = 0; j < scales.length; j++) {
+            const reach = Math.SQRT2 * scales[j];
+            for (let n = 0; n < K; n++) {
+              if (n * dz < reach || (K - 1 - n) * dz < reach) continue;   // don't let the cone set the scale
+              if (W[j][n] > gMax) gMax = W[j][n];
+            }
+          }
+        }
+        const colMax = new Float64Array(K);
+        if (S.cwtPerCol) {
+          for (let n = 0; n < K; n++) {
+            let m = 0;
+            for (let j = 0; j < scales.length; j++) {
+              const reach = Math.SQRT2 * scales[j];
+              if (n * dz < reach || (K - 1 - n) * dz < reach) continue;
+              if (W[j][n] > m) m = W[j][n];
+            }
+            colMax[n] = m;
+          }
+        }
+        if (!S.cwtPerCol && gMax === 0) gMax = 1;
+
+        for (let j = 0; j < scales.length; j++) {
+          // cell spans the midpoints to neighbouring scales on the log axis
+          const fHiEdge = j === 0 ? fMax : Math.sqrt(freqs[j] * freqs[j - 1]);
+          const fLoEdge = j === scales.length - 1 ? fMin : Math.sqrt(freqs[j] * freqs[j + 1]);
+          const xA = fToPx(fLoEdge), xB = fToPx(fHiEdge);
+          const reachJ = Math.SQRT2 * scales[j];
+          for (let n = 0; n < K; n++) {
+            // Skip cells inside the cone. Painting them would clamp against a
+            // denominator computed from outside the cone and show as saturated
+            // colour, which reads as "lots of signal here" in the one region where
+            // there is least reason to believe anything.
+            if (n * dz < reachJ || (K - 1 - n) * dz < reachJ) continue;
+            const denom = S.cwtPerCol ? colMax[n] : gMax;
+            if (!denom) continue;
+            let v = W[j][n] / denom;
+            if (S.cwtLog) v = Math.log10(1 + 9 * v);
+            v = Math.max(0, Math.min(1, v));
+            const yA = yToPy(yLo + (n + 0.5) * dz), yB = yToPy(yLo + (n - 0.5) * dz);
+            ctx.fillStyle = cmap(v);
+            ctx.fillRect(xA, yA, (xB - xA) + 0.6, (yB - yA) + 0.6);
+          }
+        }
+
+        // ─── Cone of influence ───
+        // At scale s the wavelet overruns the record within sqrt(2)*s of an end.
+        // Because s grows leftward, the boundary is a curve, and that curve IS the
+        // argument for this tab: fine scales stay usable far closer to the ends.
+        if (S.showCone) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(padL, padT, plotW, plotH);
+          ctx.clip();
+          ctx.fillStyle = '#f1f0ee';
+          for (const side of ['bottom', 'top']) {
+            ctx.beginPath();
+            let started = false;
+            for (let j = scales.length - 1; j >= 0; j--) {
+              const reach = Math.SQRT2 * scales[j];
+              const yEdge = side === 'bottom' ? Math.min(yHi, yLo + reach) : Math.max(yLo, yHi - reach);
+              const pxx = fToPx(freqs[j]), pyy = yToPy(yEdge);
+              if (!started) { ctx.moveTo(pxx, pyy); started = true; } else ctx.lineTo(pxx, pyy);
+            }
+            const yCorner = side === 'bottom' ? yLo : yHi;
+            ctx.lineTo(fToPx(fMax), yToPy(yCorner));
+            ctx.lineTo(fToPx(fMin), yToPy(yCorner));
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.strokeStyle = 'rgba(60,60,60,0.55)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          for (const side of ['bottom', 'top']) {
+            ctx.beginPath();
+            let started = false;
+            for (let j = scales.length - 1; j >= 0; j--) {
+              const reach = Math.SQRT2 * scales[j];
+              const yEdge = side === 'bottom' ? Math.min(yHi, yLo + reach) : Math.max(yLo, yHi - reach);
+              const pxx = fToPx(freqs[j]), pyy = yToPy(yEdge);
+              if (!started) { ctx.moveTo(pxx, pyy); started = true; } else ctx.lineTo(pxx, pyy);
+            }
+            ctx.stroke();
+          }
+          ctx.setLineDash([]);
+          ctx.restore();
+          ctx.fillStyle = '#8a8a8a';
+          ctx.font = '9px "IBM Plex Mono", monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText('cone of', padL + 4, padT + 12);
+          ctx.fillText('influence', padL + 4, padT + 22);
+        }
+
+        ctx.strokeStyle = '#222'; ctx.lineWidth = 1.2;
+        ctx.strokeRect(padL, padT, plotW, plotH);
+
+        // fork line, same row as the tree
+        if (S.treeType === 'Y' && TRUNK_LEN <= yTop) {
+          ctx.strokeStyle = '#d97842'; ctx.lineWidth = 2.0; ctx.setLineDash([6, 4]);
+          ctx.beginPath(); ctx.moveTo(padL, yToPy(TRUNK_LEN)); ctx.lineTo(padL + plotW, yToPy(TRUNK_LEN)); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#d97842'; ctx.font = '600 12px "IBM Plex Mono", monospace'; ctx.textAlign = 'right';
+          ctx.fillText('fork', padL + plotW - 6, yToPy(TRUNK_LEN) - 5);
+        }
+        // the divide
+        if (fCut > fMin && fCut < fMax) {
+          ctx.strokeStyle = 'white'; ctx.lineWidth = 2.0; ctx.setLineDash([5, 4]);
+          ctx.beginPath(); ctx.moveTo(fToPx(fCut), padT); ctx.lineTo(fToPx(fCut), padT + plotH); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.font = '600 11px "IBM Plex Mono", monospace'; ctx.textAlign = 'left';
+          ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+          ctx.fillStyle = 'white';
+          fillTextSub(ctx, 'f_{cut}', fToPx(fCut) + 5, padT + 14,
+                      '600 11px "IBM Plex Mono", monospace', '600 8px "IBM Plex Mono", monospace',
+                      'left', true);
+        }
+
+        // axes
+        ctx.fillStyle = '#444'; ctx.strokeStyle = '#222'; ctx.lineWidth = 1;
+        ctx.font = '12px "IBM Plex Mono", monospace'; ctx.textAlign = 'center';
+        // The usable range often spans barely one decade, so decade ticks alone
+        // would label a single value. Label a 1-2-5 ladder instead.
+        const ladder = [];
+        for (let d = -2; d <= 3; d++) for (const m of [1, 2, 5]) ladder.push(m * Math.pow(10, d));
+        for (const f of ladder) {
+          if (f < fMin || f > fMax) continue;
+          const pxx = fToPx(f);
+          ctx.beginPath(); ctx.moveTo(pxx, padT + plotH); ctx.lineTo(pxx, padT + plotH + 5); ctx.stroke();
+          ctx.fillText(f >= 1 ? String(f) : f.toFixed(1), pxx, padT + plotH + 19);
+        }
+        for (let d = -2; d <= 3; d++) for (let k = 1; k <= 9; k++) {
+          const fm = k * Math.pow(10, d);
+          if (fm < fMin || fm > fMax) continue;
+          const pm = fToPx(fm);
+          ctx.beginPath(); ctx.moveTo(pm, padT + plotH); ctx.lineTo(pm, padT + plotH + 3); ctx.stroke();
+        }
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 5; i++) {
+          const yv = yTop * i / 5, pyy = yToPy(yv);
+          ctx.beginPath(); ctx.moveTo(padL - 5, pyy); ctx.lineTo(padL, pyy); ctx.stroke();
+          ctx.fillText(yv.toFixed(2), padL - 8, pyy + 4);
+        }
+        ctx.fillStyle = '#222'; ctx.font = '14px "IBM Plex Mono", monospace'; ctx.textAlign = 'center';
+        ctx.fillText('spatial frequency  (1/length, log)', padL + plotW / 2, cssH - 10);
+        ctx.save(); ctx.translate(18, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center'; ctx.fillText('height  z  up the tree', 0, 0); ctx.restore();
+
+        // ─── Fine-scale energy profile, sharing the height axis ───
+        // Its rendered HEIGHT is pinned by the wide-screen rule so all three panels
+        // line up, which means the rendered width follows from the logical aspect.
+        // In this narrow third column max-width:100% then clamps the width while the
+        // height stays pinned, squeezing the trace horizontally. Pick the logical
+        // width from the measured column so the aspect survives.
+        let pW = 124;
+        {
+          const availW = profWrap.clientWidth;
+          if (window.innerWidth >= 881 && availW > 20) {
+            pW = Math.max(70, Math.floor(availW * T4_VH / 590) - 2);
+          }
+        }
+        profWrap.innerHTML = `<canvas id="profCanvas" style="display:block;max-width:${pW}px;width:100%;height:auto;margin:0 auto;"></canvas>`;
+        const pc = document.getElementById('profCanvas');
+        pc.style.aspectRatio = `${pW} / ${cssH}`;
+        const pr = pc.getBoundingClientRect();
+        const pup = pr.height > 1 ? pr.height / cssH : 1;
+        const ppx = dpr * pup;
+        pc.width = Math.round(pW * ppx); pc.height = Math.round(cssH * ppx);
+        const pctx = pc.getContext('2d');
+        pctx.setTransform(ppx, 0, 0, ppx, 0, 0);
+        pctx.fillStyle = 'white'; pctx.fillRect(0, 0, pW, cssH);
+        const qL = 12, qR = 12, qW = pW - qL - qR;
+        const vToPx = v => qL + (profMax > 0 ? v / profMax : 0) * qW;
+
+        pctx.fillStyle = 'rgba(107,33,168,0.14)';
+        pctx.strokeStyle = '#6b21a8';
+        pctx.lineWidth = 1.6;
+        pctx.beginPath();
+        let open = false;
+        for (let n = 0; n < K; n++) {
+          if (!profOK[n]) continue;
+          const X = vToPx(prof[n]), Y = yToPy(yLo + n * dz);
+          if (!open) { pctx.moveTo(X, Y); open = true; } else pctx.lineTo(X, Y);
+        }
+        pctx.stroke();
+        // fill back to the axis
+        pctx.beginPath(); open = false;
+        let firstY = 0, lastY = 0;
+        for (let n = 0; n < K; n++) {
+          if (!profOK[n]) continue;
+          const X = vToPx(prof[n]), Y = yToPy(yLo + n * dz);
+          if (!open) { pctx.moveTo(qL, Y); firstY = Y; open = true; }
+          pctx.lineTo(X, Y); lastY = Y;
+        }
+        if (open) { pctx.lineTo(qL, lastY); pctx.closePath(); pctx.fill(); }
+
+        pctx.strokeStyle = '#222'; pctx.lineWidth = 1.2;
+        pctx.strokeRect(qL, padT, qW, plotH);
+        if (S.treeType === 'Y' && TRUNK_LEN <= yTop) {
+          pctx.strokeStyle = '#d97842'; pctx.lineWidth = 2.0; pctx.setLineDash([6, 4]);
+          pctx.beginPath(); pctx.moveTo(qL, yToPy(TRUNK_LEN)); pctx.lineTo(qL + qW, yToPy(TRUNK_LEN)); pctx.stroke();
+          pctx.setLineDash([]);
+        }
+        pctx.fillStyle = '#222'; pctx.font = '11px "IBM Plex Mono", monospace'; pctx.textAlign = 'center';
+        pctx.fillText('mean |W|', pW / 2, cssH - 24);
+        fillTextSub(pctx, 'right of f_{cut}', pW / 2, cssH - 11,
+                    '11px "IBM Plex Mono", monospace', '8px "IBM Plex Mono", monospace', 'center', false);
+
+        // readouts
+        document.getElementById('v-cwtinfo').textContent =
+          `s = ${s0.toFixed(3)} to ${scales[scales.length - 1].toFixed(2)}, `
+          + `f = ${fMin.toFixed(2)} to ${fMax.toFixed(1)}, ${scales.length} scales`;
+      }
+
       // ─── Dispatch ───────────────────────────────────────
       function renderCurrent() {
+        // Pane index -> renderer. The renderTabN names date from before a tab was
+        // inserted in the middle, so they no longer match the pane numbering:
+        //   0 overview        renderTab1
+        //   1 projection      (static SVG, nothing to draw)
+        //   2 spline params   renderTabKnots
+        //   3 data-driven     renderTab3
+        //   4 windowed FT     renderTab4
+        //   5 scalogram       renderTab5
         switch (+S.mainTab) {
           case 0: renderTab1(); break;
-          case 1: break;          // Tab 2 is a static SVG
-          case 2: renderTab3(); break;
-          case 3: renderTab4(); break;
+          case 1: break;
+          case 2: renderTabKnots(); break;
+          case 3: renderTab3(); break;
+          case 4: renderTab4(); break;
+          case 5: renderTab5(); break;
         }
       }
       function renderAll() {
-        renderTab1();
-        renderTab3();
-        renderTab4();
+        // Only the visible tab needs redrawing: setMainTab calls renderCurrent, and so
+        // any other tab is rebuilt the moment it is switched to. This used to name
+        // three renderers explicitly, which silently went stale as tabs were added,
+        // and that is why "New realization" did nothing on the wavelet tab. The seed
+        // changed and every tab except the one being looked at was redrawn.
+        renderCurrent();
       }
 
       function setMainTab(idx) {
@@ -2733,12 +3769,34 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
           document.getElementById('v-N').textContent = S.N;
           renderAll();
         });
+        function syncDfUI() {
+          for (const id of ['v-df', 'v-df2']) {
+            const e = document.getElementById(id);
+            if (e) e.textContent = S.df;
+          }
+          for (const id of ['df', 'df2']) {
+            const r = document.getElementById(id);
+            if (r) r.value = S.df;
+          }
+        }
+        document.getElementById('lam').addEventListener('input', e => {
+          S.testLambda = +e.target.value / 100;
+          document.getElementById('v-lam').textContent = S.testLambda.toFixed(2);
+          renderTabKnots();
+        });
+        document.getElementById('df2').addEventListener('input', e => {
+          S.df = +e.target.value;
+          syncDfUI();
+          renderCurrent();
+          if (+S.mainTab !== 3) renderTab3();
+        });
         document.getElementById('df').addEventListener('input', e => {
           S.df = +e.target.value;
           document.getElementById('v-df').textContent = S.df;
+          syncDfUI();
           renderCurrent();
-          // Tab 3's RSS plot also depends on current df marker:
-          if (+S.mainTab !== 2) renderTab3();
+          // the data-driven tab's RSS plot carries a marker at the current df
+          if (+S.mainTab !== 3) renderTab3();
         });
         document.getElementById('sbase').addEventListener('input', e => {
           S.sBase = +e.target.value / 1000;
@@ -2773,6 +3831,60 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
         document.getElementById('btn-avg30').addEventListener('click', () => { S.avgMode = 'avg';    renderTab3(); });
         document.getElementById('btn-avg1').addEventListener('click',  () => { S.avgMode = 'single'; renderTab3(); });
 
+        // Canvases size their backing store from their rendered size, so a resize
+        // leaves them at the previous resolution until something redraws. Redraw on
+        // resize, debounced, which also lets the tree SVG re-fit its column.
+        (function initResizeRedraw() {
+          let t = null;
+          window.addEventListener('resize', () => {
+            clearTimeout(t);
+            t = setTimeout(() => renderCurrent(), 150);
+          });
+        })();
+
+        // Cross-references in the prose jump to the tab they name.
+        document.addEventListener('click', e => {
+          const a = e.target.closest && e.target.closest('.tablink[data-goto]');
+          if (!a) return;
+          e.preventDefault();
+          setMainTab(a.getAttribute('data-goto'));
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // ─── Tab bar: switch to the dropdown BEFORE it would wrap ───
+        // The stylesheet swaps at a fixed width, which was tuned when there were
+        // four tabs; a fifth pushed the single-row width past it, so intermediate
+        // widths got a two-row tab bar. Rather than move the breakpoint to a new
+        // guess that the next tab would invalidate, measure what one row actually
+        // needs. Each tab keeps its natural width whether or not the bar wraps
+        // (nowrap text, and wrapping does not shrink items), so summing the tab
+        // widths plus the gaps gives the true single-row requirement.
+        (function initTabFit() {
+          const bar = document.querySelector('.tabs');
+          const selWrap = document.querySelector('.tabs-select-wrap');
+          if (!bar || !selWrap) return;
+          const sel = selWrap.querySelector('select');
+          function fit() {
+            // Lay the bar out but do not let it paint. Nothing is painted until
+            // this function returns, so there is no flicker from the probe.
+            const prevVis = bar.style.visibility;
+            bar.style.display = 'flex';
+            bar.style.visibility = 'hidden';
+            const gap = parseFloat(getComputedStyle(bar).columnGap) || 0;
+            const kids = Array.prototype.slice.call(bar.children);
+            let needed = gap * Math.max(0, kids.length - 1);
+            for (const k of kids) needed += k.getBoundingClientRect().width;
+            const avail = bar.clientWidth;
+            bar.style.visibility = prevVis;
+            const useSelect = needed > avail + 0.5;
+            bar.style.display = useSelect ? 'none' : 'flex';
+            selWrap.style.display = useSelect ? 'block' : 'none';
+            if (sel) sel.value = String(S.mainTab);
+          }
+          fit();
+          window.addEventListener('resize', fit);
+        })();
+
         // ─── Tooltips ───────────────────────────────────────
         // One shared bubble, positioned per target and clamped to the viewport so
         // controls at the far left or right are not clipped.
@@ -2781,7 +3893,11 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
           const GAP = 7, EDGE = 8;
           function show(el) {
             if (!pop) { pop = document.createElement('div'); pop.className = 'tip-pop'; document.body.appendChild(pop); }
-            pop.textContent = el.getAttribute('data-tip');
+            // data-tip is authored here, not user input, but escape anyway and then
+            // allow only the subscript markup through.
+            pop.innerHTML = el.getAttribute('data-tip')
+              .replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+              .replace(/([A-Za-z])_\{([^}]*)\}/g, '$1<sub>$2</sub>');
             pop.style.visibility = 'hidden';
             pop.style.display = 'block';
             pop.style.left = '0px';
@@ -2797,17 +3913,55 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
           }
           function hide() { if (pop) pop.style.display = 'none'; }
           document.addEventListener('mouseover', e => {
-            const t = e.target.closest && e.target.closest('.tip[data-tip]');
+            const t = e.target.closest && e.target.closest('[data-tip]');
             if (t) show(t); else if (!(e.target.closest && e.target.closest('.tip-pop'))) hide();
           });
           document.addEventListener('focusin', e => {
-            const t = e.target.closest && e.target.closest('.tip[data-tip]');
+            const t = e.target.closest && e.target.closest('[data-tip]');
             if (t) show(t);
           });
           document.addEventListener('focusout', hide);
           window.addEventListener('scroll', hide, { passive: true });
           window.addEventListener('resize', hide);
         })();
+
+        // ─── Tab 5 controls ───
+        // L_bend is shared with Tab 4, so both sliders and both readouts must track
+        // it however it was changed.
+        function syncLbendUI() {
+          const fc = 1 / S.Lbend;
+          for (const [lid, fid] of [['v-Lbend', 'v-fcut'], ['v-Lbend5', 'v-fcut5']]) {
+            const le = document.getElementById(lid), fe = document.getElementById(fid);
+            if (le) le.textContent = S.Lbend.toFixed(3);
+            if (fe) fe.textContent = fc.toFixed(2);
+          }
+          for (const rid of ['Lbend', 'Lbend5']) {
+            const r = document.getElementById(rid);
+            if (r) r.value = Math.round(S.Lbend * 100);
+          }
+        }
+        document.getElementById('w0').addEventListener('input', e => {
+          S.w0 = +e.target.value / 10;
+          document.getElementById('v-w0').textContent = S.w0.toFixed(1);
+          renderTab5();
+        });
+        document.getElementById('voices').addEventListener('input', e => {
+          S.voices = +e.target.value;
+          document.getElementById('v-voices').textContent = S.voices;
+          renderTab5();
+        });
+        document.getElementById('Lbend5').addEventListener('input', e => {
+          S.Lbend = +e.target.value / 100;
+          syncLbendUI();
+          renderTab5();
+        });
+        document.getElementById('tg-cwtlog').addEventListener('change',    e => { S.cwtLog = e.target.checked; renderTab5(); });
+        document.getElementById('tg-cwtPerCol').addEventListener('change', e => { S.cwtPerCol = e.target.checked; renderTab5(); });
+        document.getElementById('tg-cone').addEventListener('change',      e => { S.showCone = e.target.checked; renderTab5(); });
+        document.getElementById('btn-resim-5').addEventListener('click', () => {
+          S.internalSeed = Math.floor(Math.random() * 99998) + 1;
+          renderAll();
+        });
 
         document.getElementById('alphaD').addEventListener('input', e => {
           S.alphaDelib = +e.target.value / 100;
@@ -2841,6 +3995,7 @@ ggplot(spec_df, aes(x = f, y = y, fill = magnitude)) +
         });
         document.getElementById('Lbend').addEventListener('input', e => {
           S.Lbend = +e.target.value / 100;
+          syncLbendUI();
           document.getElementById('v-Lbend').textContent = S.Lbend.toFixed(3);
           renderTab4();
         });
