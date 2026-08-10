@@ -1763,7 +1763,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
       <h4>One transform for every scale</h4>
       <p>
         The previous tab has to commit to a window length <code>W</code> before it can look at
-        anything, and that one choice serves two incompatible masters. A window long enough to
+        anything, and that one choice has to satisfy two incompatible demands. A window long enough to
         contain a slow bend of the tree is longer than the deliberation bout you are trying to
         localize, and so the bout gets smeared across many slices; a window short enough to pin the
         bout down cannot represent the bend at all. There is no <code>W</code> that does both,
@@ -1771,13 +1771,28 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         shrinking the sample spacing changes neither.
       </p>
       <p>
-        A <b>wavelet transform</b> refuses the choice. Instead of one window reused at every
-        frequency, it takes a single wave packet &ndash; here a <b>Morlet</b> wavelet, a
-        sine wave inside a Gaussian envelope &ndash; and stretches or squeezes it to each scale
-        it probes. Coarse scales get a long packet, and so they have the reach to see a slow bend;
-        fine scales get a short one, and so they stay sharply localized in height. Each scale is
-        measured with a window suited to that scale, which is exactly the thing a fixed window
-        cannot do.
+        A <b>wavelet</b> gets out of this by changing what the trajectory is compared against.
+        Fourier analysis compares it against sine waves, and a sine wave runs forever in both
+        directions. A tree of finite height cannot be compared against something infinite without
+        first cutting a piece out of the data to hand it, which is all the window on the previous
+        tab ever was, and the length of that piece is the choice that caused the trouble. A wavelet
+        is instead a <b>short packet</b>: a few oscillations that rise, peak, and die away inside a
+        finite stretch. It is already local, and so there is nothing to cut.
+      </p>
+      <p>
+        The <b>Morlet</b> wavelet used here is one popular choice among many, and a natural one to
+        start with because it stays closest to Fourier: a sine wave multiplied by a Gaussian bump
+        that fades it out at both ends. Widening or narrowing it stretches the oscillations and the
+        bump <em>together</em>, in a single motion, and that is the difference that matters. On the
+        previous tab, window length and frequency were two separate knobs, which is what forced the
+        choice between them. Here they are tied to one number, the <b>scale</b>, and so a long
+        packet is automatically a slow one and a short packet automatically a fast one. Coarse
+        scales get the reach to see a slow bend, and fine scales stay sharply localized in height.
+      </p>
+      <p>
+        At every height, the stretched packet is lined up against the trajectory and compared with
+        it, and what gets kept is how strongly the two resemble each other at that spot. Doing that
+        at every height, for every scale in the family, gives one number per height per scale.
       </p>
       <p>
         <b>A scalogram is the picture that comes out</b>, and it is the wavelet counterpart of
@@ -1786,6 +1801,17 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         the two tabs read the same way). Where a spectrogram has one resolution everywhere, a
         scalogram trades resolution smoothly along its horizontal axis, fine in height at the
         right, fine in frequency at the left.
+      </p>
+      <p style="font-size:0.88em; color:var(--muted);">
+        <b>What is left to choose.</b> Very little, which is the point. Position and scale are
+        both swept rather than set, as the transform visits every height at every rung of the
+        ladder. The width of the Gaussian envelope is not a separate setting either, being the
+        scale itself, and that is what ties the packet&rsquo;s length to its frequency. One number
+        does remain, the Morlet <code>w<sub>0</sub></code> above, which fixes how many oscillations
+        fit under the envelope: raise it and each packet carries more cycles, which sharpens the
+        range of frequencies it responds to at the cost of blurring where in height it responds.
+        Lower it for the opposite trade. The value 6 is the usual default, and it is the one that
+        makes a packet&rsquo;s scale and its wavelength very nearly the same number.
       </p>
       <p style="font-size:0.88em; color:var(--muted);">
         <b>No mean to remove, and edge effects that shrink with scale.</b>
