@@ -120,22 +120,69 @@ The back-link color is the site accent `#6b21a8` so it reads as one of the page'
 a literal hex (not a CSS variable) so the footer stays self-contained when the widget source is
 re-pasted. If an excursion uses a different link color, match that instead.
 
+**The literal hex is per-page, not one shared color.** Each excursion keeps its own link color; the
+rule only governs how that color is *written*. Substitute the hex the page's own variable already
+resolves to, so the rendered color is unchanged – today the four are `#2f6b4a` (`ytree_detrend`),
+`#2d5a27` (`rsf_explorer`), `#2d5016` (`social-cue-ql`), and `#d97e3b` (`v2v_swarm_explorer`). The
+reason for the literal is that the `<style>` block travels with the body from the authoring tool: a
+re-import that renames the variable, rescopes it, or drops it turns `var(--green)` into the default
+blue silently, with nothing to flag it. An inline literal cannot be broken by whatever the body
+ships. This applies to the back-link alone; the license link and body links are page content and
+should take their color from the page's own `a{}` rule.
+
 **Watch for body padding:** if the page's `body` CSS has no `padding-bottom`, the footer sits
 flush against the viewport edge. Add `padding-bottom` to the body, bump the footer's bottom
 padding, or add `margin-bottom` if needed.
 
 **Back-link arrow (`&larr;`) glyph varies by font fallback.** The page webfonts usually lack a
-`←` glyph, so it falls back down the stack. A stack containing `system-ui`/`-apple-system`
-renders a short, stubby `←` (San Francisco on macOS), whereas falling through to the generic
-`sans-serif` gives a longer, nicer `←` (Helvetica/Arial). For a consistent long arrow, wrap just
-the arrow in `<span style="font-family:sans-serif">&larr;</span>` (as in the template above) so
-it never picks up `system-ui`.
+`←` glyph, so it falls back down the stack, and how far it falls decides the glyph. Measured at
+`font-size:100px`, the same character renders 100.0px wide in generic `sans-serif`
+(Helvetica/Arial), 90.6px in `system-ui`/`-apple-system` (the stubby San Francisco arrow on
+macOS), and 60.2px in `IBM Plex Mono` – so a **mono** footer stack, which is common here, cramps
+the arrow considerably more than `system-ui` does. For a consistent long arrow, wrap just the
+arrow in `<span style="font-family:sans-serif">&larr;</span>` (as in the template above).
+
+Add the span on every page, including ones whose footer stack already ends in `sans-serif` and so
+looks correct without it. There it is a no-op today, and it is what keeps the arrow correct after a
+re-import swaps the body's font stack, which is the same reasoning as the literal hex above. When
+auditing, measure the glyph rather than assuming the `system-ui` case applies: of the four
+excursions, only `ytree_detrend` actually had a `system-ui` footer stack.
 
 **A generic `footer { … }` rule can leak onto `#back-link-footer`.** If a page styles its own
 copyright `footer{}` (font-family, `text-align`, `border-top`, `margin-top`, padding), those
 properties also land on the back-link footer, since both are `<footer>` elements — giving an
 unwanted second horizontal rule, a mono font, or a large gap. Reset the offending properties on
 `#back-link-footer` inline, or scope the rule to `footer:not(#back-link-footer)`.
+
+**A `footer a { … }` rule is the same trap one level down, and is easier to miss.** Where the
+generic `footer{}` rule restyles the back-link's *container*, a `footer a{}` rule lands on the
+back-link anchor itself, so it collides with the very properties the template sets inline. The
+damaging case is a resting `text-decoration:underline`, which contradicts the hover-underline
+default below: the template's inline `text-decoration:none` does suppress it, but only because
+inline styles outrank any selector, and neither rule read on its own reveals that the inline
+declaration is the only thing preventing the underline. Scope it to `footer:not(#back-link-footer)
+a` so the back-link sits outside the rule by construction rather than by specificity.
+`rsf_explorer` had exactly this.
+
+Checking this is a distinct audit step from reading the footer markup, because nothing in the
+markup shows it. Confirm from the rendered page which rules actually match the back-link anchor:
+
+```js
+const a = document.querySelector('#back-link-footer a');
+Array.from(document.styleSheets)
+  .flatMap(s => { try { return [...s.cssRules]; } catch (e) { return []; } })
+  .filter(r => r.selectorText && a.matches(r.selectorText))
+  .map(r => r.selectorText + ' => ' + r.style.cssText);
+```
+
+The `try`/`catch` is required, not defensive padding: every page pulls webfonts from
+`fonts.googleapis.com`, and reading `cssRules` on a cross-origin stylesheet throws `SecurityError`,
+which without the guard aborts the whole sweep and reports nothing rather than reporting a clean
+page. Returning `[]` skips only the font sheet, whose rules are never relevant here anyway.
+
+Treat any footer-scoped hit as something to scope away. A page-wide `a{}` rule matching is expected
+and fine, as the back-link is meant to override it with its own literal; on `ytree_detrend` the
+only matches are `*` and `a`, which is what a clean page looks like.
 
 **Link decoration (underline) consistency.** Within each page, the copyright/license "MIT
 License" link (in the `.status-note` callout) and the back-link should share ONE underline
