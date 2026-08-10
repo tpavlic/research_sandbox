@@ -2011,7 +2011,7 @@ scalo |&gt;
       const TRUNK_THICK = 0.18;         // wider trunk — samples live inside this width
       const I_TOTAL_LEN = TRUNK_LEN + BRANCH_LEN;
 
-      // ─── Lateral-wobble timescale (see generateTrajectory) ──────────────────
+      // ─── Lateral-wobble length scale (see generateTrajectory) ───────────────
       // AR(1) coefficients outside and inside the deliberation window. The drop
       // shortens the correlation length, which is what puts power above f_cut.
       const ALPHA_BASE  = 0.92;
@@ -2448,7 +2448,10 @@ scalo |&gt;
         const wrap = document.getElementById('residWrap-1');
         if (!wrap) return;
         const svgW = 1080, svgH = 240;
-        const padL = 72, padR = 28, padT = 24, padB = 52;
+        // padL clears the rotated axis title, which occupies x up to about 25, plus the
+        // six-character tick labels (43px of mono at 12px) ending at padL-8. At 72 the two
+        // collided by ~5px; 86 leaves a visible gap without noticeably narrowing the plot.
+        const padL = 86, padR = 28, padT = 24, padB = 52;
         const plotW = svgW - padL - padR, plotH = svgH - padT - padB;
 
         const sMax = dense[dense.length - 1].s;
@@ -3703,10 +3706,14 @@ scalo |&gt;
         fillTextSub(pctx, 'right of f_{cut}', pW / 2, cssH - 11,
                     '11px "IBM Plex Mono", monospace', '8px "IBM Plex Mono", monospace', 'center', false);
 
-        // readouts
+        // readouts. This was the one place on the tab that abbreviated the wavelet scale
+        // to "s", which read as seconds beside a height and also collided with the arc
+        // length s of tabs 1 and 2. Spelling out "scale", as the tab's prose already does
+        // everywhere else, settles both. The unit tags are the generic "(length)" and
+        // "(1/length)" used on the frequency axes, as the page fixes no physical unit.
         document.getElementById('v-cwtinfo').textContent =
-          `s = ${s0.toFixed(3)} to ${scales[scales.length - 1].toFixed(2)}, `
-          + `f = ${fMin.toFixed(2)} to ${fMax.toFixed(1)}, ${scales.length} scales`;
+          `scale = ${s0.toFixed(3)} to ${scales[scales.length - 1].toFixed(2)} (length), `
+          + `f = ${fMin.toFixed(2)} to ${fMax.toFixed(1)} (1/length), ${scales.length} scales`;
       }
 
       // ─── Dispatch ───────────────────────────────────────
