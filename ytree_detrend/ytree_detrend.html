@@ -1858,7 +1858,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           <input type="range" id="w0" min="30" max="120" step="2" value="60">
         </div>
         <div class="ctrl">
-          <label><span class="tip" data-tip="Number of scales computed per doubling of scale (per octave). More voices give a smoother scalogram at more compute; they add no information, as neighboring scales overlap heavily, and so a coarse-looking scalogram at a low setting is showing you the scale sampling rather than a lack of pixels.">Voices per octave</span><span class="v" id="v-voices">12</span></label>
+          <label><span class="tip" data-tip="Number of scales computed per doubling of scale (per octave). The octave is the musical one, a doubling, and scales are sampled logarithmically because each wavelet passes a band of frequencies proportional to its own center frequency, which makes equal ratios rather than equal differences the natural spacing. A voice is one rung of that ladder inside a doubling, and voices per octave is the standard name for this setting in wavelet software. More voices give a smoother scalogram at more compute; they add no information, as neighboring scales overlap heavily, and so a coarse-looking scalogram at a low setting is showing you the scale sampling rather than a lack of pixels.">Voices per octave</span><span class="v" id="v-voices">12</span></label>
           <input type="range" id="voices" min="2" max="24" step="1" value="12">
         </div>
         <div class="ctrl" style="grid-column: 1 / -1;">
