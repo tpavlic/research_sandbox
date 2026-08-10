@@ -2839,8 +2839,12 @@ scalo |&gt;
           svg += `<line x1="${rb0.sx}" y1="${rb0.sy}" x2="${rb1.sx}" y2="${rb1.sy}" stroke="#6b4a2a" stroke-width="${trunkPx * 0.86}" stroke-linecap="round" opacity="0.92"/>`;
         }
         if (skel.leftBranch) {
+          // Inset this tip too. The two branches end at the same height by
+          // construction, and so insetting only the right one made the untaken
+          // branch reach visibly higher than the taken one.
           const lb0 = toSVG(skel.leftBranch[0].x, skel.leftBranch[0].y);
-          const lb1 = toSVG(skel.leftBranch[1].x, skel.leftBranch[1].y);
+          const lb1raw = toSVG(skel.leftBranch[1].x, skel.leftBranch[1].y);
+          const lb1 = capInset(lb0, lb1raw, trunkPx * 0.78 / 2)[1];
           svg += `<line x1="${lb0.sx}" y1="${lb0.sy}" x2="${lb1.sx}" y2="${lb1.sy}" stroke="#8a6843" stroke-width="${trunkPx * 0.78}" stroke-linecap="round" opacity="0.55" stroke-dasharray="3 4"/>`;
         }
         if (skel.fork) {
