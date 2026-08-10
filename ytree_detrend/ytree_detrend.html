@@ -1,3 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Y-Tree Trajectory Detrending & Spectral Analysis</title>
+<meta name="description" content="Detrend and spectrally analyze the trajectories of collective-transport groups (weaver ants) moving loads vertically up trees, including forked trees, by projecting motion onto the tree.">
+
+<!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Y-Tree Trajectory Detrending & Spectral Analysis">
+<meta property="og:description" content="Detrend and spectrally analyze the trajectories of collective-transport groups (weaver ants) moving loads vertically up trees, including forked trees, by projecting motion onto the tree.">
+<meta property="og:image" content="https://tpavlic.github.io/research_sandbox/ytree_detrend/ytree_detrend-preview.png">
+<meta property="og:image:width" content="1560">
+<meta property="og:image:height" content="704">
+<meta property="og:url" content="https://tpavlic.github.io/research_sandbox/ytree_detrend/ytree_detrend.html">
+<meta property="fb:app_id" content="2385695445236853">
+
+<!-- Twitter/X card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Y-Tree Trajectory Detrending & Spectral Analysis">
+<meta name="twitter:description" content="Detrend and spectrally analyze the trajectories of collective-transport groups (weaver ants) moving loads vertically up trees, including forked trees, by projecting motion onto the tree.">
+<meta name="twitter:image" content="https://tpavlic.github.io/research_sandbox/ytree_detrend/ytree_detrend-preview.png">
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1GJE3Z9182"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -53,6 +79,14 @@ a { color: var(--accent); }
   padding-bottom: 14px;
   margin-bottom: 16px;
 }
+.lede-routes {
+  margin: 10px 0 14px;
+  padding-left: 1.5em;
+  line-height: 1.55;
+}
+.lede-routes li { margin-bottom: 5px; }
+.lede-routes li:last-child { margin-bottom: 0; }
+
 .phdr h1 {
   font-size: 1.5rem;
   margin: 0 0 4px;
@@ -539,19 +573,26 @@ a { color: var(--accent); }
 
   <div class="phdr">
     <h1>Y-Tree Trajectory Detrending &amp; Spectral Analysis</h1>
-    <p class="sub">Interactive companion for fitting splines to load trajectories, projecting samples, and reading windowed Fourier transforms</p>
+    <p class="sub">Interactive companion for fitting splines to load trajectories, projecting samples, and reading windowed Fourier transforms and wavelet scalograms</p>
     <p class="lede">
       A load carried up a curved tree leaves a trajectory whose shape is dominated by the tree itself.
-      To detect anything <em>behavioral</em> riding on top of that shape &mdash; pre-fork hesitation, side-to-side
-      deliberation, drift &mdash; one first needs to subtract the trend. This widget illustrates two complementary
-      ways to do it: (1) fit a smooth spline to the trajectory and study the perpendicular residuals
-      <code>d(s)</code>, or (2) compute a windowed Fourier transform of lateral position
-      <code>x(z)</code> against height and treat low spatial frequencies as the trend. The second route
-      is the model-free one: it never estimates where the tree is.
+      To detect anything <em>behavioral</em> riding on top of that shape &ndash; pre-fork hesitation, side-to-side
+      deliberation, drift &ndash; the tree&rsquo;s own contribution has to be separated out first. This widget
+      works through three ways of doing that, each giving up something the one before it relied on.
     </p>
+    <ol class="lede-routes">
+      <li><b>Fit a spline</b> to the trajectory and study the perpendicular residuals
+        <code>d(s)</code>, with the smoothing chosen either from what you already know about the
+        tree or from patterns in the data.</li>
+      <li><b>Transform instead of fitting.</b> A windowed Fourier transform of the lateral position
+        <code>x(z)</code> against height calls the low spatial frequencies tree and the rest ants,
+        and never estimates where the tree is.</li>
+      <li><b>Drop the window too.</b> A wavelet measures every scale with a window suited to that
+        scale, so no single window length has to serve them all.</li>
+    </ol>
     <p class="lede" style="font-size: 0.85rem; color: var(--muted);">
       The trajectory is modeled as an autocorrelated random walk along the centerline, clipped to the trunk
-      surface &mdash; every sample sits on the tree, mimicking samples from a single video of a load being
+      surface &ndash; every sample sits on the tree, mimicking samples from a single video of a load being
       cooperatively transported. Approaching the fork, the walk becomes both wider and
       <em>quicker</em>; the change in speed, not the change in width, is what a spatial-frequency
       cutoff can separate from the tree.
@@ -679,8 +720,8 @@ a { color: var(--accent); }
     <div class="explainer">
       <h4>What the residual is telling us</h4>
       <p>
-        If the spline captures the <em>tree's shape</em> &mdash; the smooth path the trajectory would
-        follow without behavior &mdash; the residuals <code>d(s)</code> contain everything else:
+        If the spline captures the <em>tree's shape</em> &ndash; the smooth path the trajectory would
+        follow without behavior &ndash; the residuals <code>d(s)</code> contain everything else:
         autocorrelated noise, drift, hesitation. Pre-fork wobble shows up as elevated residual variance
         around the fork.
       </p>
@@ -693,7 +734,7 @@ a { color: var(--accent); }
         <b>On the smoothing parameter.</b> How closely the spline is allowed to follow the trajectory
         rests on a single dial. Here you set it directly, as the DF of the fit, which the
         <a class="tablink" data-goto="2">Choosing spline parameters</a> tab takes apart. Some packages
-        (<code>mgcv::gam</code>, say) instead have you set how heavily wiggliness is charged for, and
+        (<code>mgcv::gam</code>, say) instead have you set how heavily wiggliness is charged for and
         let the flexibility follow from that; the <a class="tablink" data-goto="3">Data-driven parameters</a> tab shows why those are
         the same choice approached from opposite ends.
       </p>
@@ -906,7 +947,7 @@ curve &lt;- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |&gt;
       <p><b>1. Find the foot.</b> The nearest point on the curve is</p>
       <span class="formula">t<sub>i</sub><sup>&#8727;</sup> &nbsp;=&nbsp; argmin<sub>t&isin;[0,1]</sub> &nbsp; &Vert; p<sub>i</sub> &minus; r(t) &Vert;</span>
       <p style="font-size:0.88em; color:var(--muted); margin-top:3px;">
-        where &Vert;&thinsp;&middot;&thinsp;&Vert; is the Euclidean distance &mdash;
+        where &Vert;&thinsp;&middot;&thinsp;&Vert; is the Euclidean distance &ndash;
         the ordinary straight-line distance
         &radic;[(x<sub>1</sub>&minus;x<sub>2</sub>)&sup2; + (z<sub>1</sub>&minus;z<sub>2</sub>)&sup2;].
       </p>
@@ -941,7 +982,7 @@ curve &lt;- tibble(t = seq(min(ants$t), max(ants$t), length.out = 600)) |&gt;
         The signed scalar distance is then:
       </p>
       <span class="formula">d<sub>i</sub> &nbsp;=&nbsp; &#x2016;p<sub>i</sub> &minus; r(t<sub>i</sub><sup>&#8727;</sup>)&#x2016; &middot; sgn(&theta;<sub>i</sub>)</span>
-      <p>Positive on the left of the oriented curve, negative on the right &mdash;
+      <p>Positive on the left of the oriented curve, negative on the right &ndash;
         though this sign convention is arbitrary. Reversing the cross-product order
         to (p<sub>i</sub>&nbsp;&minus;&nbsp;r(t<sub>i</sub><sup>&#8727;</sup>))&thinsp;&times;&thinsp;&tau;(t<sub>i</sub><sup>&#8727;</sup>)
         flips the sign and labels the right side positive instead.</p>
@@ -1070,7 +1111,7 @@ resid &lt;- ants |&gt;
         Four cubics, each labeled with the numbers that produce it. Horizontal is the height
         <code>z</code>; vertical is the lateral position <code>x</code>; the faint line is
         <code>x&nbsp;=&nbsp;0</code>. The second has no <code>z&sup3;</code> term at all, which is
-        what leaves it a plain parabola &mdash; the cubic family contains the simpler shapes too.
+        what leaves it a plain parabola &ndash; the cubic family contains the simpler shapes too.
       </p>
       <p>
         A load carried up a tree wanders far more than that, and so one cubic will not do. Cut the height
@@ -1079,7 +1120,7 @@ resid &lt;- ants |&gt;
         what it is doing.
       </p>
       <p>
-        Fitted independently, neighbouring cubics would disagree wherever they meet &mdash; a step, a
+        Fitted independently, neighboring cubics would disagree wherever they meet &ndash; a step, a
         kink, or an abrupt change of curvature. A <b>spline</b> is that same chain with the
         disagreements forbidden: at every join the two cubics must match in height, in slope, and in
         curvature. Three conditions per join, and that is the whole of the machinery.
@@ -1101,8 +1142,8 @@ resid &lt;- ants |&gt;
         <b>Why the knots are a filtering choice.</b> Each stretch is one cubic, and so it can turn once.
         Reproducing a wiggle therefore takes about two stretches, one for each way it turns. Wiggles
         longer than that come through the fit; shorter ones get flattened, and the second panel below
-        lets you watch the changeover. That is the whole heuristic: choosing knots per metre is
-        choosing how much detail per metre you are willing to treat as trend rather than signal.
+        lets you watch the changeover. That is the whole heuristic: choosing knots per meter is
+        choosing how much detail per meter you are willing to treat as trend rather than signal.
       </p>
     </div>
 
@@ -1212,7 +1253,7 @@ ggplot(fitted_ants, aes(z, x)) +
 
       <p>
         <b>Where DF can come from.</b> The previous tab set it from what you already know about the
-        tree: a bend scale, or a knot density per metre coarse enough that anything finer must be the
+        tree: a bend scale, or a knot density per meter coarse enough that anything finer must be the
         ants. That is the right route whenever such prior knowledge exists. When it does not, the
         alternative is to let the trajectory itself decide, reading DF off patterns in the data. That
         is <b>model selection</b>, and it comes in two families, differing in whether DF is set
@@ -1261,16 +1302,16 @@ ggplot(fitted_ants, aes(z, x)) +
         at low DF the spline cannot follow the fork geometry (underfitting); at high DF it
         chases trajectory noise away from the true shape (overfitting), and the minimum
         df&ast; identifies the ideal smoothing level. For a straight (I-shaped) tree the
-        geometry is linear &mdash; fully captured at df&nbsp;=&nbsp;4 &mdash; so there is
+        geometry is linear &ndash; fully captured at df&nbsp;=&nbsp;4 &ndash; so there is
         no underfitting regime and RSS(spline,&nbsp;tree) rises monotonically: higher DF
         only lets the spline drift further from the straight backbone.
       </p>
 
       <p>
         <b>How to use both curves together.</b>
-        The two curves diverge as DF grows: RSS(spline,&nbsp;data) keeps falling while
+        The two curves diverge as DF grows: RSS(spline,&nbsp;data) keeps falling whereas
         RSS(spline,&nbsp;tree) passes its minimum and starts to rise.
-        The onset of this divergence marks the overfitting threshold &mdash; at that DF, the spline
+        The onset of this divergence marks the overfitting threshold &ndash; at that DF, the spline
         begins fitting behavioral noise rather than tree geometry. Practically, choose DF in the
         neighborhood of df&ast; (or slightly to its left for a conservative smoothing). The widening
         gap between the two curves tells you how much of the fit improvement is noise-fitting rather
@@ -1279,7 +1320,7 @@ ggplot(fitted_ants, aes(z, x)) +
       </p>
 
       <p>
-        <b>Can you get the tree skeleton from real video?</b> Yes &mdash; the trunk centerline can be
+        <b>Can you get the tree skeleton from real video?</b> Yes &ndash; the trunk centerline can be
         extracted by image segmentation or frame-to-tree registration.
         When that is possible, RSS(spline,&nbsp;tree) is directly usable, not just an oracle.
         When it is not available, AIC, BIC, and GCV replace the oracle: instead of measuring
@@ -1288,14 +1329,14 @@ ggplot(fitted_ants, aes(z, x)) +
       </p>
       <p>
         &bull;&nbsp;AIC = N&thinsp;log(RSS/N) + 2&thinsp;DF
-        (Akaike &mdash; lighter penalty, slightly favors richer models).<br>
+        (Akaike &ndash; lighter penalty, slightly favors richer models).<br>
         &bull;&nbsp;BIC = N&thinsp;log(RSS/N) + log(N)&thinsp;DF
         (heavier penalty, sparser; usually preferable for large N).
         Both AIC and BIC are minimized over a grid of DF values.
       </p>
       <p style="font-size:0.88em; color:var(--muted);">
         AIC, BIC, and GCV all penalize complexity for the same reason: a spline with enough DF
-        can pass through every sample (RSS&nbsp;=&nbsp;0), but that spline is useless &mdash; it
+        can pass through every sample (RSS&nbsp;=&nbsp;0), but that spline is useless &ndash; it
         captures noise, not tree shape. The penalty mimics the U-shape of RSS(spline,&nbsp;tree)
         that arises for non-straight trees, without needing the true skeleton.
       </p>
@@ -1499,7 +1540,7 @@ edf &lt;- gx$edf + gz$edf</pre></div>
       </div>
 
       <div class="panel">
-        <h3>Spectrogram of <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">x(z)</span> &mdash; lateral position</h3>
+        <h3>Spectrogram of <span style="font-family:var(--mono);text-transform:none;letter-spacing:0;font-weight:500;">x(z)</span> &ndash; lateral position</h3>
         <div class="viz-wrap" id="wftWrap-4"></div>
         <div class="viz-cap">
           Magnitude of the windowed Fourier transform of the observed lateral coordinate
@@ -1567,7 +1608,7 @@ edf &lt;- gx$edf + gz$edf</pre></div>
       <div class="sec-divider"></div>
       <div class="toggles">
         <label class="toggle"><input type="checkbox" id="tg-log"> <span class="tip" data-tip="Rescale magnitude as log10(1 + 9v) so weak components become visible. Worth trying when the low-frequency band still dominates a slice and you want to see faint structure to the right of the divide.">log magnitude</span></label>
-        <label class="toggle"><input type="checkbox" id="tg-perCol" checked> <span class="tip" data-tip="ON by default. Rescales every height slice to its own maximum, and so what you compare between heights is the SHAPE of the spectrum rather than its loudness. Without it the branch dominates, because its sideways ramp is genuinely large: the top of the plot washes out and the trunk goes dark. It changes only the picture, never the numbers, since the tree/ant split is a ratio within each slice. One caveat: a slice with almost no power gets its noise floor promoted to full brightness.">per-slice normalization</span></label>
+        <label class="toggle"><input type="checkbox" id="tg-perCol" checked> <span class="tip" data-tip="ON by default. Rescales every height slice to its own maximum, and so what you compare between heights is the SHAPE of the spectrum rather than its loudness. Without it the branch dominates because its sideways ramp is genuinely large: the top of the plot washes out and the trunk goes dark. It changes only the picture, never the numbers, as the tree/ant split is a ratio within each slice. One caveat: a slice with almost no power gets its noise floor promoted to full brightness.">per-slice normalization</span></label>
       </div>
     </div>
 
@@ -1596,7 +1637,7 @@ edf &lt;- gx$edf + gz$edf</pre></div>
         <b>Window type</b> &mdash;
         <em>Hann</em> and <em>Hamming</em> taper smoothly to (near) zero at the edges, suppressing
         spectral leakage from window boundaries; their side-lobe behavior differs slightly.
-        <em>Rectangular</em> applies no taper &mdash; sharp edges leak energy across frequencies.
+        <em>Rectangular</em> applies no taper &ndash; sharp edges leak energy across frequencies.
         <em>Gaussian</em> tapers smoothly and is optimal in the joint time-frequency uncertainty sense
         (Gabor's bound).
       </p>
@@ -1671,7 +1712,7 @@ abline(v = f_cut,  col = "white", lty = 2, lwd = 1.5)
 # places a frame only where a whole window fits, so nothing is centered within
 # W/2 of either end.  Widen W and the covered band shrinks further.  The widget
 # zero-fills past the ends so the axis can be shared with a drawing of the tree,
-# and marks those bands, since part of the window there is not real data.</pre></div>
+# and marks those bands, as part of the window there is not real data.</pre></div>
       <div class="rpane" data-rpane="t3-tidy"><pre>library(signal)
 library(tibble)
 library(dplyr)
@@ -1731,8 +1772,8 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
       </p>
       <p>
         A <b>wavelet transform</b> refuses the choice. Instead of one window reused at every
-        frequency, it takes a single wave packet &mdash; here a <b>Morlet</b> wavelet, a
-        sine wave inside a Gaussian envelope &mdash; and stretches or squeezes it to each scale
+        frequency, it takes a single wave packet &ndash; here a <b>Morlet</b> wavelet, a
+        sine wave inside a Gaussian envelope &ndash; and stretches or squeezes it to each scale
         it probes. Coarse scales get a long packet, and so they have the reach to see a slow bend;
         fine scales get a short one, and so they stay sharply localized in height. Each scale is
         measured with a window suited to that scale, which is exactly the thing a fixed window
@@ -1789,7 +1830,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
         <div class="viz-cap">
           Magnitude of the Morlet wavelet transform of the observed lateral coordinate
           <code>x(z)</code>. Vertical axis is height, shared with the tree; horizontal axis is the
-          spatial frequency equivalent to each wavelet scale, on a log axis, since scales are
+          spatial frequency equivalent to each wavelet scale, on a log axis, as scales are
           probed in constant ratios rather than constant steps. The shaded wedges are the
           <b>cone of influence</b>, where the wavelet at that scale overruns the end of the data.
           The dashed white line is the same heuristic divide <code>f<sub>cut</sub></code> as the
@@ -1817,7 +1858,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           <input type="range" id="w0" min="30" max="120" step="2" value="60">
         </div>
         <div class="ctrl">
-          <label><span class="tip" data-tip="Number of scales computed per doubling of scale (per octave). More voices give a smoother scalogram at more compute; they add no information, since neighbouring scales overlap heavily, and so a coarse-looking scalogram at a low setting is showing you the scale sampling rather than a lack of pixels.">Voices per octave</span><span class="v" id="v-voices">12</span></label>
+          <label><span class="tip" data-tip="Number of scales computed per doubling of scale (per octave). More voices give a smoother scalogram at more compute; they add no information, as neighboring scales overlap heavily, and so a coarse-looking scalogram at a low setting is showing you the scale sampling rather than a lack of pixels.">Voices per octave</span><span class="v" id="v-voices">12</span></label>
           <input type="range" id="voices" min="2" max="24" step="1" value="12">
         </div>
         <div class="ctrl" style="grid-column: 1 / -1;">
@@ -1825,7 +1866,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           <input type="range" id="Lbend5" min="5" max="60" value="15">
         </div>
         <div class="ctrl" style="grid-column: 1 / -1;">
-          <label class="lab-tight"><span class="tip" data-tip="Read-only. The scale range actually computed, and the equivalent spatial frequencies it spans. The coarse end is capped at half the height of the record, because the cone of influence leaves nothing measurable beyond that.">Scale range</span><span class="lab-vals"><span class="v" id="v-cwtinfo">&mdash;</span></span></label>
+          <label class="lab-tight"><span class="tip" data-tip="Read-only. The scale range actually computed, and the equivalent spatial frequencies it spans. The coarse end is capped at half the height of the tree because the cone of influence leaves nothing measurable beyond that.">Scale range</span><span class="lab-vals"><span class="v" id="v-cwtinfo">&mdash;</span></span></label>
         </div>
       </div>
 
@@ -3299,7 +3340,7 @@ scalo |&gt;
         s2 += `<text x="${mL}" y="${wT - 7}" font-family="var(--sans), sans-serif" font-size="10" fill="#999">test wiggle</text>`;
         s2 += `<text x="${mL + 78}" y="${wT - 7}" font-family="var(--sans), sans-serif" font-size="10" fill="#6b21a8">what the spline manages</text>`;
         const verdict = kept > 0.8 ? 'followed' : (kept > 0.35 ? 'partly flattened' : 'flattened away');
-        s2 += `<text x="${W - mR}" y="${wT - 7}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="10" fill="#444">${(100 * kept).toFixed(0)}% of the amplitude kept &mdash; ${verdict}</text>`;
+        s2 += `<text x="${W - mR}" y="${wT - 7}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="10" fill="#444">${(100 * kept).toFixed(0)}% of the amplitude kept &ndash; ${verdict}</text>`;
         s2 += heightAxis(wT + wH);
 
         // scale bars: the wavelength against two knot spacings
@@ -3372,7 +3413,7 @@ scalo |&gt;
         // overran the column and the branches were clipped by the wrap's
         // overflow:hidden. Choose the logical width to fit the measured column
         // instead; the tree ends up horizontally tighter than on Tab 4, which costs
-        // nothing since only its height has to correspond to anything.
+        // nothing, as only its height has to correspond to anything.
         const treeWrap = document.getElementById('treeWrap-5');
         let treeSvgW = 200;
         if (treeWrap && window.innerWidth >= 881) {
@@ -3381,7 +3422,7 @@ scalo |&gt;
         }
         renderTreeT4(samples, skel, zTop, 'treeWrap-5', 'arrUp-5', treeSvgW);
 
-        // Same height grid as Tab 4, so the two tabs analyse identical data.
+        // Same height grid as Tab 4, so the two tabs analyze identical data.
         const zRaw = samples.map(p => p.z), xRaw = samples.map(p => p.x);
         const zLo = zRaw[0], zHi = zRaw[zRaw.length - 1];
         let dzMax = 0;
@@ -3478,7 +3519,7 @@ scalo |&gt;
         if (!S.cwtPerCol && gMax === 0) gMax = 1;
 
         for (let j = 0; j < scales.length; j++) {
-          // cell spans the midpoints to neighbouring scales on the log axis
+          // cell spans the midpoints to neighboring scales on the log axis
           const fHiEdge = j === 0 ? fMax : Math.sqrt(freqs[j] * freqs[j - 1]);
           const fLoEdge = j === scales.length - 1 ? fMin : Math.sqrt(freqs[j] * freqs[j + 1]);
           const xA = fToPx(fLoEdge), xB = fToPx(fHiEdge);
@@ -3998,3 +4039,5 @@ scalo |&gt;
 <script>
 if (window.self !== window.top) { var f = document.getElementById('back-link-footer'); if (f) f.style.display = 'none'; }
 </script>
+</body>
+</html>
