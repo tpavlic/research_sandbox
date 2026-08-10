@@ -333,6 +333,10 @@ a { color: var(--accent); }
   margin-left: auto;
   white-space: nowrap;
 }
+/* The scale-range readout is the one long, plain, comma-separated value here, and
+   it has no subscript expression to hold together, so the nowrap above only makes
+   it push the panel sideways on a narrow screen. Let this one wrap. */
+.lab-vals.lab-wrap { white-space: normal; }
 
 .sec-divider {
   border-top: 1px dashed var(--border);
@@ -1990,7 +1994,7 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           <input type="range" id="Lbend5" min="5" max="60" value="15">
         </div>
         <div class="ctrl" style="grid-column: 1 / -1;">
-          <label class="lab-tight"><span class="tip" data-tip="Read-only. The scalogram is computed at a whole ladder of wavelet widths rather than one, and this reports the ends of that ladder: the narrowest and widest scale, the spatial frequencies those two widths respond to, and the number of rungs. Neither end is a free choice. The narrow end is two grid steps, the finest width the samples can represent, and the wide end is half the height of the tree, beyond which the cone of influence covers every position and leaves nothing measurable. The rungs are spaced by a fixed ratio, at the voices-per-octave setting above, and so their count follows from the two ends.">Scale range</span><span class="lab-vals"><span class="v" id="v-cwtinfo">&mdash;</span></span></label>
+          <label class="lab-tight"><span class="tip" data-tip="Read-only. The scalogram is computed at a whole ladder of wavelet widths rather than one, and this reports the ends of that ladder: the narrowest and widest scale, the spatial frequencies those two widths respond to, and the number of rungs. Neither end is a free choice. The narrow end is two grid steps, the finest width the samples can represent, and the wide end is half the height of the tree, beyond which the cone of influence covers every position and leaves nothing measurable. The rungs are spaced by a fixed ratio, at the voices-per-octave setting above, and so their count follows from the two ends.">Scale range</span><span class="lab-vals lab-wrap"><span class="v" id="v-cwtinfo">&mdash;</span></span></label>
         </div>
       </div>
 
@@ -3792,8 +3796,18 @@ scalo |&gt;
         const dj = 1 / S.voices;
         const nOct = Math.log2(sMax / s0);
         const scales = [];
-        for (let j = 0; j <= Math.round(nOct / dj); j++) scales.push(s0 * Math.pow(2, j * dj));
+        // floor, not round: rounding up overshoots sMax, by 16% at 2 voices per
+        // octave, which contradicts the stated cap and adds a rung that can never
+        // be drawn. Clamping the last rung to sMax instead would be wrong, as it
+        // would give that one step a different ratio from every other.
+        for (let j = 0; j <= Math.floor(nOct / dj); j++) scales.push(s0 * Math.pow(2, j * dj));
         const freqs = scales.map(s => 1 / (ff * s));            // descending
+        // A scale whose cone closes over every height cannot be drawn anywhere, and
+        // the top half-octave is always in that state: the cone reaches sqrt(2)*s
+        // from each end, so nothing is left once 2*sqrt(2)*s exceeds the record.
+        // The readout reports the count, as otherwise the number of scales looks
+        // wrong against the number of columns actually visible.
+        const coneBlank = scales.filter(s => 2 * Math.SQRT2 * s > record).length;
         const W = cwtMorlet(xGrid, K, dz, scales, w0);
         const fCut = 1 / S.Lbend;
 
@@ -4065,7 +4079,8 @@ scalo |&gt;
         // "(1/length)" used on the frequency axes, as the page fixes no physical unit.
         document.getElementById('v-cwtinfo').textContent =
           `scale = ${s0.toFixed(3)} to ${scales[scales.length - 1].toFixed(2)} (length), `
-          + `f = ${fMin.toFixed(2)} to ${fMax.toFixed(1)} (1/length), ${scales.length} scales`;
+          + `f = ${fMin.toFixed(2)} to ${fMax.toFixed(1)} (1/length), ${scales.length} scales`
+          + (coneBlank ? `, ${coneBlank} fully inside the cone` : '');
       }
 
       // ─── Dispatch ───────────────────────────────────────
