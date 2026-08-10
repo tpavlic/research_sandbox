@@ -1082,7 +1082,7 @@ curve &lt;- curve |&gt;
 # computed directly as the 2D cross product tau x delta.
 resid &lt;- ants |&gt;
   mutate(
-    i_foot = map2_int(x, z, ~ which.min((curve$x - .x)^2 + (curve$z - .y)^2)),
+    i_foot = map2_int(x, z, \(px, pz) which.min((curve$x - px)^2 + (curve$z - pz)^2)),
     d = curve$tx[i_foot] * (z - curve$z[i_foot]) -
         curve$tz[i_foot] * (x - curve$x[i_foot]),
     s = curve$s[i_foot]
@@ -1494,16 +1494,16 @@ library(tibble)
 # Option 1: compare RSS(spline, data) vs RSS(spline, tree) across a DF grid.
 rss_sweep &lt;- tibble(df = 4:20) |&gt;
   mutate(
-    fit_x = map(df, ~ lm(x ~ bs(t, df = .x, degree = 3), data = ants)),
-    fit_z = map(df, ~ lm(z ~ bs(t, df = .x, degree = 3), data = ants)),
-    rss_data = map2_dbl(fit_x, fit_z, ~ {
-      xh &lt;- predict(.x, newdata = ants)
-      zh &lt;- predict(.y, newdata = ants)
+    fit_x = map(df, \(k) lm(x ~ bs(t, df = k, degree = 3), data = ants)),
+    fit_z = map(df, \(k) lm(z ~ bs(t, df = k, degree = 3), data = ants)),
+    rss_data = map2_dbl(fit_x, fit_z, \(fx, fz) {
+      xh &lt;- predict(fx, newdata = ants)
+      zh &lt;- predict(fz, newdata = ants)
       sum((ants$x - xh)^2 + (ants$z - zh)^2)
     }),
-    rss_tree = map2_dbl(fit_x, fit_z, ~ {
-      xh &lt;- predict(.x, newdata = ants)
-      zh &lt;- predict(.y, newdata = ants)
+    rss_tree = map2_dbl(fit_x, fit_z, \(fx, fz) {
+      xh &lt;- predict(fx, newdata = ants)
+      zh &lt;- predict(fz, newdata = ants)
       sum((skel$x  - xh)^2 + (skel$z  - zh)^2)
     })
   )
@@ -1512,8 +1512,8 @@ df_star &lt;- rss_sweep |&gt; slice_min(rss_tree) |&gt; pull(df)
 # Option 2a: sweep DF, pick by AIC / BIC
 ic &lt;- rss_sweep |&gt;
   mutate(
-    aic = map2_dbl(fit_x, fit_z, ~ AIC(.x) + AIC(.y)),
-    bic = map2_dbl(fit_x, fit_z, ~ BIC(.x) + BIC(.y))
+    aic = map2_dbl(fit_x, fit_z, \(fx, fz) AIC(fx) + AIC(fz)),
+    bic = map2_dbl(fit_x, fit_z, \(fx, fz) BIC(fx) + BIC(fz))
   )
 df_aic &lt;- ic |&gt; slice_min(aic) |&gt; pull(df)
 df_bic &lt;- ic |&gt; slice_min(bic) |&gt; pull(df)
