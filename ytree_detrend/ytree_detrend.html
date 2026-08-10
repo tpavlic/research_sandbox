@@ -626,7 +626,7 @@ a { color: var(--accent); }
         <h3>Controls</h3>
         <div class="ctrls">
           <div class="ctrl">
-            <label><span class="tip" data-tip="Y gives a forked tree, and so the centreline kinks at the fork and there is a fork height to look for signal near. I is a straight trunk with no kink, useful as a control: any structure you see there cannot be the fork.">Tree type</span> <span class="v" id="v-treeType">Y</span></label>
+            <label><span class="tip" data-tip="Y gives a forked tree, and so the centerline kinks at the fork and there is a fork height to look for signal near. I is a straight trunk with no kink, useful as a control: any structure you see there cannot be the fork.">Tree type</span> <span class="v" id="v-treeType">Y</span></label>
             <select id="treeType">
               <option value="Y" selected>Y &mdash; forked</option>
               <option value="I">I &mdash; straight</option>
@@ -642,7 +642,7 @@ a { color: var(--accent); }
             <input type="range" id="N" min="40" max="240" value="100">
           </div>
           <div class="ctrl">
-            <label><span class="tip" data-tip="Degrees of freedom of the cubic B-spline used by the other tabs. More DF lets the spline follow the trajectory more closely, eventually absorbing the ant behaviour you are trying to measure. This is the spline route&#39;s tuning knob, the counterpart of L_{bend} here.">Spline DF (cubic)</span> <span class="v" id="v-df">6</span></label>
+            <label><span class="tip" data-tip="Degrees of freedom of the cubic B-spline used by the other tabs. More DF lets the spline follow the trajectory more closely, eventually absorbing the ant behavior you are trying to measure. This is the spline route&#39;s tuning knob, the counterpart of L_{bend} here.">Spline DF (cubic)</span> <span class="v" id="v-df">6</span></label>
             <input type="range" id="df" min="4" max="30" value="6">
           </div>
 
@@ -1093,7 +1093,7 @@ resid &lt;- ants |&gt;
 <text x="583.0" y="129" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#555">x = 9z &minus; 24z² + 16z³</text>
 </svg></div>
       <p class="viz-cap" style="margin-bottom:14px;">
-        Four cubics, each labelled with the numbers that produce it. Horizontal is the height
+        Four cubics, each labeled with the numbers that produce it. Horizontal is the height
         <code>z</code>; vertical is the lateral position <code>x</code>; the faint line is
         <code>x&nbsp;=&nbsp;0</code>. The second has no <code>z&sup3;</code> term at all, which is
         what leaves it a plain parabola &mdash; the cubic family contains the simpler shapes too.
@@ -1168,7 +1168,7 @@ resid &lt;- ants |&gt;
       </div>
       <div class="viz-wrap" id="wiggleWrap-3"></div>
       <div class="viz-cap">
-        A test wiggle of the wavelength you set, in grey, with the same spline&rsquo;s best attempt at
+        A test wiggle of the wavelength you set, in gray, with the same spline&rsquo;s best attempt at
         it in purple. The bars underneath compare that wavelength against two knot spacings. Shorten
         the wiggle past that mark and the fit gives up and flattens, which is the filtering the knot
         spacing performs, seen directly rather than as a frequency axis.
@@ -1203,10 +1203,10 @@ brk   &lt;- seq(min(ants$z), max(ants$z), length.out = n_int + 2)
 fit2  &lt;- lm(x ~ bs(z, knots = brk[-c(1, length(brk))],
                    degree = 3, intercept = TRUE), data = ants)
 
-plot(ants$z, ants$x, pch = 16, col = "grey70",
+plot(ants$z, ants$x, pch = 16, col = "gray70",
      xlab = "height z", ylab = "lateral x")
 lines(ants$z, fitted(fit2), col = "#6b21a8", lwd = 2)
-abline(v = brk[-c(1, length(brk))], lty = 3, col = "grey50")</pre></div>
+abline(v = brk[-c(1, length(brk))], lty = 3, col = "gray50")</pre></div>
       <div class="rpane" data-rpane="t5-tidy"><pre>library(dplyr)
 library(broom)
 library(ggplot2)
@@ -1222,9 +1222,9 @@ fitted_ants &lt;- lm(x ~ bs(z, knots = knots, degree = 3, intercept = TRUE),
   rename(trend = .fitted, resid = .resid)
 
 ggplot(fitted_ants, aes(z, x)) +
-  geom_point(colour = "grey70") +
-  geom_line(aes(y = trend), colour = "#6b21a8", linewidth = 1) +
-  geom_vline(xintercept = knots, linetype = 3, colour = "grey50") +
+  geom_point(color = "gray70") +
+  geom_line(aes(y = trend), color = "#6b21a8", linewidth = 1) +
+  geom_vline(xintercept = knots, linetype = 3, color = "gray50") +
   labs(x = "height z", y = "lateral x") +
   theme_minimal()</pre></div>
     </div>
@@ -1487,7 +1487,8 @@ edf &lt;- gx$edf + gz$edf</pre></div>
         the dashed line as the load approaches the fork.
       </p>
       <p style="font-size:0.88em; color:var(--muted);">
-        <b>Why vertical = z.</b> Height is directly observable and, unlike distance travelled along the
+        <b>Why slice by height, not distance traveled.</b> Height is directly observable and, unlike the
+        distance traveled along the
         trajectory, is unaffected by the wobble being measured. Parameterizing by path length would let
         a bout of wide side-to-side movement advance the axis faster, stretching that bout to a longer
         apparent wavelength and pushing it the wrong way across the cutoff. Height also lets this panel
@@ -1568,7 +1569,7 @@ edf &lt;- gx$edf + gz$edf</pre></div>
           </select>
         </div>
         <div class="ctrl">
-          <label><span class="tip" data-tip="Colour scale for magnitude. viridis and magma are perceptually uniform, and so equal colour steps mean equal magnitude steps; gray is there for print.">Colormap</span> <span class="v" id="v-cmap">viridis</span></label>
+          <label><span class="tip" data-tip="Color scale for magnitude. viridis and magma are perceptually uniform, and so equal color steps mean equal magnitude steps; gray is there for print.">Colormap</span> <span class="v" id="v-cmap">viridis</span></label>
           <select id="cmap">
             <option value="viridis" selected>viridis</option>
             <option value="magma">magma</option>
@@ -1669,7 +1670,7 @@ W &lt;- 20; hop &lt;- 4              # W spans about one deliberation bout
 sp &lt;- specgram(xy, n = W, Fs = 1/dz, window = hanning(W), overlap = W - hop)
 
 # specgram reports frame STARTS in sp$t, as offsets from the first sample.
-# Shift to frame centres, expressed as height:
+# Shift to frame centers, expressed as height:
 z_c &lt;- min(ants$z) + sp$t + (W %/% 2 - 1) * dz
 
 # Drop the DC row.  It is the window mean, i.e. wherever the x-origin happens to
@@ -1693,7 +1694,7 @@ abline(h = z_fork, col = "darkorange", lwd = 2)
 abline(v = f_cut,  col = "white", lty = 2, lwd = 1.5)
 
 # This covers only the middle ~67% of the tree, and that is not a bug: specgram
-# places a frame only where a whole window fits, so nothing is centred within
+# places a frame only where a whole window fits, so nothing is centered within
 # W/2 of either end.  Widen W and the covered band shrinks further.  The widget
 # zero-fills past the ends so the axis can be shared with a drawing of the tree,
 # and marks those bands, since part of the window there is not real data.</pre></div>
@@ -1716,7 +1717,7 @@ win &lt;- hanning(W)
 pad &lt;- W %/% 2
 xp  &lt;- c(numeric(pad), xy, numeric(pad))
 
-# Frames centred on grid points, each window's mean removed
+# Frames centered on grid points, each window's mean removed
 spec_df &lt;- tibble(ctr = seq(1, K, by = hop)) |&gt;
   mutate(
     z = z_grid[ctr],
@@ -1856,8 +1857,8 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
 
       <div class="sec-divider"></div>
       <div class="toggles">
-        <label class="toggle"><input type="checkbox" id="tg-cwtlog" checked> <span class="tip" data-tip="ON by default here. Rescale magnitude as log10(1 + 9v) so weak components become visible. The tree&#39;s slow bending dominates the coarse scales, and without this the finer scales carrying the ant signal sit too far down the colour scale to read.">log magnitude</span></label>
-        <label class="toggle"><input type="checkbox" id="tg-cwtPerCol"> <span class="tip" data-tip="OFF by default here, unlike the previous tab, and worth leaving off. Rescaling every height slice to its own maximum destroys the very comparison this tab is about, namely how much fine-scale energy one height carries relative to another. It is worse than merely unhelpful: the bump lifts the coarse scales too, raising each row&#39;s maximum, and so the fine scales are pushed DOWN the colour scale exactly where the signal is. Measured on the default trajectory it turns a contrast of 1.07 into 0.75, inverting it. The profile on the right is unaffected either way, being computed from unnormalized magnitudes.">per-slice normalization</span></label>
+        <label class="toggle"><input type="checkbox" id="tg-cwtlog" checked> <span class="tip" data-tip="ON by default here. Rescale magnitude as log10(1 + 9v) so weak components become visible. The tree&#39;s slow bending dominates the coarse scales, and without this the finer scales carrying the ant signal sit too far down the color scale to read.">log magnitude</span></label>
+        <label class="toggle"><input type="checkbox" id="tg-cwtPerCol"> <span class="tip" data-tip="OFF by default here, unlike the previous tab, and worth leaving off. Rescaling every height slice to its own maximum destroys the very comparison this tab is about, namely how much fine-scale energy one height carries relative to another. It is worse than merely unhelpful: the bump lifts the coarse scales too, raising each row&#39;s maximum, and so the fine scales are pushed DOWN the color scale exactly where the signal is. Measured on the default trajectory it turns a contrast of 1.07 into 0.75, inverting it. The profile on the right is unaffected either way, being computed from unnormalized magnitudes.">per-slice normalization</span></label>
         <label class="toggle"><input type="checkbox" id="tg-cone" checked> <span class="tip" data-tip="Shade the cone of influence, the region where the wavelet at that scale reaches past the end of the data. Turn it off to see how much of the coarse end of the scalogram is resting on padding rather than on observations.">shade cone of influence</span></label>
       </div>
     </div>
@@ -1932,8 +1933,8 @@ ggplot(scalo, aes(freq, z, fill = power)) +
   geom_raster() +
   scale_x_log10() +
   scale_fill_viridis_c(trans = "log10") +
-  geom_hline(yintercept = 1, colour = "darkorange", linewidth = 1) +
-  geom_vline(xintercept = 1 / 0.15, colour = "white", linetype = 2) +
+  geom_hline(yintercept = 1, color = "darkorange", linewidth = 1) +
+  geom_vline(xintercept = 1 / 0.15, color = "white", linetype = 2) +
   labs(x = "spatial frequency  (1/length, log)", y = "height z") +
   theme_minimal()
 
@@ -1942,8 +1943,8 @@ scalo |&gt;
   filter(scale &lt; 0.15) |&gt;
   summarise(fine_power = mean(power), .by = z) |&gt;
   ggplot(aes(fine_power, z)) +
-  geom_path(colour = "#6b21a8", linewidth = 1) +
-  geom_hline(yintercept = 1, colour = "darkorange", linewidth = 1) +
+  geom_path(color = "#6b21a8", linewidth = 1) +
+  geom_hline(yintercept = 1, color = "darkorange", linewidth = 1) +
   labs(x = "fine-scale power", y = "height z") +
   theme_minimal()</pre></div>
     </div>
@@ -2382,7 +2383,7 @@ scalo |&gt;
             const inFork = hasFork && Math.abs(projs[i].s - forkS) < window;
             // When the tree skeleton is shown the lines sit on a dark brown trunk;
             // use white/warm-white so they pop off the background.  When the
-            // skeleton is hidden, the background is light, so flip to coloured lines.
+            // skeleton is hidden, the background is light, so flip to colored lines.
             const col = S.showSkel
               ? (inFork ? 'rgba(255,200,120,1)' : 'rgba(255,255,255,0.88)')
               : (inFork ? '#c34a2e' : '#6699bb');
@@ -2728,7 +2729,7 @@ scalo |&gt;
       }
       // Canvas 2D has no rich text, so subscripts are drawn by hand: "f_{cut}"
       // renders the braced part smaller and dropped below the baseline. Returns the
-      // total advance so callers can align right or centre.
+      // total advance so callers can align right or center.
       function subRuns(str) {
         const runs = []; let i = 0; const re = /_\{([^}]*)\}/g; let m;
         while ((m = re.exec(str))) {
@@ -2946,7 +2947,7 @@ scalo |&gt;
         // slope is the branch's sideways ramp, which IS trend, and classifying trend
         // is f_cut's job here; subtracting it would do the spline's work inside the
         // transform meant to stand in for the spline.
-        // Frames are centred on grid points so the spectrogram covers the whole
+        // Frames are centered on grid points so the spectrogram covers the whole
         // height axis it shares with the tree. Placing frames only where a full
         // window fits would leave the outer W/2 empty, which at this grid size is a
         // third of the axis and blanks out the approach to the fork. Past the ends
@@ -2973,7 +2974,7 @@ scalo |&gt;
         const ctr = new Array(nCols);
         const seg = new Array(W);
         for (let c = 0; c < nCols; c++) {
-          // Window centred on grid index ci starts at padded index ci, because the
+          // Window centered on grid index ci starts at padded index ci, because the
           // left pad is exactly W/2 wide.
           const ci = Math.min(c * hop, K - 1);
           const off = ci;
@@ -3051,9 +3052,9 @@ scalo |&gt;
 
         const cmap = getColormap(S.cmap);
 
-        // Each column is drawn at its window CENTRE, one hop tall. The first and last
+        // Each column is drawn at its window CENTER, one hop tall. The first and last
         // are extended to the ends of the AXIS rather than to the first and last
-        // sample. Samples are cell-centred in t, at (i+0.5)/N, so they stop half a
+        // sample. Samples are cell-centered in t, at (i+0.5)/N, so they stop half a
         // spacing short of z = 0 and of the treetop; leaving that uncovered draws a
         // few pixels of white that read as a rendering seam rather than as a
         // statement about coverage. The real caveat at the ends is the reflected
@@ -3511,7 +3512,7 @@ scalo |&gt;
           for (let n = 0; n < K; n++) {
             // Skip cells inside the cone. Painting them would clamp against a
             // denominator computed from outside the cone and show as saturated
-            // colour, which reads as "lots of signal here" in the one region where
+            // color, which reads as "lots of signal here" in the one region where
             // there is least reason to believe anything.
             if (n * dz < reachJ || (K - 1 - n) * dz < reachJ) continue;
             const denom = S.cwtPerCol ? colMax[n] : gMax;
