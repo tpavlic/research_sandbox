@@ -209,11 +209,11 @@ lightness until it clears 4.5:1 – `--accent-link: #a35820` keeps `--accent`'s 
 saturation at 38% lightness – then point every link-colored rule at it. Non-link uses of the accent
 stay untouched, and the links stay recognizably the page's own color.
 
-Two things worth checking whenever a link color changes: a `:hover` rule that shifts to the *old*
-accent will now **lighten** the link and undo the fix, so drop the color shift and keep the
-hover-underline; and the count of affected links is usually far larger than the footer, since one
-citation or reference rule can feed dozens. Enumerate them from the rendered page rather than by
-grepping – on `v2v` this was 89 anchors, 87 of them from a single `.cite a` rule:
+A link color change has two knock-on effects. A `:hover` rule that shifts to the *old* accent will
+now **lighten** the link and undo the fix, so drop the color shift and keep the hover-underline.
+The affected links also usually outnumber the footer's by a wide margin, since one citation or
+reference rule can feed dozens. Enumerate them from the rendered page rather than by grepping – on
+`v2v` this was 89 anchors, 87 of them from a single `.cite a` rule:
 
 ```js
 const lum = (r, g, b) => { [r, g, b] = [r, g, b].map(c => { c /= 255;
