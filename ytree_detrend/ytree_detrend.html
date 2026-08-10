@@ -167,9 +167,12 @@ a { color: var(--accent); }
   gap: 18px;
   align-items: stretch;
 }
+/* Same three columns as .tab5-grid, and deliberately so: the two tabs now carry the
+   same three panels, and the argument for the wavelet is made by reading one against
+   the other, which is easier when a panel does not move between them. */
 .tab4-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.40fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.44fr) minmax(0, 1fr) minmax(0, 0.28fr);
   gap: 18px;
   align-items: stretch;
 }
@@ -508,7 +511,8 @@ a { color: var(--accent); }
   align-items: stretch;
 }
 
-/* Wide-screen Tab 4: fix both panels to the same height so tree and spectrogram are visually aligned */
+/* Wide-screen Tab 4: fix all three panels to the same height so tree, spectrogram and
+   profile are visually aligned and a given height sits on the same pixel row in each */
 @media (min-width: 881px) {
   #treeWrap-4 svg {
     width: auto;
@@ -516,7 +520,7 @@ a { color: var(--accent); }
     display: block;
     margin: 0 auto;
   }
-  #wftWrap-4 canvas {
+  #wftWrap-4 canvas, #profWrap-4 canvas {
     width: auto !important;
     height: 590px !important;
     max-width: 100% !important;
@@ -1560,6 +1564,23 @@ edf &lt;- gx$edf + gz$edf</pre></div>
           data, and so read those bands with caution.
         </div>
       </div>
+
+      <div class="panel">
+        <h3>Fine-scale energy</h3>
+        <div class="viz-wrap" id="profWrap-4"></div>
+        <div class="viz-cap">
+          Mean magnitude across every frequency bin to the <em>right</em> of the divide, as a
+          function of height, with the <em>edge</em> frames left out. A bulge below the fork line
+          means the load began moving in shorter, quicker strokes before it arrived at the fork.
+          There is one point per window position, and so what sets their spacing is <code>hop</code>:
+          drop it to 1 and the trace fills in completely. That added density is cosmetic, as
+          neighboring windows then share all but one of their samples. What actually blurs the bulge
+          is <code>W</code>, every point being an average over a <code>W</code>-tall window, and no
+          <code>hop</code> setting recovers what a long window has already smeared. Raise
+          <code>W</code> and watch the bulge spread even at <code>hop</code>&nbsp;=&nbsp;1, then
+          compare against the same panel on the next tab, which has neither knob to set.
+        </div>
+      </div>
     </div>
 
     <div class="panel" style="margin-top:16px;">
@@ -1861,6 +1882,14 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           <b>cone of influence</b>, where the wavelet at that scale overruns the end of the data.
           The dashed white line is the same heuristic divide <code>f<sub>cut</sub></code> as the
           previous tab.
+          One caution the smoothness of this picture hides: the transform is evaluated at every
+          height sample, and so the image is finer along the vertical axis than the measurement
+          behind it really is. The resolution of a row is the length of its packet, which makes it
+          different on every row, sharp along the fine scales at the right and very coarse along
+          the left, where neighboring columns rest on almost exactly the same stretch of
+          trajectory. The flare of the cone is that same length seen against the ends of the
+          record, and so the wider the cone is at a given row, the more the smoothness along that
+          row is telling you about the packet rather than about the tree.
         </div>
       </div>
 
@@ -1872,6 +1901,11 @@ ggplot(spec_df, aes(x = f, y = z, fill = magnitude)) +
           height, with cone-affected scales left out. This is the leading indicator: a bulge
           below the fork line means the load began moving in shorter, quicker strokes before it
           arrived at the fork.
+          The dots mark where the transform was evaluated, one per height sample, which is a
+          stride of one rather than the previous tab&rsquo;s <code>hop</code>. Note that this is
+          not a finer measurement, only a finer stride: neighboring packets overlap almost
+          entirely, and so the extra dots buy smoothness rather than information. What this tab
+          genuinely drops is the window length, not the slicing.
         </div>
       </div>
     </div>
@@ -3223,6 +3257,103 @@ scalo |&gt;
         ctx.fillText('height  z  up the tree', 0, 0);
         ctx.restore();
 
+        // ─── Fine-scale energy profile, sharing the height axis ─────────────────
+        // The same quantity the wavelet tab plots, computed the same way: mean
+        // magnitude over every bin above the divide, at each position. Two
+        // differences from that tab are the point of showing it here. There is one
+        // value per WINDOW rather than one per height sample, and each value is an
+        // average over a W-tall window, and so raising W both thins this trace and
+        // smears the deliberation bulge along it.
+        //
+        // Computed from `mag`, never from `display`, so the per-slice normalization
+        // toggle cannot change it. That matches the wavelet tab, where the same
+        // profile is likewise built from unnormalized magnitudes.
+        const prof = new Float64Array(nCols);
+        const profOK = new Uint8Array(nCols);
+        let profMax = 0;
+        for (let c = 0; c < nCols; c++) {
+          if (isEdgeCol(c)) continue;          // part of this window is padding, not data
+          let acc = 0, cnt = 0;
+          for (let k = 0; k < nFreq; k++) {
+            if (k * Fs / W <= fCut) continue;
+            acc += mag[c][k]; cnt++;
+          }
+          if (!cnt) continue;
+          prof[c] = acc / cnt; profOK[c] = 1;
+          if (prof[c] > profMax) profMax = prof[c];
+        }
+
+        const profWrap = document.getElementById('profWrap-4');
+        if (profWrap) {
+          // Rendered height is pinned by the wide-screen rule so all three panels line
+          // up, and so the rendered width follows from the logical aspect. In this
+          // narrow third column max-width:100% would then clamp the width while the
+          // height stayed pinned, squeezing the trace. Take the logical width from the
+          // measured column so the aspect survives.
+          let pW = 124;
+          const availW = profWrap.clientWidth;
+          if (window.innerWidth >= 881 && availW > 20) {
+            pW = Math.max(70, Math.floor(availW * T4_VH / 590) - 2);
+          }
+          profWrap.innerHTML = `<canvas id="profCanvas4" style="display:block;max-width:${pW}px;width:100%;height:auto;margin:0 auto;"></canvas>`;
+          const pc = document.getElementById('profCanvas4');
+          pc.style.aspectRatio = `${pW} / ${cssH}`;
+          const prect = pc.getBoundingClientRect();
+          const pup = prect.height > 1 ? prect.height / cssH : 1;
+          const ppx = dpr * pup;
+          pc.width = Math.round(pW * ppx); pc.height = Math.round(cssH * ppx);
+          const pctx = pc.getContext('2d');
+          pctx.setTransform(ppx, 0, 0, ppx, 0, 0);
+          pctx.fillStyle = 'white'; pctx.fillRect(0, 0, pW, cssH);
+          const qL = 12, qR = 12, qW = pW - qL - qR;
+          const vToPx = v => qL + (profMax > 0 ? v / profMax : 0) * qW;
+
+          pctx.fillStyle = 'rgba(107,33,168,0.14)';
+          pctx.strokeStyle = '#6b21a8';
+          pctx.lineWidth = 1.6;
+          pctx.beginPath();
+          let open = false;
+          for (let c = 0; c < nCols; c++) {
+            if (!profOK[c]) continue;
+            const X = vToPx(prof[c]), Y = zToPy(zLo + ctr[c] * dz);
+            if (!open) { pctx.moveTo(X, Y); open = true; } else pctx.lineTo(X, Y);
+          }
+          pctx.stroke();
+          pctx.beginPath(); open = false;
+          let lastY = 0;
+          for (let c = 0; c < nCols; c++) {
+            if (!profOK[c]) continue;
+            const X = vToPx(prof[c]), Y = zToPy(zLo + ctr[c] * dz);
+            if (!open) { pctx.moveTo(qL, Y); open = true; }
+            pctx.lineTo(X, Y); lastY = Y;
+          }
+          if (open) { pctx.lineTo(qL, lastY); pctx.closePath(); pctx.fill(); }
+
+          // One dot per window, so the sampling along height is visible rather than
+          // hidden by the connecting line. This is the difference from the next tab.
+          pctx.fillStyle = '#6b21a8';
+          for (let c = 0; c < nCols; c++) {
+            if (!profOK[c]) continue;
+            pctx.beginPath();
+            pctx.arc(vToPx(prof[c]), zToPy(zLo + ctr[c] * dz), 1.9, 0, 2 * Math.PI);
+            pctx.fill();
+          }
+
+          pctx.strokeStyle = '#222'; pctx.lineWidth = 1.2;
+          pctx.strokeRect(qL, padT, qW, plotH);
+          if (S.treeType === 'Y' && TRUNK_LEN <= zTop) {
+            pctx.strokeStyle = '#d97842'; pctx.lineWidth = 2.0; pctx.setLineDash([6, 4]);
+            pctx.beginPath();
+            pctx.moveTo(qL, zToPy(TRUNK_LEN)); pctx.lineTo(qL + qW, zToPy(TRUNK_LEN));
+            pctx.stroke(); pctx.setLineDash([]);
+          }
+          pctx.fillStyle = '#222'; pctx.font = '11px "IBM Plex Mono", monospace';
+          pctx.textAlign = 'center';
+          pctx.fillText('mean |X|', pW / 2, cssH - 24);
+          fillTextSub(pctx, 'right of f_{cut}', pW / 2, cssH - 11,
+                      '11px "IBM Plex Mono", monospace', '8px "IBM Plex Mono", monospace', 'center', false);
+        }
+
         document.getElementById('v-fcut').textContent = fCut.toFixed(2);
         // Report the analysis budget rather than letting it be a silent cap.
         const gridEl = document.getElementById('v-grid');
@@ -3719,6 +3850,18 @@ scalo |&gt;
           pctx.lineTo(X, Y); lastY = Y;
         }
         if (open) { pctx.lineTo(qL, lastY); pctx.closePath(); pctx.fill(); }
+
+        // One dot per evaluated position, as on the Fourier tab. The marker is the same
+        // size there, so the difference a reader sees is purely the density: this tab
+        // evaluates at every height sample, which is a stride of one, where that tab
+        // strides by hop. Nothing here is continuous, and this is what says so.
+        pctx.fillStyle = '#6b21a8';
+        for (let n = 0; n < K; n++) {
+          if (!profOK[n]) continue;
+          pctx.beginPath();
+          pctx.arc(vToPx(prof[n]), zToPy(zLo + n * dz), 1.9, 0, 2 * Math.PI);
+          pctx.fill();
+        }
 
         pctx.strokeStyle = '#222'; pctx.lineWidth = 1.2;
         pctx.strokeRect(qL, padT, qW, plotH);
