@@ -1732,8 +1732,12 @@ abline(v = f_cut,  col = "white", lty = 2, lwd = 1.5)
 # This covers only the middle ~67% of the tree, and that is not a bug: specgram
 # places a frame only where a whole window fits, so nothing is centered within
 # W/2 of either end.  Widen W and the covered band shrinks further.  The widget
-# zero-fills past the ends so the axis can be shared with a drawing of the tree,
-# and marks those bands, as part of the window there is not real data.</pre></div>
+# instead holds the last observed value past each end, so the axis can be shared
+# with a drawing of the tree, and marks those bands, as part of the window there
+# is not real data.  Zero-filling reads as the natural choice and is worse: the
+# branch tip sits near x = 0.4, so zeros put a step there that lights up every
+# frequency.  Note that WaveletComp on the next tab DOES zero-pad internally,
+# which is why its snippet pads by hand before calling it.</pre></div>
       <div class="rpane" data-rpane="t3-tidy"><pre>library(signal)
 library(tibble)
 library(dplyr)
@@ -1960,23 +1964,58 @@ xz     &lt;- approx(ants$z, ants$x, xout = z_grid)$y
 dz     &lt;- diff(z_grid)[1]
 
 # analyze.wavelet works in steps of one sample, so periods come back in samples;
-# multiply by dz for height.  make.pval tests against a red-noise null, which
-# matters here: an AR(1) trajectory has more coarse-scale power than white noise,
-# and so "bright" is not the same as "surprising".
-wt &lt;- analyze.wavelet(data.frame(x = xz), "x",
+# multiply by dz for height.
+#
+# Three defaults of analyze.wavelet have to be overridden, and two of them were
+# hiding each other.  loess.span defaults to 0.75, which loess-detrends the
+# series first; on this trajectory that removes a trend spanning 95% of the
+# range of x, which is the tree shape this tab exists in order NOT to fit.  The
+# series is also zero-padded internally, and the ends here are nowhere near
+# zero: the branch tip sits at x = 0.4, so the pad puts a step there.  Setting
+# loess.span = 0 alone therefore makes things look worse, not better, taking the
+# top of the profile to 20x the interior.  Hold the edge value out past the
+# reach of the widest packet instead, then trim the padding back off.
+# Finally, method defaults to "white.noise", whereas the null that matters here
+# is red: an AR(1) trajectory has more coarse-scale power than white noise, and
+# so "bright" is not the same as "surprising".
+pad  &lt;- ceiling(4 * (K/2))
+xpad &lt;- c(rep(xz[1], pad), xz, rep(xz[K], pad))
+
+wt &lt;- analyze.wavelet(data.frame(x = xpad), "x",
+                      loess.span = 0,
                       dt = 1, dj = 1/12,
                       lowerPeriod = 2, upperPeriod = K/2,
-                      make.pval = TRUE, n.sim = 100)
+                      make.pval = TRUE, method = "AR",
+                      params = list(AR = list(p = 1)), n.sim = 100)
 
-wt.image(wt, color.key = "quantile",
-         legend.params = list(lab = "wavelet power"),
-         periodlab = "period  (samples; x dz for height)")
+keep  &lt;- (pad + 1):(pad + K)          # drop the held-value margin again
+Power &lt;- wt$Power[, keep]
+
+# Blank whatever the cone of influence reaches, as the widget does; a Morlet at
+# scale s reaches sqrt(2)*s, in samples here as dt = 1.  Those cells then draw as
+# gaps instead of colour, and the profile below can average without them.  The
+# padding above is held values rather than data, so the cone is still needed;
+# without it the top of the profile reads about 3x the interior.
+reach &lt;- sqrt(2) * wt$Scale
+ok    &lt;- outer(reach, seq_len(K), function(r, i) (i - 1) &gt;= r &amp; (K - i) &gt;= r)
+Power[!ok] &lt;- NA
+
+# Plot the trimmed matrix directly.  wt.image() would draw all 395 padded
+# columns, of which only 79 are data, and it puts position on the horizontal
+# axis; here VERTICAL = z, so it reads against a drawing of the tree.
+freq &lt;- 1 / (wt$Period * dz)
+o    &lt;- order(freq)
+image(x = freq[o], y = z_grid, z = Power[o, ],
+      log = "x", col = hcl.colors(64, "viridis"),
+      xlab = "spatial frequency  (1/length, log)", ylab = "height z")
+abline(h = 1,        col = "darkorange", lwd = 2)
+abline(v = 1 / 0.15, col = "white", lty = 2, lwd = 1.5)
 
 # Fine-scale energy against height: the leading indicator.  Everything shorter
 # than L_bend counts as ant rather than tree.
 L_bend &lt;- 0.15
 fine   &lt;- wt$Period * dz &lt; L_bend
-prof   &lt;- colMeans(wt$Power[fine, , drop = FALSE])
+prof   &lt;- colMeans(Power[fine, , drop = FALSE], na.rm = TRUE)
 
 plot(prof, z_grid, type = "l", xlab = "fine-scale power", ylab = "height z")
 abline(h = 1, col = "darkorange", lwd = 2)   # fork height</pre></div>
@@ -1991,13 +2030,27 @@ z_grid &lt;- seq(min(ants$z), max(ants$z), length.out = K)
 xz     &lt;- approx(ants$z, ants$x, xout = z_grid)$y
 dz     &lt;- diff(z_grid)[1]
 
-wt &lt;- analyze.wavelet(data.frame(x = xz), "x",
+# See the Base R tab for why loess.span, the padding and method are all set
+# explicitly: the defaults detrend the series, zero-pad ends that are not near
+# zero, and test against a white-noise null.
+pad  &lt;- ceiling(4 * (K/2))
+xpad &lt;- c(rep(xz[1], pad), xz, rep(xz[K], pad))
+
+wt &lt;- analyze.wavelet(data.frame(x = xpad), "x",
+                      loess.span = 0,
                       dt = 1, dj = 1/12,
                       lowerPeriod = 2, upperPeriod = K/2,
-                      make.pval = TRUE, n.sim = 100)
+                      make.pval = TRUE, method = "AR",
+                      params = list(AR = list(p = 1)), n.sim = 100)
+
+# Trim the held-value margin, then blank whatever the cone of influence reaches
+Power &lt;- wt$Power[, (pad + 1):(pad + K)]
+reach &lt;- sqrt(2) * wt$Scale
+ok    &lt;- outer(reach, seq_len(K), function(r, i) (i - 1) &gt;= r &amp; (K - i) &gt;= r)
+Power[!ok] &lt;- NA
 
 # Tidy the power matrix: one row per (height, scale)
-scalo &lt;- as_tibble(t(wt$Power), .name_repair = "minimal") |&gt;
+scalo &lt;- as_tibble(t(Power), .name_repair = "minimal") |&gt;
   setNames(as.character(wt$Period * dz)) |&gt;
   mutate(z = z_grid) |&gt;
   pivot_longer(-z, names_to = "scale", values_to = "power",
@@ -2013,10 +2066,12 @@ ggplot(scalo, aes(freq, z, fill = power)) +
   labs(x = "spatial frequency  (1/length, log)", y = "height z") +
   theme_minimal()
 
-# The same fine-scale profile, as a summary rather than a second plot
+# The same fine-scale profile, as a summary rather than a second plot.
+# na.rm drops the cone cells blanked above; without it every height the cone
+# touches comes back NA and the trace stops short at both ends.
 scalo |&gt;
   filter(scale &lt; 0.15) |&gt;
-  summarise(fine_power = mean(power), .by = z) |&gt;
+  summarise(fine_power = mean(power, na.rm = TRUE), .by = z) |&gt;
   ggplot(aes(fine_power, z)) +
   geom_path(color = "#6b21a8", linewidth = 1) +
   geom_hline(yintercept = 1, color = "darkorange", linewidth = 1) +
@@ -3075,11 +3130,11 @@ scalo |&gt;
           mag[c] = m;
         }
 
-        // Normalize on the INTERIOR frames only. Zero-filling past the trajectory
-        // leaves a step at each end whose spectrum runs about twice the largest
-        // interior magnitude, so including those frames would halve the brightness
-        // of everything real. Edge frames are drawn clamped at full scale instead,
-        // which is honest: they are already marked as not reflecting the data.
+        // Normalize on the INTERIOR frames only. Even under edge-hold, which is far
+        // gentler than the zero-filling this used to do, the end frames are about
+        // 37% wrong against a known continuation, and letting them set the scale
+        // would dim everything real for the sake of frames that are already marked
+        // as not reflecting the data. Those are drawn clamped at full scale instead.
         const isEdgeCol = c => ctr[c] < pad || ctr[c] > (K - 1 - pad);
         let gMax = 0;
         for (let c = 0; c < nCols; c++) {
