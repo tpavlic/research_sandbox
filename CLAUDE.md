@@ -1,9 +1,8 @@
 # CLAUDE.md – conventions for this repository
 
 This repository collects standalone, work-in-progress interactive excursions tied to ongoing
-research projects, built by Theodore P. Pavlic. It is the experimental, research-facing sibling
-of the more polished [Topic Visualizers](https://github.com/tpavlic/topic_visualizers)
-repository, and it follows the same structural conventions. The live site is at
+research projects, built by Theodore P. Pavlic. It holds experimental, research-facing work
+rather than polished explainers, and follows the structural conventions below. The live site is at
 <https://tpavlic.github.io/research_sandbox/>.
 
 The pieces collected here are called **excursions** (not "explorers" or "demos"): the word is
@@ -84,8 +83,7 @@ my_excursion/
 Every page must have a proper HTML5 document structure (`<!DOCTYPE html>`, `<html lang="en">`,
 `<head>`, `<body>`). Inside `<head>`, include the `<title>`, `<meta name="description">`, the
 full Open Graph block, the Twitter/X card block, and the Google Analytics gtag block, filling in
-the actual values. Use any page in [Topic Visualizers](https://github.com/tpavlic/topic_visualizers)
-as the template.
+the actual values. Use any existing page in this repository as the template.
 
 **Ampersands in the document head only:** use a literal `&`, not the `&amp;` entity, in the
 `<title>` element and in the OG/Twitter/X metadata strings (the `og:title`, `twitter:title`, and
@@ -95,7 +93,9 @@ HTML, so the entity is never needed there. This rule is scoped to the head: in t
 (headings, prose, citations) leave the `&amp;` entity in place, where it is conventional and in
 some cases required (a bare `&` is only valid when it cannot be read as the start of an entity).
 
-**Twitter/X image requirements:** aspect ratio close to **2:1**, file size under **5 MB**.
+**Twitter/X image guidance:** aim for an aspect ratio near **2:1** with the important content
+centered, and keep the file under **5 MB**. Twitter's own card code enforces only a 280×150
+minimum, so a wider ratio is not rejected, but the card is rendered toward 2:1.
 
 ### 2. Footer with back-link and iframe-hiding script
 
