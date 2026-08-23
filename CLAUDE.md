@@ -278,6 +278,14 @@ Add a row to the appropriate table under `## Contents`.
 
 Update the **Current excursions** list below.
 
+### 6. A short tag for the excursion's commits
+
+The commits that introduce an excursion usually name it in their summaries and so need no prefix,
+but the narrow follow-up edits ("Fix the margins", "Reword the lede") do. Settle on a short tag for
+the new excursion now (see "Commit messages" below) so those later commits have one to reach for.
+If the excursion joins a directory that already holds one, tag at the excursion level from here on:
+the two are independent pieces sharing a topic, and the directory name no longer picks out either.
+
 ---
 
 ## HiDPI `<canvas>` rendering
@@ -312,6 +320,36 @@ When adding or reviewing an excursion with canvas graphics, check that this dpr 
 - Each excursion is a **self-contained, single-file HTML page** with all CSS and JS inlined
 - Preview images live alongside their HTML file in the same subdirectory
 - The site is intended to deploy via **GitHub Pages** from the `main` branch (no build step)
+
+## Commit messages
+
+**A localized edit to one excursion has to make that excursion identifiable from the commit
+message, and preferably from the subject line itself.** Normally that takes the form of a short
+prefix – the excursion's tag, a colon, and a space – so a narrow summary is not stranded in
+`git log --oneline` with no sign of where it landed:
+
+```text
+ytree: Rewrite the Scale range tooltip
+v2v: Fix the margins on the narrow-screen layout
+```
+
+Tags are not enumerated anywhere and are not permanent, because excursions keep arriving. While a
+directory holds a single excursion its name is the natural tag, trimmed where that reads better
+(`rsf`, `v2v`, `ytree`, `social-cue`); once it holds several independent pieces, tag the excursion
+instead, and let earlier commits keep the tags they were written with. Reuse whatever an excursion
+has been tagged before, which `git log --oneline -- ytree_detrend/` will show, and keep the tag
+short: the whole subject line should stay at 72 characters or fewer. This is not Conventional
+Commits, as there is no `feat:`/`fix:` type and the tag names an excursion rather than a kind of
+change.
+
+The imported histories described under "Provenance and history" above already group each
+excursion's original commits; the tag is what does the same for its later commits on the trunk.
+
+**Omit the tag when the subject already says where the work is**, either because it names its
+target ("Add mobile-friendliness rules to CLAUDE.md") or because it describes a sweep ("Bring every
+back-link up to WCAG AA"). Such a commit still owes the reader its scope, but carries that scope in
+the summary, where a tag would understate it. A commit spanning exactly two excursions can carry
+both tags (`rsf, v2v: …`), though splitting it is usually better.
 
 ## Current excursions
 
