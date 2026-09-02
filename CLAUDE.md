@@ -47,7 +47,7 @@ its history is preserved the same way.
 body interior untouched.** These excursions are often authored or edited in a separate tool (such as
 Claude Desktop) and then re-imported, so the body between the head and the footer is owned by that
 tool. When you register, add, or set up an excursion here, restrict your changes to the head metadata
-(title, description, OG/Twitter/GA tags) and the back-link footer with its iframe-hiding script, and
+(title, description, OG/Twitter/GA tags) and the back-link footer with its embed script, and
 do not restructure or restyle anything in between, so a later re-import of the app body does not have
 to re-apply your interior edits. This applies to the setup/import path; when the user explicitly asks
 you to change the body (for example a footer or layout review pass), that is fine. Otherwise, if the
@@ -60,7 +60,7 @@ the excursion's HTML file itself** before finishing:
    block, and the Google Analytics gtag block. If any are missing, add them (use the preview
    image dimensions from the actual file; aspect ratio should be close to 2:1 for Twitter).
 2. Check that the bottom of `<body>` has the standard back-link `<footer>` and the
-   iframe-hiding `<script>`. If missing, add them.
+   embed `<script>` (footer hiding plus the host-resize message). If missing, add them.
 
 The four excursions imported at repository creation now carry full `<head>` metadata (OG, Twitter/X
 card, and the GA gtag block), a preview image, and the back-link footer, alongside their status
@@ -97,7 +97,7 @@ some cases required (a bare `&` is only valid when it cannot be read as the star
 centered, and keep the file under **5 MB**. Twitter's own card code enforces only a 280×150
 minimum, so a wider ratio is not rejected, but the card is rendered toward 2:1.
 
-### 2. Footer with back-link and iframe-hiding script
+### 2. Footer with back-link and embed script
 
 At the very bottom of `<body>`, before `</body>`, add:
 
@@ -108,13 +108,77 @@ At the very bottom of `<body>`, before `</body>`, add:
   </div>
 </footer>
 <script>
-if (window.self !== window.top) { var f = document.getElementById('back-link-footer'); if (f) f.style.display = 'none'; }
+if (window.self !== window.top) {
+  var f = document.getElementById('back-link-footer'); if (f) { f.style.display = 'none'; }
+  // A min-height tied to the viewport (the "fill the window" idiom) would track the frame's
+  // own height and keep the frame from ever shrinking, so neutralize such rules here, where
+  // the frame is sized to the content. Cross-origin sheets (web fonts) throw and are skipped.
+  (function () {
+    function drop(rules) {
+      for (var i = 0; i < rules.length; i++) {
+        var r = rules[i];
+        if (r.style && /vh\b/.test(r.style.minHeight)) { r.style.minHeight = '0'; }
+        if (r.cssRules) { drop(r.cssRules); }
+      }
+    }
+    for (var s = 0; s < document.styleSheets.length; s++) { try { drop(document.styleSheets[s].cssRules); } catch (e) {} }
+  })();
+  // Embedded in another page: report the content height to the host so the iframe can
+  // grow and shrink with the active tab instead of scrolling inside itself. Canvas LMS
+  // listens for this message on every page and resizes whichever iframe sent it. It is
+  // never sent on a direct visit, and it never leaves the browser.
+  (function () {
+    var last = 0;
+    function report(force) {
+      var h = Math.ceil(document.documentElement.getBoundingClientRect().height);
+      if (h > 0 && (force || h !== last)) { last = h; window.parent.postMessage({ subject: 'lti.frameResize', height: h }, '*'); }
+    }
+    if (window.ResizeObserver) { new ResizeObserver(function () { report(false); }).observe(document.documentElement); }
+    window.addEventListener('load', function () { report(true); });
+    // The host's listener may attach after this page has loaded (Canvas boots a large
+    // bundle after its HTML arrives), so repeat the current height a few times.
+    [500, 1500, 3000, 6000, 12000].forEach(function (ms) { setTimeout(function () { report(true); }, ms); });
+    report(true);
+  })();
+}
 </script>
 ```
 
 Replace `CONTENT_MAX_WIDTH` and `CONTENT_HPAD` with the `max-width` and horizontal `padding` of
-the page's main centered content container so the back-link aligns with the page content. The
-script hides the footer when the page is embedded in a Canvas LMS iframe.
+the page's main centered content container so the back-link aligns with the page content.
+
+The `<script>` does two things when the page is embedded in an iframe, and nothing at all on a
+direct visit, because everything sits behind the `window.self !== window.top` guard. First, it hides
+the back-link footer. Use `getElementById('back-link-footer')` rather than `querySelector('footer')`,
+because some demos have their own internal `<footer>` elements and `querySelector` would match the
+first one it finds. Second, it reports the page's content height to the host with the
+`lti.frameResize` message, which Canvas LMS listens for on every page (the listener matches the
+sender against every iframe on the page, not only LTI launches, and applies no maximum), so the
+iframe grows and shrinks with the active tab instead of scrolling inside itself. Three details keep
+that working:
+
+- **Measure the `<html>` element's box, not `scrollHeight`.** `scrollHeight` is floored at the
+  viewport height, so once the host has grown the iframe for a tall tab it would never report a
+  shorter one, and the iframe could never shrink back. The bounding rect of
+  `document.documentElement` is content-driven and includes the body margins.
+- **Viewport-tied `min-height` rules are neutralized when embedded.** The `min-height: 100vh`
+  idiom that fills a window would track the frame's own height and keep it from ever shrinking, so
+  the script walks the page's stylesheets and zeroes any `min-height` given in `vh` units, whether
+  on `body` or on an inner wrapper. It touches only `min-height`, so a fixed-position overlay sized
+  with `height: 100vh` keeps working, and fixed-position elements are out of flow anyway.
+- **Let the `ResizeObserver` do the tracking.** It fires on tab switches, on results panels that
+  appear after a run, on late-loading web fonts, and on reflow after the host's column changes
+  width, so no per-widget hook into the tab code is needed. The `last` check keeps it from
+  re-sending an unchanged height. The timed re-sends exist because Canvas attaches its listener
+  only once its own bundle has booted, which on a wiki page can be well after a small static
+  widget has finished loading; a height posted before that point is lost, and the observer will
+  not repeat it unless the content moves. Test the resize against a host page whose listener
+  attaches a few seconds late, not only against one that is listening from the start.
+
+The message carries only a subject string and one integer, is delivered in-browser to the parent
+window only, and makes no network request, so the `'*'` target origin is fine: the embedding site is
+not known in advance, and nothing in the payload needs protecting. See "Embedding in Canvas LMS"
+below for the matching iframe code and how to test the resize.
 
 The back-link color is the site accent `#6b21a8` so it reads as one of the page's own links; keep
 a literal hex (not a CSS variable) so the footer stays self-contained when the widget source is
@@ -287,6 +351,36 @@ If the excursion joins a directory that already holds one, tag at the excursion 
 the two are independent pieces sharing a topic, and the directory name no longer picks out either.
 
 ---
+
+## Embedding in Canvas LMS
+
+Widgets are embedded in Canvas pages as plain iframes pasted through the Rich Content Editor's HTML
+view. Canvas's sanitizer keeps `src`, `width`, `height`, `loading`, `allowfullscreen`, `frameborder`,
+`scrolling`, `allow`, and `sandbox` on an iframe, plus the global `style`, `title`, `class`, and
+`id`, and the `src` must be http or https. Do not add `sandbox` (it blocks the widget's scripts) or
+`scrolling="no"` (it clips content wherever the resize message is not honored).
+
+- **Embed code**, with the URL, title, and fallback height changed per widget:
+
+  ```html
+  <iframe src="https://tpavlic.github.io/research_sandbox/rsf_explorer/rsf_explorer.html"
+          title="RSF Explorer"
+          width="100%" height="FALLBACK_HEIGHT"
+          style="width:100%;border:0;display:block;"
+          loading="lazy" allowfullscreen></iframe>
+  ```
+
+- **The `height` attribute is the fallback** for any host that ignores the resize message, and it
+  is also what shows for the moment before the first message lands, so a close guess avoids a
+  visible jump at load. Set it to the tallest tab, measured with the footer hidden at about 780px
+  (the narrow end of Canvas's desktop content column) and rounded up a little to absorb results
+  that appear after a run.
+- **Test the resize with a local host page**, not by eye: serve the repository over HTTP (Playwright
+  refuses `file:` URLs), embed the widget in a page whose `message` listener applies
+  `lti.frameResize` to the sending iframe, and check on every tab that the iframe's height equals
+  the widget's content height and that the widget's `scrollHeight` does not exceed the iframe's
+  `clientHeight`. Walk the tabs in both directions so a failure to shrink shows up, and repeat with
+  a listener that attaches a few seconds late.
 
 ## HiDPI `<canvas>` rendering
 
