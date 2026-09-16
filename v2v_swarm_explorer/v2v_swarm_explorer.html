@@ -753,6 +753,8 @@ input[type="range"] {
   cursor: pointer;
   letter-spacing: 0.03em;
   transition: color 0.12s, border-color 0.12s;
+  text-decoration: none;
+  display: inline-block;
 }
 .tab-btn:hover { color: var(--ink); }
 .tab-btn.active {
@@ -834,8 +836,8 @@ input[type="range"] {
   </header>
 
   <div class="tab-bar">
-    <button class="tab-btn active" id="tabSim">Simulator</button>
-    <button class="tab-btn" id="tabRW">Related Work</button>
+    <a href="#sim" class="tab-btn active" id="tabSim">Simulator</a>
+    <a href="#related-work" class="tab-btn" id="tabRW">Related Work</a>
   </div>
 
   <div class="layout" id="simView">
@@ -6451,6 +6453,7 @@ function showSimTab() {
   document.getElementById('tabSim').classList.add('active');
   document.getElementById('tabRW').classList.remove('active');
   currentCodeLang = null;
+  history.replaceState(null, '', '#sim');
 }
 
 function showRWTab() {
@@ -6461,10 +6464,17 @@ function showRWTab() {
   document.getElementById('tabRW').classList.add('active');
   currentCodeLang = null;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  history.replaceState(null, '', '#related-work');
 }
 
-document.getElementById('tabSim').addEventListener('click', showSimTab);
-document.getElementById('tabRW').addEventListener('click', showRWTab);
+document.getElementById('tabSim').addEventListener('click', (e) => { e.preventDefault(); showSimTab(); });
+document.getElementById('tabRW').addEventListener('click', (e) => { e.preventDefault(); showRWTab(); });
+
+const V2V_TAB_HASHES = { sim: showSimTab, 'related-work': showRWTab };
+window.addEventListener('hashchange', () => {
+  const tab = location.hash.slice(1);
+  if (Object.prototype.hasOwnProperty.call(V2V_TAB_HASHES, tab)) V2V_TAB_HASHES[tab]();
+});
 
 function showCode(lang) {
   simView.style.display  = 'none';
@@ -6879,6 +6889,11 @@ initRobots(12);
 updateRefuelerDependentStyling();
 updateV2vDependentStyling();
 loop();
+
+{
+  const initTab = location.hash.slice(1);
+  if (Object.prototype.hasOwnProperty.call(V2V_TAB_HASHES, initTab) && initTab !== 'sim') V2V_TAB_HASHES[initTab]();
+}
 </script>
 <div style="max-width:1380px;margin:0 auto;padding:1rem 0 0;font-size:0.8rem;color:var(--ink-faint);text-align:center;">
   &copy; 2026 Theodore P. Pavlic &middot; <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener" style="color:var(--accent-link);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">MIT License</a>

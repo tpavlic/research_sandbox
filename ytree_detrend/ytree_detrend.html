@@ -136,6 +136,8 @@ a { color: var(--accent); }
   margin-bottom: -2px;
   transition: all 0.15s;
   white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
 }
 .tab:hover { color: var(--green-dark); background: var(--green-pale); }
 .tab.active {
@@ -608,12 +610,12 @@ a { color: var(--accent); }
   </div>
 
   <div class="tabs" role="tablist">
-    <button class="tab active" data-tab="0">Detrending overview</button>
-    <button class="tab"        data-tab="1">Perpendicular projection</button>
-    <button class="tab"        data-tab="2">Choosing spline parameters</button>
-    <button class="tab"        data-tab="3">Data-driven parameters</button>
-    <button class="tab"        data-tab="4">Windowed Fourier transform</button>
-    <button class="tab"        data-tab="5">Wavelet scalogram</button>
+    <a href="#0" class="tab active" data-tab="0">Detrending overview</a>
+    <a href="#1" class="tab"        data-tab="1">Perpendicular projection</a>
+    <a href="#2" class="tab"        data-tab="2">Choosing spline parameters</a>
+    <a href="#3" class="tab"        data-tab="3">Data-driven parameters</a>
+    <a href="#4" class="tab"        data-tab="4">Windowed Fourier transform</a>
+    <a href="#5" class="tab"        data-tab="5">Wavelet scalogram</a>
   </div>
   <div class="tabs-select-wrap">
     <select class="tabs-select" id="mainTabSelect">
@@ -691,8 +693,8 @@ a { color: var(--accent); }
           <b style="color:var(--text);">What is DF?</b> These points are fit with a
           <b style="color:var(--text);">cubic spline</b>, a smooth chain of cubic polynomials, and DF
           counts the degrees of freedom, meaning the free parameters available to shape that fit.
-          The <a class="tablink" data-goto="2">Choosing spline parameters</a> tab takes the idea apart
-          in full, and the <a class="tablink" data-goto="1">Perpendicular projection</a> tab shows what
+          The <a class="tablink" href="#2" data-goto="2">Choosing spline parameters</a> tab takes the idea apart
+          in full, and the <a class="tablink" href="#1" data-goto="1">Perpendicular projection</a> tab shows what
           the residuals off such a fit are measuring.
           In short, a single cubic (a polynomial reaching an exponent of 3) carries
           <b style="color:var(--text);">4</b> free parameters, the coefficients of 1, <em>t</em>,
@@ -736,14 +738,14 @@ a { color: var(--accent); }
       <p>
         The smoothing is a Goldilocks choice: too few degrees of freedom and the spline cuts across
         the bend, dumping tree shape into the residual; too many and it threads through the
-        deliberation, hiding the signal. See the <a class="tablink" data-goto="3">Data-driven parameters</a> tab.
+        deliberation, hiding the signal. See the <a class="tablink" href="#3" data-goto="3">Data-driven parameters</a> tab.
       </p>
       <p style="font-size:0.88em; color:var(--muted);">
         <b>On the smoothing parameter.</b> How closely the spline is allowed to follow the trajectory
         rests on a single dial. Here you set it directly, as the DF of the fit, which the
-        <a class="tablink" data-goto="2">Choosing spline parameters</a> tab takes apart. Some packages
+        <a class="tablink" href="#2" data-goto="2">Choosing spline parameters</a> tab takes apart. Some packages
         (<code>mgcv::gam</code>, say) instead have you set how heavily wiggliness is charged for and
-        let the flexibility follow from that; the <a class="tablink" data-goto="3">Data-driven parameters</a> tab shows why those are
+        let the flexibility follow from that; the <a class="tablink" href="#3" data-goto="3">Data-driven parameters</a> tab shows why those are
         the same choice approached from opposite ends.
       </p>
     </div>
@@ -4118,6 +4120,7 @@ scalo |&gt;
         const sel = document.getElementById('mainTabSelect');
         if (sel) sel.value = String(idx);
         renderCurrent();
+        history.replaceState(null, '', '#' + idx);
       }
       function setRTab(group, value) {
         S.rTab[group] = value;
@@ -4134,9 +4137,15 @@ scalo |&gt;
       }
 
       function bindControls() {
-        document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setMainTab(b.dataset.tab)));
+        document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', e => { e.preventDefault(); setMainTab(b.dataset.tab); }));
         const mts = document.getElementById('mainTabSelect');
         if (mts) mts.addEventListener('change', e => setMainTab(e.target.value));
+
+        window.addEventListener('hashchange', () => {
+          const hash = location.hash.slice(1);
+          const known = [...document.querySelectorAll('.tab')].map(b => b.dataset.tab);
+          if (known.includes(hash)) setMainTab(hash);
+        });
 
         document.querySelectorAll('.rtab').forEach(b => b.addEventListener('click', () => {
           const v = b.dataset.rtab;
@@ -4401,6 +4410,9 @@ scalo |&gt;
         bindControls();
         updateThetaState();   // set initial gray-out state to match defaults
         renderAll();
+        const initTab = location.hash.slice(1);
+        const known = [...document.querySelectorAll('.tab')].map(b => b.dataset.tab);
+        if (known.includes(initTab) && initTab !== String(S.mainTab)) setMainTab(initTab);
       }
       // Script is at end of <body>: DOM is fully parsed by the time this runs,
       // whether loaded normally or injected via async document.write() (gisthost).

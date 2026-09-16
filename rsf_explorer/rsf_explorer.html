@@ -65,7 +65,7 @@ body.tab-extensions #ext2-content{display:block !important}
 /* ── Tab bar ─────────────────────────────── */
 .tab-bar{background:var(--cream-dk);border-bottom:3px solid var(--border);flex-shrink:0}
 .tab-bar-inner{max-width:1020px;margin:0 auto;display:flex;padding:0}
-.main-tab{padding:11px 24px;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;letter-spacing:.03em;border-bottom:3px solid transparent;margin-bottom:-3px;transition:all .15s;white-space:nowrap}
+.main-tab{padding:11px 24px;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;letter-spacing:.03em;border-bottom:3px solid transparent;margin-bottom:-3px;transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-block}
 .main-tab.on{color:var(--green);background:var(--cream);border-bottom-color:var(--green)}
 .footer-br{display:none}.footer-sep{margin:0 .3em}
 .tab-sel-mobile{display:none;margin:8px 12px;font-family:var(--mono);font-size:11px;padding:5px 8px;border-radius:var(--pill);border:1.5px solid var(--border);background:var(--cream);color:var(--text);cursor:pointer;outline:none;width:calc(100% - 24px)}
@@ -260,9 +260,9 @@ footer:not(#back-link-footer) a{color:var(--green);text-decoration:underline;tex
 
 <div class="tab-bar" id="tab-bar">
   <div class="tab-bar-inner">
-    <button class="main-tab on" data-tab="explorer">Explorer</button>
-    <button class="main-tab" data-tab="methods">Methods</button>
-    <button class="main-tab" data-tab="extensions">Extensions</button>
+    <a href="#explorer" class="main-tab on" data-tab="explorer">Explorer</a>
+    <a href="#methods" class="main-tab" data-tab="methods">Methods</a>
+    <a href="#extensions" class="main-tab" data-tab="extensions">Extensions</a>
   </div>
 </div>
 <select class="tab-sel-mobile" id="tab-sel-mobile">
@@ -1465,25 +1465,39 @@ function switchTab(tab){
   document.documentElement.scrollTop=0;
   document.body.scrollTop=0;
   if(tab==='explorer') requestAnimationFrame(resizeArena);
+  history.replaceState(null,'','#'+tab);
 }
 
 document.querySelectorAll('[data-tab]').forEach(btn=>
-  btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
+  btn.addEventListener('click',e=>{e.preventDefault();switchTab(btn.dataset.tab);}));
 
 document.getElementById('tab-sel-mobile').addEventListener('change',e=>
   switchTab(e.target.value));
+
+window.addEventListener('hashchange',()=>{
+  const tab=location.hash.slice(1);
+  const known=[...document.querySelectorAll('.main-tab')].map(b=>b.dataset.tab);
+  if(known.includes(tab)) switchTab(tab);
+});
 
 // ── Resize ────────────────────────────────────────────────────────────
 let _rz=false;
 window.addEventListener('resize',()=>{if(!_rz){_rz=true;requestAnimationFrame(()=>{_rz=false;resizeArena();});}});
 
 // ── Init ──────────────────────────────────────────────────────────────
+// Capture the incoming hash before switchTab('explorer') below overwrites it
+// via history.replaceState.
+const _initTab=location.hash.slice(1);
 updateNestList();refreshObsUI();
 _explorerNode=document.getElementById('explorer-content');
 _extNode=document.getElementById('ext-content');
 _ext2Node=document.getElementById('ext2-content');
 switchTab('explorer');
 requestAnimationFrame(()=>resizeArena());
+{
+  const known=[...document.querySelectorAll('.main-tab')].map(b=>b.dataset.tab);
+  if(known.includes(_initTab) && _initTab!=='explorer') switchTab(_initTab);
+}
 </script>
 <script>
 if (window.self !== window.top) {

@@ -44,7 +44,7 @@ body{font-family:'Outfit',sans-serif;background:var(--cream-dk);color:var(--text
 .hdr h1{color:white;font-size:17px;font-weight:600;letter-spacing:-.02em;}
 .hdr .sub{color:rgba(255,255,255,.6);font-size:10.5px;font-family:'IBM Plex Mono',monospace;}
 .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--cream);}
-.tab-btn{padding:9px 20px;border:none;background:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;}
+.tab-btn{padding:9px 20px;border:none;background:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;text-decoration:none;display:inline-block;}
 .tab-btn:hover{color:var(--green);}
 .tab-btn.active{color:var(--green);border-bottom-color:var(--green);font-weight:600;}
 .tab-pane{display:none;}
@@ -167,10 +167,10 @@ canvas{display:block;border-radius:6px;border:1px solid var(--border);}
   <div class="sub" style="text-align:right">Q(s,a)  ·  s = count of others  ·  limit = max distinguishable</div>
 </div>
 <div class="tabs" id="tab-btns">
-  <button class="tab-btn active" onclick="showTab('curves')">📈 Learning Curves</button>
-  <button class="tab-btn" onclick="showTab('watch')">👁 Animated Run</button>
-  <button class="tab-btn" onclick="showTab('model')">📐 Model</button>
-  <button class="tab-btn" onclick="showTab('connections')">🔗 CCM as Linear FA</button>
+  <a href="#curves" class="tab-btn active" onclick="showTab('curves');return false;">📈 Learning Curves</a>
+  <a href="#watch" class="tab-btn" onclick="showTab('watch');return false;">👁 Animated Run</a>
+  <a href="#model" class="tab-btn" onclick="showTab('model');return false;">📐 Model</a>
+  <a href="#connections" class="tab-btn" onclick="showTab('connections');return false;">🔗 CCM as Linear FA</a>
 </div>
 <div id="tab-select-wrap" style="display:none;padding:8px 12px;background:var(--cream);border-bottom:1px solid var(--border);">
   <select id="tab-select" onchange="showTab(this.value)" style="width:100%;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;color:var(--green);background:white;border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;outline:none;">
@@ -1512,7 +1512,13 @@ function showTab(name){
   // sync dropdown
   const sel=document.getElementById('tab-select');if(sel)sel.value=name;
   },40);
+  history.replaceState(null,'','#'+name);
 }
+
+window.addEventListener('hashchange',()=>{
+  const name=location.hash.slice(1);
+  if(['curves','watch','model','connections'].includes(name)) showTab(name);
+});
 
 window.addEventListener('load',()=>{
   cSetIV('nb');  // initialize IV mode display
@@ -1528,6 +1534,10 @@ window.addEventListener('load',()=>{
     cv.width=W*dpr;cv.height=H*dpr;const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
     cDrawEmpty(ctx,W,H);
   });
+});
+window.addEventListener('load',()=>{
+  const initTab=location.hash.slice(1);
+  if(['watch','model','connections'].includes(initTab)) showTab(initTab);
 });
 window.addEventListener('resize',()=>{
   if(cCurves.length>0)cDraw(cP());
