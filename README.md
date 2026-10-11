@@ -37,16 +37,16 @@ currently work in progress.
 
 ### Collective Behavior
 
-- [`ytree_detrend/`](ytree_detrend/) – Detrend and spectrally analyze trajectories of collective-transport groups (weaver ants) moving loads vertically up trees, including forked trees, by projecting motion onto the tree.
-- [`rsf_explorer/`](rsf_explorer/) – Test field hypotheses about how distance interacts with other nest properties in the navigational choices of collective-transport groups and individual ants in polydomous colonies, framed through a resource selection function (RSF) for subnest destination choice.
+- [`ytree_detrend/`](ytree_detrend/) – Detrend and spectrally analyze trajectories of collective-transport groups (weaver ants) moving loads vertically up trees, including forked trees, by projecting motion onto the tree.
+- [`rsf_explorer/`](rsf_explorer/) – Test field hypotheses about how distance interacts with other nest properties in the navigational choices of collective-transport groups and individual ants in polydomous colonies, framed through a resource selection function (RSF) for subnest destination choice.
 
 ### Multi-Robot Systems
 
-- [`v2v_swarm_explorer/`](v2v_swarm_explorer/) – Explore strategies for battery-safe vehicle-to-vehicle (V2V) energy sharing that extend the endurance and capabilities of multi-robot teams, with an exportable related-work review.
+- [`v2v_swarm_explorer/`](v2v_swarm_explorer/) – Explore strategies for battery-safe vehicle-to-vehicle (V2V) energy sharing that extend the endurance and capabilities of multi-robot teams, with an exportable related-work review.
 
 ### Reinforcement Learning and Decision Models
 
-- [`social-cue-ql/`](social-cue-ql/) – Explore a connection between conventional reinforcement learning (Q-learning) and a psychological social-cue assay as a candidate model for the phenomena.
+- [`social-cue-ql/`](social-cue-ql/) – Explore a connection between conventional reinforcement learning (Q-learning) and a psychological social-cue assay as a candidate model for the phenomena.
 
 ---
 
@@ -90,9 +90,9 @@ the companion [Topic Visualizers](https://github.com/tpavlic/topic_visualizers) 
 
 Other projects by the same author that visitors here may find complementary:
 
-- [Topic Visualizers](https://tpavlic.github.io/topic_visualizers/) – more polished, self-contained interactive explainers covering topics in science, mathematics, statistics, and engineering.
-- [Bio-Inspired AI & Optimization – Course Visualizations](https://tpavlic.github.io/asu-bioinspired-ai-and-optimization/) – supplemental interactive explorers for *IEE/CSE 598: Bio-Inspired AI and Optimization* at Arizona State University.
-- [Notes, Documents, & Guides](https://github.com/tpavlic/docs-and-guides) – Markdown-formatted notes and instructional guides on a variety of fundamental and applied science and engineering topics.
+- [Topic Visualizers](https://tpavlic.github.io/topic_visualizers/) – more polished, self-contained interactive explainers covering topics in science, mathematics, statistics, and engineering.
+- [Bio-Inspired AI & Optimization – Course Visualizations](https://tpavlic.github.io/asu-bioinspired-ai-and-optimization/) – supplemental interactive explorers for *IEE/CSE 598: Bio-Inspired AI and Optimization* at Arizona State University.
+- [Notes, Documents, & Guides](https://github.com/tpavlic/docs-and-guides) – Markdown-formatted notes and instructional guides on a variety of fundamental and applied science and engineering topics.
 - [Lectures and short video tutorials](https://www.youtube.com/@TedPavlic) on YouTube, including the [Office Hours](https://www.youtube.com/playlist?list=PLXBbGVSkQJqEFKCGlTbzBnvf96DRJ6_gi) playlist.
 
 ## License
