@@ -367,7 +367,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
     <h2>Rules, applied once per step</h2>
     <ol>
       <li><b>Recruitment.</b> Each forager in the pool of <i>N</i> enters a random shore cell with probability <i>r</i><sub>in</sub>; a walker on the shore returns to the pool with probability <i>r</i><sub>out</sub>.</li>
-      <li><b>Walking.</b> A walker moves to one of its four neighbors that it can stand on (shore, structure, or target) or stays put, with weights <span style="white-space:nowrap">exp(−<i>b</i>&thinsp;Δ<i>d</i>)</span>, where <i>d</i> is the distance to the target's edge. A walker that reaches the target feeds and returns to the pool.</li>
+      <li><b>Walking.</b> A walker moves to one of its four neighbors that it can stand on (shore, structure, or target) or stays put, with weights <span style="white-space:nowrap">exp(−<i>b</i>&thinsp;Δ<i>d</i>)</span>, where <i>d</i> is the distance to the target's edge. With <i>bias fades with scent</i> on, <i>b</i> is multiplied by min{1, exp[(gap − <i>d</i>)/<i>λ</i>]}, and so walkers farther than one gap from the target feel the pull e-fold more weakly every <i>λ</i> cells, as a fading scent would allow. A walker that reaches the target feeds and returns to the pool.</li>
       <li><b>Joining.</b> Before moving, a walker tries one random neighbor; if it is open water, the walker links onto it with probability
         <div class="eq">p<sub>join</sub>(d) = min{1, p<sub>0</sub> · exp[(gap − d) / λ]}</div>
         and becomes a structural ant. At the shoreline, this equals <i>p</i><sub>0</sub>, and it rises toward the target; that rise stands in for the local scent cue.</li>
@@ -453,6 +453,7 @@ const DEFAULTS = {
   rIn: 0.002,     // per-step entry prob from the pool
   rOut: 0.01,     // per-step prob a walker on land returns to the pool
   bias: 0.6,      // scent-gradient bias of walkers
+  concBias: false,// bias scales with scent concentration, fading beyond one gap from the target
   p0: 0.008,       // join prob at shore distance
   lam: 6,         // scent length scale (cells)
   pRel: 0.02,     // release prob of an unlocked structural ant
@@ -599,11 +600,13 @@ class Sim {
       }
       // move
       let m = 0, tot = 0; const dc = A.dist[c];
+      // With concentration-dependent sensing, the pull fades e-fold every lambda cells beyond one gap
+      const bEff = P.concBias ? P.bias * Math.min(1, Math.exp((A.gap - dc) / P.lam)) : P.bias;
       cand[m] = c; wts[m] = 1; tot += 1; m++;
       for (let q = 0; q < 4; q++) {
         const j2 = this.inGridNb(c, q);
         if (j2 >= 0 && this.walkable(j2)) {
-          cand[m] = j2; wts[m] = Math.exp(-P.bias * (A.dist[j2] - dc));
+          cand[m] = j2; wts[m] = Math.exp(-bEff * (A.dist[j2] - dc));
           tot += wts[m]; m++;
         }
       }
@@ -798,6 +801,8 @@ const PARAMS = [
     tip: 'Per-step probability that a walker on the shore goes back to the pool.' },
   { k: 'bias', label: 'Scent bias <i>b</i>', min: 0, max: 1.5, step: 0.05, def: 0.6, fmt: v => v.toFixed(2),
     tip: 'Strength of the walkers\' bias toward the target: a step that brings a walker one cell closer is weighted by exp(b).' },
+  { k: 'concBias', label: 'Bias fades with scent', type: 'check', def: false,
+    tip: 'When on, the scent bias b is scaled by the scent concentration relative to its level one gap from the target, capped at 1: walkers within a gap of the target feel the full pull, and farther ones feel it e-fold more weakly every λ cells. When off, every walker feels the full pull wherever it is.' },
   { grp: 'Building' },
   { k: 'p0', label: 'Join prob. at shore <i>p</i><sub>0</sub>', min: 0.001, max: 0.04, step: 0.001, def: 0.008, fmt: v => v.toFixed(3),
     tip: 'Probability that a walker links onto an adjacent open-water cell at the shoreline. It rises toward the target as exp((gap − d)/λ), capped at 1.' },
@@ -837,7 +842,7 @@ function getParams() {
   return {
     R: pvals.gap + pvals.rf, rf: pvals.rf, shape: pvals.shape, offset: pvals.offset, target: pvals.target, absorb: pvals.absorb === '1',
     current: pvals.current, depth: pvals.depth, N: pvals.N, rIn: pvals.rIn, rOut: pvals.rOut,
-    bias: pvals.bias, p0: pvals.p0, lam: pvals.lam, pRel: pvals.pRel, tau: pvals.tau,
+    bias: pvals.bias, concBias: pvals.concBias, p0: pvals.p0, lam: pvals.lam, pRel: pvals.pRel, tau: pvals.tau,
     kLock: +pvals.kLock, follow: pvals.follow, kappa: pvals.kappa, trailJoin: pvals.trailJoin, eta: pvals.eta,
     deposit: pvals.deposit, evap: pvals.evap, pCalve: pvals.pCalve, D0: pvals.D0, gam: pvals.gam,
   };
