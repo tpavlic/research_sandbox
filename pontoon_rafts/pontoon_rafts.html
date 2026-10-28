@@ -123,6 +123,9 @@ a:hover{text-decoration:underline}
 .toolbar input[type=number]{width:74px;font-family:var(--mono);font-size:11px;padding:3px 5px;border-radius:6px;border:1px solid var(--border)}
 .toolbar label{font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer}
 .chk{accent-color:var(--rust)}
+.seed-prev{font-family:var(--mono);font-size:10.5px;color:var(--muted);background:none;border:none;padding:0;cursor:pointer}
+.seed-prev:hover{color:var(--rust);text-decoration:underline}
+.seed-prev[hidden]{display:none}
 
 #arenas{display:flex;flex-direction:column;gap:10px}
 .arena-row{display:flex;gap:10px}
@@ -248,7 +251,8 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <button class="btn" id="btn-reset">Reset</button>
         <span class="tb-lbl">Speed</span><input type="range" id="speed" min="1" max="60" value="12" aria-label="Steps per frame">
         <span class="tb-lbl">Seed</span><input type="number" id="seed" value="1" min="0" aria-label="Random seed">
-        <button class="btn small" id="btn-newseed">New seed</button>
+        <button class="seed-prev" id="seed-prev" hidden title="Restore the previous seed">prev</button>
+        <label title="Draw a fresh random seed whenever a run is restarted"><input type="checkbox" class="chk" id="autoseed"> New seed each run</label>
         <label><input type="checkbox" class="chk" id="scent"> Scent overlay</label>
       </div>
       <div id="arenas"></div>
@@ -824,9 +828,18 @@ function buildArenas() {
   ll.innerHTML = CONDS.map(c => '<span><span class="sw' + (c.dash ? ' dash' : '') + '" style="border-color:' + c.color + '"></span>' + c.label + '</span>').join('');
 }
 
+const autoSeed = () => document.getElementById('autoseed').checked;
 function resetLive(newSeed) {
-  if (newSeed) document.getElementById('seed').value = (Math.random() * 1e6) | 0;
-  const seed = +document.getElementById('seed').value || 0;
+  const box = document.getElementById('seed');
+  if (newSeed) box.value = (Math.random() * 1e6) | 0;
+  const seed = +box.value || 0;
+  // Keep the seed being replaced, so a run worth revisiting is one click away
+  if (live.seed !== undefined && seed !== live.seed) {
+    live.prev = live.seed;
+    const pv = document.getElementById('seed-prev');
+    pv.textContent = 'prev ' + live.prev; pv.hidden = false;
+  }
+  live.seed = seed;
   const P = getParams();
   live.sims = CONDS.map((c, k) => new Sim(c.conf, c.raft, P, seed * 4 + k + 1));
   live.hist = [[0], [0], [0], [0]];
@@ -1371,12 +1384,14 @@ window.addEventListener('hashchange', () => {
 
 // ── Wiring ─────────────────────────────────────────────────────────
 document.getElementById('btn-play').addEventListener('click', () => {
-  if (!live.playing && live.sims.every(s => s.done >= 0)) resetLive(false);
+  if (!live.playing && live.sims.every(s => s.done >= 0)) resetLive(autoSeed());
   setPlaying(!live.playing);
 });
 document.getElementById('btn-step').addEventListener('click', () => { advance(10); drawLive(); });
-document.getElementById('btn-reset').addEventListener('click', () => resetLive(false));
-document.getElementById('btn-newseed').addEventListener('click', () => resetLive(true));
+document.getElementById('btn-reset').addEventListener('click', () => resetLive(autoSeed()));
+document.getElementById('seed-prev').addEventListener('click', () => {
+  document.getElementById('seed').value = live.prev; resetLive(false);
+});
 document.getElementById('seed').addEventListener('change', () => resetLive(false));
 document.getElementById('scent').addEventListener('change', drawLive);
 document.getElementById('b-run').addEventListener('click', startBatch);
