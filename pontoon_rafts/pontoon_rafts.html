@@ -150,6 +150,8 @@ a:hover{text-decoration:underline}
 .legend{display:flex;flex-wrap:wrap;gap:5px 10px;font-size:10.5px;color:var(--muted)}
 .lg{display:flex;align-items:center;gap:4px}
 .lg i{display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid rgba(0,0,0,.15)}
+.lg i.scent-ramp{width:44px;background:linear-gradient(to right,rgb(214,232,245),rgb(244,204,120))}
+.lg[hidden]{display:none}
 .card{background:white;border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;box-shadow:0 2px 8px var(--shadow)}
 .card-h{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--rust);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
 .card-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
@@ -268,7 +270,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <span class="tb-lbl">Seed</span><input type="number" id="seed" value="1" min="0" aria-label="Random seed">
         <button class="seed-prev" id="seed-prev" hidden title="Restore the previous seed">prev</button>
         <label title="Draw a fresh random seed whenever a run is restarted"><input type="checkbox" class="chk" id="autoseed" checked> New seed each run</label>
-        <label title="Shading deepens evenly toward the food on a log scale of the join probability; each ring marks a further e-fold rise, one every λ cells"><input type="checkbox" class="chk" id="scent"> Scent overlay</label>
+        <label title="Shade each water cell by its join probability on a fixed log scale from 0.001 to 1; a stronger scent shows as more and deeper color"><input type="checkbox" class="chk" id="scent"> Scent overlay</label>
       </div>
       <div id="arenas"></div>
       <div class="legend" id="cell-legend"></div>
@@ -862,6 +864,7 @@ function buildArenas() {
   lg.innerHTML = sw(COL.land, 'shore / rim') + sw(COL.water, 'water') + sw(COL.food, 'food') + sw(COL.bank, 'far bank') +
     sw(COL.anch, 'anchored structure') + sw(COL.raft, 'raft') + sw(COL.anchW, 'ant walking on structure') +
     sw(COL.landW, 'ant on shore') + sw(COL.done, 'completed bridge');
+  lg.innerHTML += '<span class="lg" id="scent-key" hidden><i class="scent-ramp"></i>scent overlay: join probability, 0.001 to 1 (log scale)</span>';
   const ll = document.getElementById('live-legend');
   ll.innerHTML = CONDS.map(c => '<span><span class="sw' + (c.dash ? ' dash' : '') + '" style="border-color:' + c.color + '"></span>' + c.label + '</span>').join('');
 }
@@ -923,11 +926,10 @@ function drawSim(k) {
     else if (t === LAND) c = sim.wcount[i] > 0 ? COL.landW : COL.land;
     else if (t === FOOD) c = A.bank ? COL.bank : COL.food;
     else if (scent) {
-      // The join probability rises exponentially toward the food, so shade it on a log scale
-      // (linear in distance across the gap) and mark each e-fold rise with a ring every λ cells
-      const d = A.dist[i], a = Math.max(0, Math.min(1, 1 - d / A.gap));
-      const u = (A.gap - d) / P.lam, ring = d < A.gap && u - Math.floor(u) < 0.5 / P.lam * 2;
-      c = [0, 1, 2].map(j => (COL.water[j] + (COL.scent[j] - COL.water[j]) * a) * (ring ? 0.9 : 1));
+      // The actual join probability, on a fixed log scale from 0.001 to 1, so a stronger
+      // scent (smaller λ, larger p₀) shows as more and deeper color
+      const a = Math.max(0, Math.min(1, 1 + Math.log10(sim.pJoin[i]) / 3));
+      c = [0, 1, 2].map(j => COL.water[j] + (COL.scent[j] - COL.water[j]) * a);
     } else c = COL.water;
     d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
   }
@@ -1459,7 +1461,7 @@ document.getElementById('seed-prev').addEventListener('click', () => {
   document.getElementById('seed').value = live.prev; resetLive(false);
 });
 document.getElementById('seed').addEventListener('change', () => resetLive(false));
-document.getElementById('scent').addEventListener('change', drawLive);
+document.getElementById('scent').addEventListener('change', e => { document.getElementById('scent-key').hidden = !e.target.checked; drawLive(); });
 document.getElementById('b-run').addEventListener('click', startBatch);
 document.getElementById('b-cancel').addEventListener('click', cancelBatch);
 document.getElementById('b-csv').addEventListener('click', downloadCSV);
