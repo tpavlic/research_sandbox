@@ -110,7 +110,7 @@ a:hover{text-decoration:underline}
 .prm select{width:100%;font-family:var(--sans);font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text);margin-top:2px}
 .prm.dim{opacity:.45}
 .tip{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1px solid var(--border);font-size:9px;font-family:var(--mono);color:var(--muted);cursor:help;position:relative;flex-shrink:0;background:white}
-.tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:50%;top:17px;transform:translateX(-60%);width:230px;background:#2a2420;color:#f7f2ea;font-family:var(--sans);font-size:11px;line-height:1.45;padding:7px 9px;border-radius:6px;z-index:50;white-space:normal;text-align:left;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:50%;top:17px;transform:translateX(-60%);width:230px;background:#2a2420;color:#f7f2ea;font-family:var(--sans);font-size:11px;line-height:1.45;padding:7px 9px;border-radius:6px;z-index:50;white-space:pre-line;text-align:left;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .btn{font-family:var(--mono);font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--pill);border:1.5px solid var(--rust);background:var(--cream);color:var(--rust);cursor:pointer;white-space:nowrap}
 .btn:hover{background:var(--rust-pale)}
 .btn.primary{background:var(--rust);color:white}
@@ -210,6 +210,10 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
   .right-col{order:1;padding:10px}
 }
 @media(max-width:520px){
+  /* anchor tooltips to their whole label row here, as one centered on its icon can run off either edge */
+  .tip{position:static}
+  .prm-top,.fld>span{position:relative}
+  .tip:hover::after,.tip:focus::after{left:0;right:0;width:auto;transform:none;top:calc(100% + 4px)}
   .panel-inner{grid-template-columns:1fr}
   .hiw-inner{flex-direction:column}
   .hdr-sub{display:none}.hdr-main{font-size:12px}
@@ -288,10 +292,10 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <label class="fld"><span>Time limit T<sub>max</sub> (steps) <span class="tip" tabindex="0" data-tip="Runs that have not completed a bridge by this step are stopped and treated as censored at Tmax. Every run shares the same limit, and so the censoring is administrative.">?</span></span><input type="number" id="b-tmax" value="8000" min="500" max="100000" step="500"></label>
         <label class="fld"><span>Base seed</span><input type="number" id="b-seed" value="1000" min="0"></label>
         <label class="fld"><span>Permutations</span><input type="number" id="b-perm" value="5000" min="199" max="100000" step="100"></label>
-        <label class="fld"><span>Response <span class="tip" tabindex="0" data-tip="What the ANOVA and permutation tests analyze. The default, log restricted completion time, makes the interaction a ratio of raft speedup factors (see the Model & analysis tab).">?</span></span>
+        <label class="fld"><span>Response <span class="tip" tabindex="0" data-tip="What each run contributes to the tests:&#10;• log restricted time: ln min(T, Tmax), the default&#10;• restricted time: min(T, Tmax); condition means are RMSTs&#10;• log time to half span: ln of the step at which span reaches 50%&#10;• completed by Tmax: 1 or 0&#10;Details are on the Model & analysis tab.">?</span></span>
           <select id="b-resp">
-            <option value="logT">log restricted completion time</option>
-            <option value="T">restricted completion time (RMST)</option>
+            <option value="logT">log restricted time</option>
+            <option value="T">restricted time (steps)</option>
             <option value="logT50">log time to half span</option>
             <option value="done">completed by Tmax (0/1)</option>
           </select></label>
@@ -345,10 +349,17 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
     <p>The defaults were tuned for one thing only: that rafting clearly speeds bridging in the dish, so that the question about confinement has an effect to ask about. In checks with 100 replicates per condition, the defaults give a raft speedup of about 1.5× in the dish and about 0.9× (a slight slowdown) in the unconfined far-bank arena. Nearby settings of the scent length, raft mobility, and anchor release rate that keep the dish speedup near 1.5× put the unconfined speedup anywhere from about 0.9× to 1.2×, and so the size of the interaction, unlike its direction, is not robust in this model. None of these values is fitted to a measurement.</p>
 
     <h2>Choosing the response</h2>
-    <p>The natural outcome is the <b>time to completion</b> <i>T</i>, the step at which shore and target are first connected. Runs that have not finished by <i>T</i><sub>max</sub> are stopped. As every run shares the same horizon, this is administrative censoring, and the mean of min(<i>T</i>, <i>T</i><sub>max</sub>) is exactly the <b>restricted mean completion time</b> (RMST) up to <i>T</i><sub>max</sub>, a standard survival estimand, rather than an ad hoc fill-in for missing values. It does compress differences when many runs are censored, and so the batch reports censoring counts for every cell; if they are large, raise <i>T</i><sub>max</sub>.</p>
+    <p>The natural outcome is the <b>time to completion</b> <i>T</i>, the step at which shore and target are first connected. Runs that have not finished by <i>T</i><sub>max</sub> are stopped. As every run shares the same horizon, this is administrative censoring: a run that fails to finish is known only to need more than <i>T</i><sub>max</sub> steps. Each of the four responses below turns a run into one number, and the tests compare the means of those numbers across the four conditions.</p>
+    <ul>
+      <li><b>Log restricted completion time</b>, ln min(<i>T</i>, <i>T</i><sub>max</sub>), the default. A condition's mean of this is the log of its geometric-mean restricted time, and so a difference between two means is the log of a ratio of times. It is not the log of the RMST below, which is the log of an arithmetic mean; the two agree only when runs vary little.</li>
+      <li><b>Restricted completion time</b>, min(<i>T</i>, <i>T</i><sub>max</sub>), in steps. A condition's mean of this is exactly its <b>restricted mean completion time</b> (RMST) up to <i>T</i><sub>max</sub>, a standard survival estimand, rather than an ad hoc fill-in for missing values. Effects are differences in steps, which makes the interaction hard to read when the arenas differ in baseline speed, as explained below.</li>
+      <li><b>Log time to half span</b>, ln min(<i>T</i><sub>½</sub>, <i>T</i><sub>max</sub>), where <i>T</i><sub>½</sub> is the step at which the span first reaches 50%. Runs are censored far less often on this response, and it captures early growth rather than the final connection.</li>
+      <li><b>Completed by <i>T</i><sub>max</sub></b>, 1 if the bridge was finished and 0 if not. A condition's mean of this is its completion proportion. The tests here treat it as a linear probability model; a logistic model in R is the better choice for a 0/1 outcome.</li>
+    </ul>
+    <p>The restricted responses compress differences when many runs are censored, and so the batch reports censoring counts for every condition; if they are large, raise <i>T</i><sub>max</sub> or use the half-span response.</p>
     <p>The default analysis is on the <b>log scale</b>. A raft speedup is naturally a ratio, and the two arenas need not share a baseline speed. On the raw scale, the same proportional speedup in a slow arena and a fast one yields a nonzero interaction purely because the baselines differ. On the log scale, the interaction contrast is the log of a ratio of speedups:</p>
     <div class="eq">speedup<sub>arena</sub> = exp[ mean ln T<sub>no rafts</sub> − mean ln T<sub>rafts</sub> ]<br>interaction ratio = speedup<sub>confined</sub> / speedup<sub>unconfined</sub></div>
-    <p>An interaction ratio near 1 says rafts help equally in both arenas, and a ratio well above 1 says the dish amplifies the raft effect. Two other responses are offered: the log time to half span, which is censored far less often and captures early growth, and completion by <i>T</i><sub>max</sub> as a 0/1 outcome, analyzed here as a linear probability model (a logistic model in R is the better choice for that outcome).</p>
+    <p>An interaction ratio near 1 says rafts help equally in both arenas, and a ratio well above 1 says the dish amplifies the raft effect.</p>
 
     <h2>Tests</h2>
     <ul>
@@ -1160,8 +1171,8 @@ function respOf(r, key, Tmax) {
   return r.event;
 }
 const RESP = {
-  logT:   { name: 'log restricted completion time', log: true, time: true },
-  T:      { name: 'restricted completion time (steps)', log: false, time: true },
+  logT:   { name: 'log restricted time, ln min(T, Tmax)', log: true, time: true },
+  T:      { name: 'restricted time, min(T, Tmax)', log: false, time: true },
   logT50: { name: 'log time to half span', log: true, time: true },
   done:   { name: 'completed by Tmax (0/1)', log: false, time: false },
 };
@@ -1255,11 +1266,12 @@ function renderResults(final, cancelled) {
   h += '</table></div><div class="card-note">' + (R.log ? 'A speedup of 1.5× means runs with rafts finished in two-thirds the (geometric-mean, restricted) time. A ratio above 1 means the dish amplifies the raft effect.' : R.time ? 'Positive values mean rafts finish sooner.' : 'Positive values mean rafts make completion by T<sub>max</sub> more likely.') + ' CIs use the pooled ANOVA error. The arena rows\' p-values come from permuting raft labels within each arena, and the ratio\'s from the Freedman–Lane test. ' + SIG_NOTE + '</div></div>';
   h += '</div>';
 
-  h += '<div class="card"><div class="card-h">Reproduce in R</div><div class="card-note" style="margin:0 0 6px">Download the CSV, then:</div><pre class="code" id="rcode">' + rCode() + '</pre><div class="toolbar" style="margin-top:6px"><button class="btn small" id="b-copy-r">Copy R code</button></div></div>';
+  h += '<div class="card"><div class="card-h">Reproduce in R</div><div class="card-note" style="margin:0 0 6px"><a href="#" id="b-csv-link">Download the CSV</a>, then:</div><pre class="code" id="rcode">' + rCode() + '</pre><div class="toolbar" style="margin-top:6px"><button class="btn small" id="b-copy-r">Copy R code</button></div></div>';
 
   h += '<div class="params-sum">Parameters for these results: ' + M.summary + ' · replicates ' + nRep + ' · T<sub>max</sub> ' + M.Tmax + ' · base seed ' + M.base + '</div>';
   out.innerHTML = h;
   syncStale();
+  document.getElementById('b-csv-link').addEventListener('click', e => { e.preventDefault(); downloadCSV(); });
   document.getElementById('b-copy-r').addEventListener('click', e => {
     navigator.clipboard && navigator.clipboard.writeText(document.getElementById('rcode').textContent).then(() => { e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy R code', 1200); });
   });
