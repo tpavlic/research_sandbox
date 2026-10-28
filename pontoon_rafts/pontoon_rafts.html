@@ -96,6 +96,8 @@ a:hover{text-decoration:underline}
 /* ── Explorer layout ─────────────────────── */
 .body{display:flex;max-width:1120px;margin:0 auto;width:100%}
 .panel{width:280px;min-width:280px;background:var(--cream-dk);border-right:1px solid var(--border);flex-shrink:0}
+/* past the content width the page background shows beside the panel, so edge it on both sides */
+@media(min-width:1121px){.panel{border-left:1px solid var(--border)}}
 .panel-inner{padding:11px;display:flex;flex-direction:column;gap:8px}
 .right-col{flex:1;min-width:0;padding:12px;display:flex;flex-direction:column;gap:10px}
 .grp{background:var(--cream);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px}
@@ -110,6 +112,8 @@ a:hover{text-decoration:underline}
 .prm input[type=range]{width:100%;accent-color:var(--rust);height:16px}
 .prm select{width:100%;font-family:var(--sans);font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text);margin-top:2px}
 .prm.dim{opacity:.45}
+.prm-check .prm-top{align-items:center}
+.prm-check .chk{margin:0 5px 0 0}
 .tip{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1px solid var(--border);font-size:9px;font-family:var(--mono);color:var(--muted);cursor:help;position:relative;flex-shrink:0;background:white}
 .tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:50%;top:17px;transform:translateX(-60%);width:230px;background:#2a2420;color:#f7f2ea;font-family:var(--sans);font-size:11px;line-height:1.45;padding:7px 9px;border-radius:6px;z-index:50;white-space:pre-line;text-align:left;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .btn{font-family:var(--mono);font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--pill);border:1.5px solid var(--rust);background:var(--cream);color:var(--rust);cursor:pointer;white-space:nowrap}
@@ -151,6 +155,7 @@ a:hover{text-decoration:underline}
 .lg{display:flex;align-items:center;gap:4px}
 .lg i{display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid rgba(0,0,0,.15)}
 .lg i.scent-ramp{width:44px;background:linear-gradient(to right,rgb(214,232,245),rgb(244,204,120))}
+.lg i.trail-ramp{width:44px;background:linear-gradient(to right,rgb(222,208,184),rgb(124,58,237))}
 .lg[hidden]{display:none}
 .card{background:white;border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;box-shadow:0 2px 8px var(--shadow)}
 .card-h{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--rust);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
@@ -271,6 +276,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <button class="seed-prev" id="seed-prev" hidden title="Restore the previous seed">prev</button>
         <label title="Draw a fresh random seed whenever a run is restarted"><input type="checkbox" class="chk" id="autoseed" checked> New seed each run</label>
         <label title="Shade each water cell by its join probability p_join(d) = min{1, p₀ · exp[(gap − d)/λ]} on a fixed log scale from 0.001 to 1; a stronger scent (smaller λ) or a larger p₀ shows as more and deeper color"><input type="checkbox" class="chk" id="scent"> <span><i>p</i><sub>join</sub> overlay</span></label>
+        <label title="Tint the shore and structure by trail level (recruitment only)"><input type="checkbox" class="chk" id="trailov"> Trail overlay</label>
       </div>
       <div id="arenas"></div>
       <div class="legend" id="cell-legend"></div>
@@ -322,10 +328,10 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
 <!-- ═══════════════ MODEL ═══════════════ -->
 <section class="pane" id="pane-model">
   <div class="prose">
+    <p class="note">This excursion was inspired by the work of Haolin (Horace) Zeng on the self-assembly of fire-ant pontoon bridges, summarized on <a href="https://horacesnature.com/research/" target="_blank" rel="noopener">his research page</a> (8000-ant subcolonies, bridges of about 500 ants, and several proto-bridges of which only one completes). The model here is an independent toy built to frame a design question; it is not that study's model, and its parameters are not fitted to any data.</p>
     <h2>The question</h2>
     <p>In dish assays, fire ants (<em>Solenopsis invicta</em>) held on the rim of a water-filled dish assemble a floating pontoon bridge out to food at its center. Besides the proto-bridges anchored at the rim, clusters of linked ants sometimes break free and float as small rafts, which can drift into one another and into growing structures. Suppose such rafts do speed up bridging in a dish. Does that benefit carry over to the settings where fire ants actually bridge, such as across a stream?</p>
     <p>A dish differs from open water in at least three ways. It is closed, and so a raft has nowhere to go except into the rim, another structure, or the food. It is radially symmetric, and so every launch point on the rim faces the food, and proto-bridges converge on one another as they grow inward. It is also still, with no current. Along a bank, none of these holds. If the raft effect comes from confinement, a model that produces it in a dish should lose much of it in an unconfined arena, and that loss shows up as a <b>rafting × confinement interaction</b>. The excursion therefore poses the question as a 2 × 2 factorial design, in which the interaction term, not either main effect by itself, answers it.</p>
-    <p class="note">The laboratory system that motivates this is summarized publicly on <a href="https://horacesnature.com/research/" target="_blank" rel="noopener">Horace Zeng's research page</a> (8000-ant subcolonies, bridges of about 500 ants, and several proto-bridges of which only one completes). The model here is an independent toy built to frame the design question; it is not that study's model, and its parameters are not fitted to any data.</p>
 
     <h2>Arenas</h2>
     <p>Space is a square lattice whose cells are about one worker body length (taken as 3&nbsp;mm), with one structural ant per water cell. The <b>gap</b> is the number of water cells between the shore and the target, 20 by default (about 6&nbsp;cm, the rim-to-food distance of a 15&nbsp;cm dish with a 3&nbsp;cm food drop).</p>
@@ -350,6 +356,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
           <li><i>Rafts:</i> it persists as a raft. Each step, a raft of <i>m</i> ants moves one cell with probability <i>D</i><sub>0</sub>/<i>m</i><sup>γ</sup> (pushed downstream with probability equal to the current, in the unconfined arena), carrying any walkers on it. It merges with whatever it touches: a raft that reaches a proto-bridge extends it, and one that reaches the target anchors there. In addition, an <b>anchor</b> (a structural ant touching the shore) with no traffic lets go of the shore with probability <i>p</i><sub>calve</sub>, even when its neighbors would otherwise hold it, and so idle clusters can break away whole.</li>
         </ul>
       </li>
+      <li><b>Recruitment (optional, off by default).</b> Each walker remembers the highest join probability it has met, with the memory fading at the evaporation rate, and marks its cell each step in proportion to that memory; the trail stays between 0 and 1 and fades at the same rate. Two switches let the trail act separately. With <i>recruit along trail</i>, each new forager enters a shore cell with weight e<sup><i>κ</i>·trail</sup>, which stands in for nestmates led out along a trail to a site where a bridge looks promising. With <i>trail raises joining</i>, an ant's join probability is multiplied by e<sup><i>η</i>·trail</sup> at its cell, capped at 1. Ants already in the arena do not follow the trail: on this lattice, every cluster an ant stands on becomes marked, and following the marks only traps walkers on their own cluster.</li>
     </ol>
     <p>The defaults were tuned for one thing only: that rafting clearly speeds bridging in the dish, so that the question about confinement has an effect to ask about. In checks with 100 replicates per condition, the defaults give a raft speedup of about 1.5× in the dish and about 0.9× (a slight slowdown) in the unconfined far-bank arena. Nearby settings of the scent length, raft mobility, and anchor release rate that keep the dish speedup near 1.5× put the unconfined speedup anywhere from about 0.9× to 1.2×, and so the size of the interaction, unlike its direction, is not robust in this model. None of these values is fitted to a measurement.</p>
 
@@ -379,6 +386,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
     <ul>
       <li>The model is a single-layer lattice; real pontoon bridges are thick and multilayered, and real rafts deform.</li>
       <li>Steps are not seconds, and the parameters are illustrative, not calibrated; absolute times mean nothing, and only the comparison among the four cells carries information.</li>
+      <li>Recruitment is a coarse stand-in. Real recruiters lay trail on their way back from food, which here is reachable only once the bridge is complete, and so the model's trail is laid from each ant's memory of a promising site instead. Results with recruitment on depend on its gains; compare a range of them rather than relying on one value. In checks with 40 replicates per condition, recruitment along the trail shrank the raft speedup in the centered dish from about 1.6× to 1.2× at <i>κ</i> = 10, and removed it at <i>κ</i> = 15; recruitment also turned the off-center dish from the slowest case into one at least as fast as the centered dish. Any symmetry-breaking feedback the real ants have may therefore do the job this model gives to rafts.</li>
       <li>Rafts here drift passively. If ants on a raft could steer toward scent, rafts would reach the target more often in open water too, and the interaction would shrink.</li>
       <li>Results can be sensitive to the parameters, and the sign of the raft effect in the unconfined arena can change with the anchor release rate and current. That sensitivity is itself an argument for testing the interaction empirically rather than assuming the dish result generalizes.</li>
     </ul>
@@ -436,6 +444,14 @@ const DEFAULTS = {
   target: 'bank', // unconfined target: 'bank' (far bank) or 'point' (food item)
   shape: 'circle',// dish shape: 'circle' or 'square'
   offset: 0,      // food's distance from the dish center (cells)
+  // Recruitment: walkers remember the strongest join probability they have met and lay
+  // trail in proportion to it; trail level stays in [0, 1]
+  follow: false,  // new foragers are recruited along the trail
+  kappa: 10,      // recruitment gain: a fully marked shore cell draws e^kappa times the entrants
+  trailJoin: false, // trail raises the join probability
+  eta: 1,         // join gain: p_join is multiplied by e^eta on a fully marked cell
+  deposit: 0.5,   // fraction of the remaining headroom marked per step, times the memory
+  evap: 0.02,     // per-step fade of trail and of each walker's memory
 };
 
 function buildArena(confined, P) {
@@ -491,6 +507,9 @@ class Sim {
     this.sList = new Int32Array(n); this.sN = 0;
     this.queue = new Int32Array(n);
     this.wPos = new Int32Array(this.P.N); this.wN = 0;
+    this.recruit = this.P.follow || this.P.trailJoin;
+    this.trail = new Float32Array(n);             // trail level per cell, in [0, 1]
+    this.wMem = new Float32Array(this.P.N);       // each walker's scent memory
     this.pool = this.P.N;
     this.lost = 0; this.fed = 0;
     this.t = 0; this.done = -1;
@@ -514,15 +533,27 @@ class Sim {
     this.sList[k] = last; this.sIdx[last] = k; this.sIdx[i] = -1;
   }
   walkable(i) { const t = this.A.type[i]; return t === LAND || t === FOOD || this.struct[i] === 1; }
-  remWalker(k) { this.wcount[this.wPos[k]]--; this.wPos[k] = this.wPos[--this.wN]; }
+  remWalker(k) { this.wcount[this.wPos[k]]--; this.wN--; this.wPos[k] = this.wPos[this.wN]; this.wMem[k] = this.wMem[this.wN]; }
   step() {
     const P = this.P, A = this.A, rng = this.rng, type = A.type, struct = this.struct;
     const t = ++this.t;
     // 1. entry from the pool
     const enter = Math.floor(this.pool * P.rIn + rng());
+    // With recruitment, new foragers are led out along the trail: each enters a shore
+    // cell with weight e^(kappa * trail), so marked sites draw a growing share
+    let cum = null;
+    if (P.follow && enter > 0) {
+      cum = new Float64Array(A.land.length); let tot = 0;
+      for (let q = 0; q < A.land.length; q++) { tot += Math.exp(P.kappa * this.trail[A.land[q]]); cum[q] = tot; }
+    }
     for (let e = 0; e < enter && this.pool > 0; e++) {
-      const c = A.land[(rng() * A.land.length) | 0];
-      this.wPos[this.wN++] = c; this.wcount[c]++; this.pool--;
+      let c;
+      if (cum) {
+        const u = rng() * cum[cum.length - 1]; let lo = 0, hi = cum.length - 1;
+        while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid] < u) lo = mid + 1; else hi = mid; }
+        c = A.land[lo];
+      } else c = A.land[(rng() * A.land.length) | 0];
+      this.wMem[this.wN] = 0; this.wPos[this.wN++] = c; this.wcount[c]++; this.pool--;
     }
     // 2. walkers
     const cand = [0, 0, 0, 0, 0], wts = [0, 0, 0, 0, 0];
@@ -530,9 +561,16 @@ class Sim {
       const c = this.wPos[k];
       if (!this.walkable(c)) { this.remWalker(k); this.pool++; k--; continue; }
       if (type[c] === LAND && rng() < P.rOut) { this.remWalker(k); this.pool++; k--; continue; }
+      const tc = this.trail[c];
+      if (this.recruit) {           // remember the strongest join probability met, and mark the trail
+        const mem = Math.max(this.wMem[k] * (1 - P.evap), this.pJoin[c]);
+        this.wMem[k] = mem;
+        this.trail[c] = tc + P.deposit * mem * (1 - tc);
+      }
       // join attempt at a random neighbour
       const j = this.inGridNb(c, (rng() * 4) | 0);
-      if (j >= 0 && type[j] === WATER && !struct[j] && rng() < this.pJoin[j]) {
+      if (j >= 0 && type[j] === WATER && !struct[j] &&
+          rng() < (P.trailJoin ? Math.min(1, this.pJoin[j] * Math.exp(P.eta * tc)) : this.pJoin[j])) {
         this.addS(j); this.lastT[j] = -1e9;
         this.remWalker(k); k--; continue;
       }
@@ -541,14 +579,18 @@ class Sim {
       cand[m] = c; wts[m] = 1; tot += 1; m++;
       for (let q = 0; q < 4; q++) {
         const j2 = this.inGridNb(c, q);
-        if (j2 >= 0 && this.walkable(j2)) { cand[m] = j2; wts[m] = Math.exp(-P.bias * (A.dist[j2] - dc)); tot += wts[m]; m++; }
+        if (j2 >= 0 && this.walkable(j2)) {
+          cand[m] = j2; wts[m] = Math.exp(-P.bias * (A.dist[j2] - dc));
+          tot += wts[m]; m++;
+        }
       }
       let r = rng() * tot, s = 0;
       for (s = 0; s < m - 1; s++) { r -= wts[s]; if (r <= 0) break; }
       const d = cand[s];
-      if (type[d] === FOOD) { this.wcount[c]--; this.wPos[k] = this.wPos[--this.wN]; this.pool++; this.fed++; k--; continue; }
+      if (type[d] === FOOD) { this.remWalker(k); this.pool++; this.fed++; k--; continue; }
       this.wcount[c]--; this.wcount[d]++; this.wPos[k] = d; this.lastT[d] = t;
     }
+    if (this.recruit) { const tr = this.trail, f = 1 - P.evap; for (let i = 0; i < tr.length; i++) tr[i] *= f; }
     // 3. release of unlocked structural ants
     for (let q = this.sN - 1; q >= 0; q--) {
       const i = this.sList[q];
@@ -642,7 +684,7 @@ class Sim {
       for (let k = 0; k < this.wN; k++) {
         if (wComp[k] >= 0) continue;
         const d = shift.get(-wComp[k]);
-        if (d === null) { this.wPos[k] = this.wPos[this.wN - 1]; wComp[k] = wComp[this.wN - 1]; this.wN--; this.lost++; k--; continue; }
+        if (d === null) { this.wN--; this.wPos[k] = this.wPos[this.wN]; this.wMem[k] = this.wMem[this.wN]; wComp[k] = wComp[this.wN]; this.lost++; k--; continue; }
         this.wPos[k] += d; this.wcount[this.wPos[k]]++;
       }
     }
@@ -743,6 +785,19 @@ const PARAMS = [
   { k: 'kLock', label: 'Neighbors that hold <i>k</i>', type: 'select', def: '3',
     opts: [['2', '2 of 4'], ['3', '3 of 4'], ['4', '4 of 4'], ['5', 'never (traffic only)']],
     tip: 'A structural ant with at least this many structural neighbors cannot let go, even without traffic (interior ants of a cluster are held by the ants around them).' },
+  { grp: 'Recruitment', note: 'Walkers remember the highest join probability they have met and mark trail in proportion to it. Off by default.' },
+  { k: 'follow', label: 'Recruit along trail', type: 'check', def: false,
+    tip: 'New foragers are led out from the nest along the trail: each enters a shore cell with weight e^(κ × trail), so a site where ants have met a promising bridge draws a growing share of arrivals.' },
+  { k: 'kappa', label: 'Recruitment gain <i>κ</i>', min: 0, max: 20, step: 0.5, def: 10, fmt: v => v.toFixed(1), needs: () => pvals.follow,
+    tip: 'A fully marked shore cell draws e^κ times as many new foragers as an unmarked one. Trail near the shore rarely gets near full, so useful values are large.' },
+  { k: 'trailJoin', label: 'Trail raises joining', type: 'check', def: false,
+    tip: 'An ant standing on trail is more willing to link onto open water: its join probability is multiplied by e^(η × trail), capped at 1.' },
+  { k: 'eta', label: 'Join gain <i>η</i>', min: 0, max: 5, step: 0.1, def: 1, fmt: v => v.toFixed(1), needs: () => pvals.trailJoin,
+    tip: 'On a fully marked cell, the join probability is multiplied by e^η.' },
+  { k: 'deposit', label: 'Deposit rate', min: 0.05, max: 1, step: 0.05, def: 0.5, fmt: v => v.toFixed(2), needs: () => pvals.follow || pvals.trailJoin,
+    tip: 'Each step, a walker marks this fraction of its cell\'s remaining headroom (1 − trail), scaled by its memory of the highest join probability it has met.' },
+  { k: 'evap', label: 'Evaporation rate', min: 0.002, max: 0.1, step: 0.002, def: 0.02, fmt: v => v.toFixed(3), needs: () => pvals.follow || pvals.trailJoin,
+    tip: 'Per-step fade of the trail, and of each walker\'s memory.' },
   { grp: 'Rafts', note: 'Used only by the two runs with rafts.' },
   { k: 'pCalve', label: 'Anchor let-go <i>p</i><sub>calve</sub>', min: 0, max: 0.01, step: 0.0005, def: 0.0005, fmt: v => v.toFixed(4),
     tip: 'Per-step probability that an idle anchor ant (touching the shore, no traffic) lets go of the shore, even if its neighbors hold it, and so a whole idle cluster can break away as a raft.' },
@@ -760,14 +815,16 @@ function getParams() {
     R: pvals.gap + pvals.rf, rf: pvals.rf, shape: pvals.shape, offset: pvals.offset, target: pvals.target, absorb: pvals.absorb === '1',
     current: pvals.current, depth: pvals.depth, N: pvals.N, rIn: pvals.rIn, rOut: pvals.rOut,
     bias: pvals.bias, p0: pvals.p0, lam: pvals.lam, pRel: pvals.pRel, tau: pvals.tau,
-    kLock: +pvals.kLock, pCalve: pvals.pCalve, D0: pvals.D0, gam: pvals.gam,
+    kLock: +pvals.kLock, follow: pvals.follow, kappa: pvals.kappa, trailJoin: pvals.trailJoin, eta: pvals.eta,
+    deposit: pvals.deposit, evap: pvals.evap, pCalve: pvals.pCalve, D0: pvals.D0, gam: pvals.gam,
   };
 }
 function paramSummary() {
   return PARAMS.filter(p => p.k).map(p => {
     if (p.onlyPoint && pvals.target !== 'point') return null;
     const v = pvals[p.k];
-    const s = p.type === 'select' ? p.opts.find(o => o[0] === v)[1] : p.fmt(v);
+    if (p.needs && !p.needs()) return null;
+    const s = p.type === 'select' ? p.opts.find(o => o[0] === v)[1] : p.type === 'check' ? (v ? 'on' : 'off') : p.fmt(v);
     return p.label + ' = ' + s;
   }).filter(Boolean).join(' · ');
 }
@@ -791,7 +848,11 @@ function buildPanel() {
     const tip = mk('span', 'tip', '?'); tip.tabIndex = 0; tip.dataset.tip = p.tip; top.appendChild(tip);
     row.appendChild(top);
     let inp;
-    if (p.type === 'select') {
+    if (p.type === 'check') {
+      inp = mk('input'); inp.type = 'checkbox'; inp.className = 'chk'; inp.checked = p.def;
+      inp.addEventListener('change', () => { pvals[p.k] = inp.checked; onParamChange(); });
+      row.classList.add('prm-check'); top.insertBefore(inp, top.firstChild);
+    } else if (p.type === 'select') {
       inp = mk('select'); p.opts.forEach(o => { const op = mk('option', null, o[1]); op.value = o[0]; inp.appendChild(op); });
       inp.value = p.def;
       inp.addEventListener('change', () => { pvals[p.k] = inp.value; onParamChange(); });
@@ -800,14 +861,15 @@ function buildPanel() {
       val.textContent = p.fmt(p.def);
       inp.addEventListener('input', () => { pvals[p.k] = +inp.value; val.textContent = p.fmt(+inp.value); onParamChange(); });
     }
-    inp.id = id; row.appendChild(inp); box.appendChild(row);
+    inp.id = id; if (p.type !== 'check') row.appendChild(inp); box.appendChild(row);
   });
   const reset = mk('button', 'btn small', 'Restore defaults'); reset.style.alignSelf = 'flex-start';
   reset.addEventListener('click', () => {
     PARAMS.forEach(p => {
       if (!p.k) return; pvals[p.k] = p.def;
-      const inp = document.getElementById('prm-' + p.k); inp.value = p.def;
-      if (p.type !== 'select') inp.parentNode.querySelector('.prm-val').textContent = p.fmt(p.def);
+      const inp = document.getElementById('prm-' + p.k);
+      if (p.type === 'check') inp.checked = p.def; else inp.value = p.def;
+      if (p.type !== 'select' && p.type !== 'check') inp.parentNode.querySelector('.prm-val').textContent = p.fmt(p.def);
     });
     onParamChange();
   });
@@ -816,8 +878,8 @@ function buildPanel() {
 }
 function syncDim() {
   PARAMS.forEach(p => {
-    if (!p.onlyPoint) return;
-    document.querySelector('.prm[data-k="' + p.k + '"]').classList.toggle('dim', pvals.target !== 'point');
+    const off = p.onlyPoint ? pvals.target !== 'point' : p.needs ? !p.needs() : false;
+    if (p.k) document.querySelector('.prm[data-k="' + p.k + '"]').classList.toggle('dim', off);
   });
 }
 let _pcTimer = null;
@@ -844,7 +906,7 @@ const COL = {
   bg: [255, 255, 255], wall: [236, 231, 223], land: [222, 208, 184], landW: [176, 92, 52],
   water: [214, 232, 245], food: [233, 183, 74], bank: [186, 207, 150],
   anch: [92, 42, 20], anchW: [190, 84, 42], raft: [234, 140, 40], raftW: [248, 186, 110],
-  done: [150, 22, 22], scent: [244, 204, 120],
+  done: [150, 22, 22], scent: [244, 204, 120], trail: [124, 58, 237],
 };
 const live = { sims: [], hist: [[], [], [], []], playing: false, panels: [], cell: 4 };
 
@@ -864,6 +926,7 @@ function buildArenas() {
   lg.innerHTML = sw(COL.land, 'shore / rim') + sw(COL.water, 'water') + sw(COL.food, 'food') + sw(COL.bank, 'far bank') +
     sw(COL.anch, 'anchored structure') + sw(COL.raft, 'raft') + sw(COL.anchW, 'ant walking on structure') +
     sw(COL.landW, 'ant on shore') + sw(COL.done, 'completed bridge');
+  lg.innerHTML += '<span class="lg" id="trail-key" hidden><i class="trail-ramp"></i><span>trail overlay: trail level, 0 to 1</span></span>';
   lg.innerHTML += '<span class="lg" id="scent-key" hidden><i class="scent-ramp"></i><span>join probability <em>p</em><sub>join</sub>, 0.001 to 1 (log scale)</span></span>';
   const ll = document.getElementById('live-legend');
   ll.innerHTML = CONDS.map(c => '<span><span class="sw' + (c.dash ? ' dash' : '') + '" style="border-color:' + c.color + '"></span>' + c.label + '</span>').join('');
@@ -910,7 +973,7 @@ function layoutArenas() {
 
 function drawSim(k) {
   const sim = live.sims[k], p = live.panels[k], A = sim.A, d = p.img.data, P = sim.P;
-  const scent = document.getElementById('scent').checked;
+  const scent = document.getElementById('scent').checked, trailOn = document.getElementById('trailov').checked && sim.recruit;
   const kind = new Uint8Array(A.n);           // 1 anchored, 2 raft, 3 completed
   for (const C of sim.comps) {
     const v = C.land && C.food ? 3 : (C.land || C.food) ? 1 : 2;
@@ -928,9 +991,18 @@ function drawSim(k) {
     else if (scent) {
       // The actual join probability, on a fixed log scale from 0.001 to 1, so a stronger
       // scent (smaller λ, larger p₀) shows as more and deeper color
-      const a = Math.max(0, Math.min(1, 1 + Math.log10(sim.pJoin[i]) / 3));
+      let pj = sim.pJoin[i];
+      if (P.trailJoin) {            // the boost comes from trail where the joining ant stands
+        let tm = 0; for (let z = 0; z < 4; z++) { const q = sim.inGridNb(i, z); if (q >= 0 && sim.trail[q] > tm) tm = sim.trail[q]; }
+        pj = Math.min(1, pj * Math.exp(P.eta * tm));
+      }
+      const a = Math.max(0, Math.min(1, 1 + Math.log10(pj) / 3));
       c = [0, 1, 2].map(j => COL.water[j] + (COL.scent[j] - COL.water[j]) * a);
     } else c = COL.water;
+    if (trailOn && (t === LAND || sim.struct[i]) && sim.trail[i] > 0.005) {
+      const a = Math.min(1, sim.trail[i] * 1.5) * 0.85;
+      c = [0, 1, 2].map(j => c[j] + (COL.trail[j] - c[j]) * a);
+    }
     d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
   }
   p.octx.putImageData(p.img, 0, 0);
@@ -1462,6 +1534,7 @@ document.getElementById('seed-prev').addEventListener('click', () => {
 });
 document.getElementById('seed').addEventListener('change', () => resetLive(false));
 document.getElementById('scent').addEventListener('change', e => { document.getElementById('scent-key').hidden = !e.target.checked; drawLive(); });
+document.getElementById('trailov').addEventListener('change', e => { document.getElementById('trail-key').hidden = !e.target.checked; drawLive(); });
 document.getElementById('b-run').addEventListener('click', startBatch);
 document.getElementById('b-cancel').addEventListener('click', cancelBatch);
 document.getElementById('b-csv').addEventListener('click', downloadCSV);
