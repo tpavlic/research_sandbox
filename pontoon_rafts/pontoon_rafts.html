@@ -105,6 +105,7 @@ a:hover{text-decoration:underline}
 .prm:last-child{margin-bottom:0}
 .prm-top{display:flex;align-items:baseline;gap:4px;font-size:11px}
 .prm-lbl{flex:1;color:var(--text)}
+.prm-lbl sub{font-size:.75em;line-height:0}
 .prm-val{font-family:var(--mono);font-size:10.5px;color:var(--rust);font-weight:600;white-space:nowrap}
 .prm input[type=range]{width:100%;accent-color:var(--rust);height:16px}
 .prm select{width:100%;font-family:var(--sans);font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text);margin-top:2px}
@@ -707,32 +708,32 @@ const PARAMS = [
   { k: 'depth', label: 'Water beyond food item', min: 1, max: 6, step: 0.5, def: 3, fmt: v => v.toFixed(1) + ' gaps', onlyPoint: true,
     tip: 'Only for the food-item target: how much open water lies beyond the food, in multiples of the gap.' },
   { grp: 'Colony' },
-  { k: 'N', label: 'Forager pool N', min: 500, max: 5000, step: 100, def: 2000, fmt: v => v,
+  { k: 'N', label: 'Forager pool <i>N</i>', min: 500, max: 5000, step: 100, def: 2000, fmt: v => v,
     tip: 'Ants available to the shore. Ants lost on rafts that drift away leave the pool for good.' },
-  { k: 'rIn', label: 'Entry rate r_in', min: 0.0005, max: 0.008, step: 0.0005, def: 0.002, fmt: v => v.toFixed(4),
+  { k: 'rIn', label: 'Entry rate <i>r</i><sub>in</sub>', min: 0.0005, max: 0.008, step: 0.0005, def: 0.002, fmt: v => v.toFixed(4),
     tip: 'Per-step probability that a pooled forager enters a random shore cell.' },
-  { k: 'rOut', label: 'Return rate r_out', min: 0.002, max: 0.05, step: 0.001, def: 0.01, fmt: v => v.toFixed(3),
+  { k: 'rOut', label: 'Return rate <i>r</i><sub>out</sub>', min: 0.002, max: 0.05, step: 0.001, def: 0.01, fmt: v => v.toFixed(3),
     tip: 'Per-step probability that a walker on the shore goes back to the pool.' },
-  { k: 'bias', label: 'Scent bias b', min: 0, max: 1.5, step: 0.05, def: 0.6, fmt: v => v.toFixed(2),
+  { k: 'bias', label: 'Scent bias <i>b</i>', min: 0, max: 1.5, step: 0.05, def: 0.6, fmt: v => v.toFixed(2),
     tip: 'Strength of the walkers\' bias toward the target: a step that brings a walker one cell closer is weighted by exp(b).' },
   { grp: 'Building' },
-  { k: 'p0', label: 'Join prob. at shore p₀', min: 0.001, max: 0.04, step: 0.001, def: 0.008, fmt: v => v.toFixed(3),
+  { k: 'p0', label: 'Join prob. at shore <i>p</i><sub>0</sub>', min: 0.001, max: 0.04, step: 0.001, def: 0.008, fmt: v => v.toFixed(3),
     tip: 'Probability that a walker links onto an adjacent open-water cell at the shoreline. It rises toward the target as exp((gap − d)/λ), capped at 1.' },
-  { k: 'lam', label: 'Scent length λ', min: 2, max: 20, step: 0.5, def: 6, fmt: v => v.toFixed(1) + ' cells',
+  { k: 'lam', label: 'Scent length <i>λ</i>', min: 2, max: 20, step: 0.5, def: 6, fmt: v => v.toFixed(1) + ' cells',
     tip: 'Distance over which the joining probability rises e-fold toward the target.' },
-  { k: 'pRel', label: 'Release prob. p_rel', min: 0.002, max: 0.1, step: 0.002, def: 0.02, fmt: v => v.toFixed(3),
+  { k: 'pRel', label: 'Release prob. <i>p</i><sub>rel</sub>', min: 0.002, max: 0.1, step: 0.002, def: 0.02, fmt: v => v.toFixed(3),
     tip: 'Per-step probability that an unlocked structural ant lets go and swims back to the pool.' },
-  { k: 'tau', label: 'Lock memory τ', min: 0, max: 30, step: 1, def: 3, fmt: v => v + ' steps',
+  { k: 'tau', label: 'Lock memory <i>τ</i>', min: 0, max: 30, step: 1, def: 3, fmt: v => v + ' steps',
     tip: 'A structural ant stays locked for this many steps after the last walker crossed it.' },
-  { k: 'kLock', label: 'Neighbors that hold k', type: 'select', def: '3',
+  { k: 'kLock', label: 'Neighbors that hold <i>k</i>', type: 'select', def: '3',
     opts: [['2', '2 of 4'], ['3', '3 of 4'], ['4', '4 of 4'], ['5', 'never (traffic only)']],
     tip: 'A structural ant with at least this many structural neighbors cannot let go, even without traffic (interior ants of a cluster are held by the ants around them).' },
   { grp: 'Rafts', note: 'Used only by the two runs with rafts.' },
-  { k: 'pCalve', label: 'Anchor let-go p_calve', min: 0, max: 0.01, step: 0.0005, def: 0.0005, fmt: v => v.toFixed(4),
+  { k: 'pCalve', label: 'Anchor let-go <i>p</i><sub>calve</sub>', min: 0, max: 0.01, step: 0.0005, def: 0.0005, fmt: v => v.toFixed(4),
     tip: 'Per-step probability that an idle anchor ant (touching the shore, no traffic) lets go of the shore, even if its neighbors hold it, and so a whole idle cluster can break away as a raft.' },
-  { k: 'D0', label: 'Raft mobility D₀', min: 0, max: 4, step: 0.1, def: 2, fmt: v => v.toFixed(2),
+  { k: 'D0', label: 'Raft mobility <i>D</i><sub>0</sub>', min: 0, max: 4, step: 0.1, def: 2, fmt: v => v.toFixed(2),
     tip: 'A raft of m ants moves one cell per step with probability D₀ / m^γ (capped at 1).' },
-  { k: 'gam', label: 'Size exponent γ', min: 0, max: 1.5, step: 0.05, def: 0.5, fmt: v => v.toFixed(2),
+  { k: 'gam', label: 'Size exponent <i>γ</i>', min: 0, max: 1.5, step: 0.05, def: 0.5, fmt: v => v.toFixed(2),
     tip: 'How fast raft mobility falls with raft size.' },
 ];
 
