@@ -328,10 +328,10 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
     <h2>Arenas</h2>
     <p>Space is a square lattice whose cells are about one worker body length (taken as 3&nbsp;mm), with one structural ant per water cell. The <b>gap</b> is the number of water cells between the shore and the target, 20 by default (about 6&nbsp;cm, the rim-to-food distance of a 15&nbsp;cm dish with a 3&nbsp;cm food drop).</p>
     <ul>
-      <li><b>Confined:</b> a circular dish of radius <i>R</i> = gap + target radius, with a rim two cells wide on which ants walk, and the food as a disk at the center.</li>
+      <li><b>Confined:</b> a circular dish of radius <i>R</i> = gap + target radius, with a rim two cells wide on which ants walk, and the food as a disk at the center, and so every rim point is equally far from the food. Two controls break that equality while keeping the dish closed. The food can be moved off center, with the dish growing by the same amount so that its nearest rim stays one gap from the food, and the dish can be a square, whose corners lie farther from the food than the middles of its sides.</li>
       <li><b>Unconfined:</b> a straight shore two cells deep whose length equals the dish's rim circumference, so that the same forager pool is spread at the same density per unit of shoreline. By default, it faces a <b>far bank</b> at the same gap (a river crossing, in which every shore point is as near the target as every rim point is to the dish's food). The alternative target is a <b>food item</b> of the dish's size, at the same distance from the shore, in open water. The water is open at the arena's ends (and, for the food-item target, beyond it): a raft that drifts out is lost unless edges are set to reflect.</li>
     </ul>
-    <p>Confinement in this design therefore bundles closure, convergent geometry, and still water. The geometry controls let you take these apart: set the unconfined edges to reflect to remove the loss of rafts, add current to make the open arena more river-like, or switch the target to see what radial convergence alone contributes.</p>
+    <p>Confinement in this design therefore bundles closure, convergent geometry, and still water. The geometry controls let you take these apart: set the unconfined edges to reflect to remove the loss of rafts, add current to make the open arena more river-like, switch the target to see what radial convergence alone contributes, or move the food off center (or square the dish) to make the rim points unequal while the dish stays closed.</p>
 
     <h2>Rules, applied once per step</h2>
     <ol>
@@ -432,14 +432,18 @@ const DEFAULTS = {
   current: 0,     // downstream drift bias (unconfined)
   absorb: true,   // rafts reaching the open edge are lost (unconfined)
   target: 'bank', // unconfined target: 'bank' (far bank) or 'point' (food item)
+  shape: 'circle',// dish shape: 'circle' or 'square'
+  offset: 0,      // food's distance from the dish center (cells)
 };
 
 function buildArena(confined, P) {
   const R = P.R, rf = P.rf, gap = R - rf;
   const bank = !confined && P.target === 'bank';
   let W, H, cx, cy;
+  // The dish grows with the food's offset, so that its nearest wall stays one gap from the food
+  const square = P.shape === 'square', off = confined ? (P.offset || 0) : 0, D = R + off, dc = D + 2;
   if (confined) {
-    W = H = 2 * (R + 2) + 1; cx = cy = R + 2;
+    W = H = 2 * dc + 1; cx = dc + off; cy = dc;
   } else {
     W = Math.round(2 * Math.PI * R) | 1;        // same shoreline length as the dish rim
     cx = (W - 1) / 2; cy = gap + rf + 1;
@@ -458,7 +462,10 @@ function buildArena(confined, P) {
       const r = Math.hypot(x - cx, y - cy);
       d = Math.max(0, r - rf);
       if (r < rf) t = FOOD;
-      else if (confined) t = r < R ? WATER : (r < R + 2 ? LAND : WALL);
+      else if (confined) {
+        const q = square ? Math.max(Math.abs(x - dc), Math.abs(y - dc)) : Math.hypot(x - dc, y - dc);
+        t = q < D ? WATER : (q < D + 2 ? LAND : WALL);
+      }
       else t = y < 2 ? LAND : WATER;
     }
     type[i] = t; dist[i] = d;
@@ -697,6 +704,11 @@ const PARAMS = [
     tip: 'Water cells between the shore (or rim) and the target. One cell is about one worker body length (≈ 3 mm), and so 20 cells ≈ 6 cm, the rim-to-food distance of a 15 cm dish.' },
   { k: 'rf', label: 'Food radius', min: 2, max: 8, step: 1, def: 5, fmt: v => v + ' cells',
     tip: 'Radius of the food disk at the dish center (and of the food item in the unconfined point-target arena). The dish radius is gap + food radius.' },
+  { k: 'shape', label: 'Dish shape', type: 'select', def: 'circle',
+    opts: [['circle', 'Circle'], ['square', 'Square']],
+    tip: 'Shape of the confined arena. In a circle with the food at its center, every rim point is equally near the food; in a square, the corners are farther than the middles of the sides. The square\'s sides lie one gap from the food, and so it has more rim than the circle.' },
+  { k: 'offset', label: 'Food offset in dish', min: 0, max: 15, step: 1, def: 0, fmt: v => v + ' cells',
+    tip: 'How far the food sits from the dish center. The dish grows by the same amount, and so its nearest rim stays one gap from the food while the far side moves away, breaking the equal distances that a centered food gives every rim point.' },
   { k: 'target', label: 'Unconfined target', type: 'select', def: 'bank',
     opts: [['bank', 'Far bank (river crossing)'], ['point', 'Food item in open water']],
     tip: 'Far bank: the target is a parallel bank at the same gap, and so every shore point is as near it as every rim point is to the food in the dish. Food item: a disk of the dish food size at the same distance from the shore, with open water around and beyond it.' },
@@ -742,7 +754,7 @@ PARAMS.forEach(p => { if (p.k) pvals[p.k] = p.def; });
 
 function getParams() {
   return {
-    R: pvals.gap + pvals.rf, rf: pvals.rf, target: pvals.target, absorb: pvals.absorb === '1',
+    R: pvals.gap + pvals.rf, rf: pvals.rf, shape: pvals.shape, offset: pvals.offset, target: pvals.target, absorb: pvals.absorb === '1',
     current: pvals.current, depth: pvals.depth, N: pvals.N, rIn: pvals.rIn, rOut: pvals.rOut,
     bias: pvals.bias, p0: pvals.p0, lam: pvals.lam, pRel: pvals.pRel, tau: pvals.tau,
     kLock: +pvals.kLock, pCalve: pvals.pCalve, D0: pvals.D0, gam: pvals.gam,
