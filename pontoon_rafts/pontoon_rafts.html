@@ -116,6 +116,11 @@ a:hover{text-decoration:underline}
 .btn.primary{background:var(--rust);color:white}
 .btn.primary:hover{background:var(--rust-dk)}
 .btn:disabled{opacity:.45;cursor:default}
+/* both labels share one grid cell, so the button keeps the wider one's width */
+.play{display:inline-grid}
+.play>span{grid-area:1/1;text-align:center}
+.play .lbl-pause,.play.on .lbl-run{visibility:hidden}
+.play.on .lbl-pause{visibility:visible}
 .btn.small{font-size:10px;padding:3px 9px}
 .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tb-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
@@ -246,7 +251,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
     <aside class="panel"><div class="panel-inner" id="param-panel"></div></aside>
     <div class="right-col">
       <div class="toolbar">
-        <button class="btn primary" id="btn-play">▶ Run</button>
+        <button class="btn primary play" id="btn-play"><span class="lbl-run">▶ Run</span><span class="lbl-pause">❚❚ Pause</span></button>
         <button class="btn" id="btn-step">Step ×10</button>
         <button class="btn" id="btn-reset">Reset</button>
         <span class="tb-lbl">Speed</span><input type="range" id="speed" min="1" max="60" value="12" aria-label="Steps per frame">
@@ -938,7 +943,7 @@ function advance(n) {
 }
 function setPlaying(on) {
   live.playing = on;
-  document.getElementById('btn-play').textContent = on ? '❚❚ Pause' : '▶ Run';
+  document.getElementById('btn-play').classList.toggle('on', on);
   if (on) requestAnimationFrame(loop);
 }
 function loop() {
