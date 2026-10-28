@@ -1107,12 +1107,15 @@ function niceTicks(lo, hi, n) {
 }
 function axes(ctx, W, H, xr, yr, o) {
   o = o || {};
-  const L = o.left || 46, R = 10, T = 8, B = 30;
   ctx.clearRect(0, 0, W, H);
-  const x = v => L + (v - xr[0]) / (xr[1] - xr[0]) * (W - L - R);
-  const y = v => H - B - (v - yr[0]) / (yr[1] - yr[0]) * (H - T - B);
   ctx.font = '10px "IBM Plex Mono", monospace'; ctx.fillStyle = '#6e6860'; ctx.strokeStyle = '#ece6dc'; ctx.lineWidth = 1;
   const yt = o.yticks || niceTicks(yr[0], yr[1], 5);
+  // Size the left margin to the widest tick label, leaving room for the rotated axis label
+  // (centered at x = 11, about 6 px either side) so the two never overlap
+  const tw = Math.max(0, ...yt.map(v => ctx.measureText((o.yfmt || String)(v)).width));
+  const L = o.left || Math.max(40, Math.ceil(tw) + 5 + (o.ylab ? 22 : 8)), R = 10, T = 8, B = 30;
+  const x = v => L + (v - xr[0]) / (xr[1] - xr[0]) * (W - L - R);
+  const y = v => H - B - (v - yr[0]) / (yr[1] - yr[0]) * (H - T - B);
   ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
   yt.forEach(v => { ctx.beginPath(); ctx.moveTo(L, y(v)); ctx.lineTo(W - R, y(v)); ctx.stroke(); ctx.fillText((o.yfmt || String)(v), L - 5, y(v)); });
   if (!o.noX) {
