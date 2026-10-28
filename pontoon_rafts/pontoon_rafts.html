@@ -197,6 +197,7 @@ table.tbl{border-collapse:collapse;font-size:11px;width:100%;font-family:var(--m
 .params-sum{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;word-break:break-word}
 pre.code{background:#2a2420;color:#f3ede4;font-family:var(--mono);font-size:11px;line-height:1.55;padding:10px 12px;border-radius:6px;overflow-x:auto;white-space:pre}
 #b-results{display:flex;flex-direction:column;gap:12px}
+.tbl .ci{color:var(--muted);font-size:10px}
 .empty{font-size:12px;color:var(--muted);font-style:italic;padding:8px 0}
 
 /* ── Model tab ───────────────────────────── */
@@ -321,10 +322,26 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <button class="btn" id="b-csv" disabled>Download CSV</button>
         <div class="prog-row" style="flex:1"><div class="prog"><div id="b-bar"></div></div><span id="b-status">idle</span></div>
       </div>
-      <div class="card-note">The batch uses the model parameters in the side panel. It is the same panel as on the <a href="#explorer" data-tab="explorer">Explorer</a> tab, and so a change made on either tab applies to both. Runs are spread over parallel background workers where the browser allows it.</div>
+      <div class="card-note">The batch uses the model parameters in the side panel. It is the same panel as on the <a href="#explorer" data-tab="explorer">Explorer</a> tab, and so a change made on either tab applies to both. Runs are spread over parallel background workers where the browser allows it. To see how recruitment changes these effects, use the recruitment sweep below the results.</div>
     </div>
 
     <div id="b-results"><div class="empty">No batch yet. Press <b>Run batch</b>; 30 replicates per condition take well under a minute on most machines.</div></div>
+
+    <div class="card" id="s-card">
+      <div class="card-h">Recruitment sweep</div>
+      <div class="card-note" style="margin:0 0 8px">Run the same 2 × 2 at each recruitment gain <i>κ</i> listed (<i>κ</i> = 0 is recruitment off), and plot the raft speedup in each arena against <i>κ</i>. The sweep uses log restricted completion time, the time limit and base seed above, and every other setting in the side panel. Each <i>κ</i> reuses the same seeds, and so the curves differ only through <i>κ</i>.</div>
+      <div class="batch-ctl">
+        <label class="fld"><span>Recruitment gains <i>κ</i></span><input type="text" id="s-kappas" value="0, 5, 10, 15, 20"></label>
+        <label class="fld"><span>Replicates per condition, per <i>κ</i></span><input type="number" id="s-n" value="20" min="3" max="200"></label>
+      </div>
+      <div class="toolbar" style="margin-top:10px">
+        <button class="btn primary" id="s-run">Run sweep</button>
+        <button class="btn" id="s-cancel" disabled>Cancel</button>
+        <button class="btn" id="s-csv" disabled>Download CSV</button>
+        <div class="prog-row" style="flex:1"><div class="prog"><div id="s-bar"></div></div><span id="s-status">idle</span></div>
+      </div>
+      <div id="s-results"></div>
+    </div>
     </div>
   </div>
 </section>
@@ -390,7 +407,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
     <ul>
       <li>The model is a single-layer lattice; real pontoon bridges are thick and multilayered, and real rafts deform.</li>
       <li>Steps are not seconds, and the parameters are illustrative, not calibrated; absolute times mean nothing, and only the comparison among the four cells carries information.</li>
-      <li>Recruitment is a coarse stand-in. Real recruiters lay trail on their way back from food, which here is reachable only once the bridge is complete, and so the model's trail is laid from each ant's memory of a promising site instead. Results with recruitment on depend on its gains; compare a range of them rather than relying on one value. In checks with 40 replicates per condition, recruitment along the trail shrank the raft speedup in the centered dish from about 1.6× to 1.2× at <i>κ</i> = 10, and removed it at <i>κ</i> = 15; recruitment also turned the off-center dish from the slowest case into one at least as fast as the centered dish. Any symmetry-breaking feedback the real ants have may therefore do the job this model gives to rafts.</li>
+      <li>Recruitment is a coarse stand-in. Real recruiters lay trail on their way back from food, which here is reachable only once the bridge is complete, and so the model's trail is laid from each ant's memory of a promising site instead. Results with recruitment on depend on its gains; compare a range of them rather than relying on one value. In checks with 40 replicates per condition, recruitment along the trail shrank the raft speedup in the centered dish from about 1.6× to 1.2× at <i>κ</i> = 10, and removed it at <i>κ</i> = 15; recruitment also turned the off-center dish from the slowest case into one at least as fast as the centered dish. Any symmetry-breaking feedback the real ants have may therefore do the job this model gives to rafts. The recruitment sweep on the batch tab reruns the 2 × 2 across a list of gains and plots the raft speedup in each arena against the gain.</li>
       <li>Rafts here drift passively. If ants on a raft could steer toward scent, rafts would reach the target more often in open water too, and the interaction would shrink.</li>
       <li>Results can be sensitive to the parameters, and the sign of the raft effect in the unconfined arena can change with the anchor release rate and current. That sensitivity is itself an argument for testing the interaction empirically rather than assuming the dish result generalizes.</li>
     </ul>
@@ -823,8 +840,8 @@ function getParams() {
     deposit: pvals.deposit, evap: pvals.evap, pCalve: pvals.pCalve, D0: pvals.D0, gam: pvals.gam,
   };
 }
-function paramSummary() {
-  return PARAMS.filter(p => p.k).map(p => {
+function paramSummary(skip) {
+  return PARAMS.filter(p => p.k && !(skip && skip.includes(p.k))).map(p => {
     if (p.onlyPoint && pvals.target !== 'point') return null;
     const v = pvals[p.k];
     if (p.needs && !p.needs()) return null;
@@ -1260,7 +1277,8 @@ function progress() {
     : (tot ? batch.done + ' / ' + tot + ' runs' + (batch.done < tot ? ' (cancelled)' : ' · done') : 'idle');
 }
 function setBatchUI(running) {
-  document.getElementById('b-run').disabled = running;
+  document.getElementById('b-run').disabled = running || sweep.running;
+  document.getElementById('s-run').disabled = running || sweep.running;
   document.getElementById('b-cancel').disabled = !running;
   document.getElementById('b-csv').disabled = running || !batch.rows.some(Boolean);
   progress();
@@ -1505,6 +1523,165 @@ function rCode() {
   ].join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 }
 
+// ── Recruitment sweep ──────────────────────────────────────────────
+// The same 2 × 2 at several recruitment gains, on the same seeds, analyzed on the log scale
+const sweep = { running: false, workers: [], rows: [], meta: null, done: 0 };
+
+function runPool(state, jobs, accept, done) {
+  state.running = true; state.done = 0; let next = 0;
+  const finish = cancelled => { stopPool(state); state.running = false; done(cancelled); };
+  const take = o => { accept(o); state.done++; if (state.done === jobs.length) finish(false); };
+  const nW = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
+  try { const url = makeWorkerURL(); for (let w = 0; w < nW; w++) state.workers.push(new Worker(url)); }
+  catch (err) { stopPool(state); }
+  state.cancel = () => { if (state.running) finish(true); };
+  if (state.workers.length) {
+    state.mode = state.workers.length + ' background workers';
+    state.workers.forEach(w => {
+      w.onmessage = e => { if (!state.running) return; take(e.data); if (state.running && next < jobs.length) w.postMessage(jobs[next++]); };
+      w.onerror = () => state.cancel();
+      if (next < jobs.length) w.postMessage(jobs[next++]);
+    });
+  } else {
+    state.mode = 'main thread';
+    const tick = () => {
+      const t0 = performance.now();
+      while (state.running && next < jobs.length && performance.now() - t0 < 40) {
+        const j = jobs[next++], o = runOne(j.conf, j.raft, j.P, j.seed, j.Tmax, j.every); o.id = j.id; take(o);
+      }
+      if (state.running) setTimeout(tick, 0);
+    };
+    setTimeout(tick, 0);
+  }
+}
+function stopPool(state) { state.workers.forEach(w => w.terminate()); state.workers = []; }
+
+function sweepUI() {
+  const tot = sweep.meta ? sweep.meta.jobs.length : 0;
+  document.getElementById('s-run').disabled = sweep.running || batch.running;
+  document.getElementById('b-run').disabled = sweep.running || batch.running;
+  document.getElementById('s-cancel').disabled = !sweep.running;
+  document.getElementById('s-csv').disabled = sweep.running || !sweep.rows.some(Boolean);
+  document.getElementById('s-bar').style.width = (tot ? 100 * sweep.done / tot : 0) + '%';
+  document.getElementById('s-status').textContent = sweep.running ? sweep.done + ' / ' + tot + ' runs · ' + sweep.mode
+    : tot ? sweep.done + ' / ' + tot + ' runs' + (sweep.done < tot ? ' (cancelled)' : ' · done') : 'idle';
+}
+
+function startSweep() {
+  if (sweep.running || batch.running) return;
+  const ks = [...new Set(document.getElementById('s-kappas').value.split(/[,;\s]+/).map(Number)
+    .filter(v => isFinite(v) && v >= 0))].sort((u, v) => u - v).slice(0, 12);
+  if (!ks.length) { document.getElementById('s-status').textContent = 'list at least one gain κ ≥ 0'; return; }
+  document.getElementById('s-kappas').value = ks.join(', ');
+  const n = Math.max(3, Math.min(200, +document.getElementById('s-n').value | 0));
+  const Tmax = Math.max(500, +document.getElementById('b-tmax').value | 0);
+  const base = +document.getElementById('b-seed').value | 0, P0 = getParams();
+  const jobs = [];
+  ks.forEach((k, ki) => {
+    const P = Object.assign({}, P0, { follow: k > 0, kappa: k });
+    for (let r = 0; r < n; r++) CONDS.forEach((c, cond) => jobs.push({
+      id: jobs.length, ki, rep: r, cond, conf: c.conf, raft: c.raft, P, Tmax, every: Tmax,
+      seed: (base * 7919 + r * 104729 + cond * 15485863 + 12345) >>> 0,   // the same seeds at every κ
+    }));
+  });
+  sweep.rows = new Array(jobs.length).fill(null);
+  // The sweep turns recruitment on, so its trail settings apply even when the panel has it off
+  let summary = paramSummary(['follow', 'kappa']);
+  if (!pvals.follow && !pvals.trailJoin) summary += ' · Deposit rate = ' + pvals.deposit.toFixed(2) + ' · Evaporation rate = ' + pvals.evap.toFixed(3);
+  sweep.meta = { ks, n, Tmax, base, P: P0, summary, jobs };
+  document.getElementById('s-results').innerHTML = '';
+  runPool(sweep, jobs, o => {
+    const j = jobs[o.id]; sweep.rows[o.id] = Object.assign({ ki: j.ki, rep: j.rep, cond: j.cond, seed: j.seed }, o);
+    sweepUI();
+  }, cancelled => { clearInterval(sweep.timer); sweepUI(); renderSweep(true, cancelled); });
+  sweepUI();
+  sweep.timer = setInterval(() => { if (sweep.running) renderSweep(false); }, 2000);
+}
+
+function sweepStats(final) {
+  const M = sweep.meta, rng = makeRNG(M.base + 7);
+  return M.ks.map((k, ki) => {
+    const byRep = new Map();
+    sweep.rows.forEach(r => { if (r && r.ki === ki) { if (!byRep.has(r.rep)) byRep.set(r.rep, []); byRep.get(r.rep).push(r); } });
+    const rows = []; byRep.forEach(v => { if (v.length === 4) rows.push(...v); });
+    const nRep = rows.length / 4;
+    if (nRep < 2) return { k, nRep };
+    const a = rows.map(r => CONDS[r.cond].raft ? 1 : 0), b = rows.map(r => CONDS[r.cond].conf ? 1 : 0);
+    const y = rows.map(r => Math.log(Math.min(r.T, M.Tmax)));
+    const av = anova2(y, a, b), tq = tCrit(av.dfE), seD = Math.sqrt(2 * av.mse / av.r), seI = Math.sqrt(4 * av.mse / av.r);
+    const eff = [1, 0].map(lv => { const d = av.m[2 * lv] - av.m[2 * lv + 1]; return { d, lo: d - tq * seD, hi: d + tq * seD }; });
+    const I = eff[0].d - eff[1].d;
+    const fl = final ? freedmanLane(y, a, b, 999, rng) : null;
+    const done = rows.filter(r => r.event).length;
+    return { k, nRep, eff, I, Ilo: I - tq * seI, Ihi: I + tq * seI, p: fl ? fl.p : NaN, done, total: rows.length };
+  });
+}
+
+function renderSweep(final, cancelled) {
+  const M = sweep.meta; if (!M) return;
+  const S = sweepStats(final), ok = S.filter(s => s.nRep >= 2);
+  const out = document.getElementById('s-results');
+  if (!ok.length) { out.innerHTML = '<div class="empty">Collecting runs…</div>'; return; }
+  const x = v => fmt(Math.exp(v), 2) + '×';
+  let h = '';
+  if (cancelled) h += '<div class="warn" style="margin-top:10px">Sweep cancelled; the results use the complete replicates finished so far.</div>';
+  h += '<div class="stack" style="margin-top:10px"><div class="plot-box"><canvas id="s-plot"></canvas><div class="clegend">' +
+    '<span><span class="sw" style="border-color:#c2410c"></span>confined (dish)</span><span><span class="sw dash" style="border-color:#c2410c"></span>unconfined</span></div>' +
+    '<div class="card-note">Raft speedup in each arena (the geometric-mean ratio of restricted completion times without and with rafts) at each recruitment gain, with 95% CIs from that gain\'s own two-way ANOVA. At 1×, rafts make no difference.</div></div>';
+  h += '<div class="tbl-scroll"><table class="tbl"><tr><th style="text-transform:none"><i>κ</i></th><th>Speedup, confined</th><th>Speedup, unconfined</th><th>Ratio</th><th>p (perm.)</th><th>Completed</th></tr>';
+  S.forEach(s => {
+    if (s.nRep < 2) { h += '<tr><td>' + s.k + '</td><td colspan="5">…</td></tr>'; return; }
+    h += '<tr><td>' + s.k + '</td><td>' + x(s.eff[0].d) + ' <span class="ci">(' + x(s.eff[0].lo) + '–' + x(s.eff[0].hi) + ')</span></td><td>' +
+      x(s.eff[1].d) + ' <span class="ci">(' + x(s.eff[1].lo) + '–' + x(s.eff[1].hi) + ')</span></td><td>' + x(s.I) + '</td><td>' +
+      (final ? pCell(s.p) : '…') + '</td><td>' + s.done + ' / ' + s.total + '</td></tr>';
+  });
+  h += '</table></div><div class="card-note">Ratio is the confined speedup over the unconfined one; its p-value is the Freedman–Lane permutation test of the interaction at that gain (999 permutations). ' +
+    'Replicates per condition: ' + Math.min(...ok.map(s => s.nRep)) + (ok.some(s => s.nRep !== ok[0].nRep) ? ' or more' : '') + '; time limit ' + M.Tmax + '; base seed ' + M.base + '.</div></div></div>';
+  h += '<div class="params-sum">Other parameters for this sweep: ' + M.summary + '</div>';
+  out.innerHTML = h;
+  sweep.view = S;
+  drawSweepPlot();
+}
+
+function drawSweepPlot() {
+  const S = sweep.view, cv = document.getElementById('s-plot'); if (!S || !cv) return;
+  const ok = S.filter(s => s.nRep >= 2); if (!ok.length) return;
+  const W = Math.max(260, cv.parentNode.clientWidth), H = 230, ctx = hidpi(cv, W, H);
+  const ks = sweep.meta.ks, x0 = ks[0], x1 = ks[ks.length - 1], pad = (x1 - x0) * 0.06 || 1;
+  let lo = 0, hi = 0;
+  ok.forEach(s => s.eff.forEach(e => { lo = Math.min(lo, e.lo); hi = Math.max(hi, e.hi); }));
+  lo -= 0.05; hi += 0.05;
+  const yt = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5, 2, 3, 4, 6, 8].map(Math.log).filter(v => v >= lo && v <= hi);
+  const ax = axes(ctx, W, H, [x0 - pad, x1 + pad], [lo, hi], { yticks: yt, yfmt: v => +Math.exp(v).toFixed(2) + '×', xlab: 'recruitment gain κ', ylab: 'raft speedup' });
+  ctx.strokeStyle = '#8a8378'; ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(ax.x(x0 - pad), ax.y(0)); ctx.lineTo(ax.x(x1 + pad), ax.y(0)); ctx.stroke(); ctx.setLineDash([]);
+  [0, 1].forEach(j => {
+    const off = (j ? 1 : -1) * pad * 0.25;
+    ctx.strokeStyle = ctx.fillStyle = '#c2410c'; ctx.lineWidth = 2; ctx.setLineDash(j ? [5, 4] : []);
+    ctx.beginPath(); ok.forEach((s, q) => { const X = ax.x(s.k + off), Y = ax.y(s.eff[j].d); q ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.stroke();
+    ctx.setLineDash([]); ctx.lineWidth = 1.4;
+    ok.forEach(s => {
+      const X = ax.x(s.k + off);
+      ctx.beginPath(); ctx.moveTo(X, ax.y(s.eff[j].lo)); ctx.lineTo(X, ax.y(s.eff[j].hi)); ctx.stroke();
+      ctx.beginPath(); if (j) { ctx.fillStyle = 'white'; ctx.arc(X, ax.y(s.eff[j].d), 3.6, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#c2410c'; }
+      else { ctx.arc(X, ax.y(s.eff[j].d), 3.6, 0, 7); ctx.fill(); }
+    });
+  });
+}
+
+function sweepCSV() {
+  const M = sweep.meta;
+  let s = '# pontoon_rafts recruitment sweep; Tmax=' + M.Tmax + '; base seed=' + M.base + '; params (kappa and follow vary by row): ' + JSON.stringify(M.P) + '\n';
+  s += 'kappa,rep,confinement,rafts,seed,T,event,T50,event50,Tmax,raft_ants_mean,ants_lost\n';
+  sweep.rows.filter(Boolean).sort((u, v) => u.ki - v.ki || u.rep - v.rep || u.cond - v.cond).forEach(r => {
+    const c = CONDS[r.cond];
+    s += [M.ks[r.ki], r.rep + 1, c.conf ? 'confined' : 'unconfined', c.raft ? 'rafts' : 'none', r.seed, r.T, r.event, r.T50, r.event50, M.Tmax, r.raftMean.toFixed(2), r.lost].join(',') + '\n';
+  });
+  const blob = new Blob([s], { type: 'text/csv' }), el = document.createElement('a');
+  el.href = URL.createObjectURL(blob); el.download = 'pontoon_rafts_sweep.csv'; document.body.appendChild(el); el.click();
+  setTimeout(() => { URL.revokeObjectURL(el.href); el.remove(); }, 500);
+}
+
 // ── Tabs ───────────────────────────────────────────────────────────
 function tabNames() { return [...document.querySelectorAll('.main-tab')].map(b => b.dataset.tab); }
 function switchTab(tab) {
@@ -1520,7 +1697,7 @@ function switchTab(tab) {
   // here only costs the deep link and must not stop the tab switch.
   try { history.replaceState(null, '', '#' + tab); } catch (e) {}
   if (tab === 'explorer') requestAnimationFrame(() => { layoutArenas(); drawLive(); });
-  if (tab === 'batch') requestAnimationFrame(drawBatchPlots);
+  if (tab === 'batch') requestAnimationFrame(() => { drawBatchPlots(); drawSweepPlot(); });
 }
 document.querySelectorAll('[data-tab]').forEach(el =>
   el.addEventListener('click', e => { e.preventDefault(); switchTab(el.dataset.tab); window.scrollTo(0, 0); }));
@@ -1544,6 +1721,9 @@ document.getElementById('seed').addEventListener('change', () => resetLive(false
 document.getElementById('scent').addEventListener('change', e => { document.getElementById('scent-key').hidden = !e.target.checked; drawLive(); });
 document.getElementById('trailov').addEventListener('change', e => { document.getElementById('trail-key').hidden = !e.target.checked; drawLive(); });
 document.getElementById('b-run').addEventListener('click', startBatch);
+document.getElementById('s-run').addEventListener('click', startSweep);
+document.getElementById('s-cancel').addEventListener('click', () => sweep.cancel && sweep.cancel());
+document.getElementById('s-csv').addEventListener('click', sweepCSV);
 document.getElementById('b-cancel').addEventListener('click', cancelBatch);
 document.getElementById('b-csv').addEventListener('click', downloadCSV);
 document.getElementById('b-seed-lbl').addEventListener('click', () => {
@@ -1553,7 +1733,7 @@ document.getElementById('b-resp').addEventListener('change', () => { if (batch.m
 let _rz = false;
 window.addEventListener('resize', () => {
   if (_rz) return; _rz = true;
-  requestAnimationFrame(() => { _rz = false; layoutArenas(); drawLive(); drawBatchPlots(); });
+  requestAnimationFrame(() => { _rz = false; layoutArenas(); drawLive(); drawBatchPlots(); drawSweepPlot(); });
 });
 
 // ── Init ───────────────────────────────────────────────────────────
