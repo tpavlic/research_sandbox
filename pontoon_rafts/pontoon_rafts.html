@@ -156,7 +156,7 @@ a:hover{text-decoration:underline}
 .clegend span{display:flex;align-items:center;gap:5px}
 
 /* ── Batch tab ───────────────────────────── */
-.wrap{max-width:1120px;margin:0 auto;padding:14px 16px 18px;display:flex;flex-direction:column;gap:12px}
+.batch-col{gap:12px}
 .batch-ctl{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px 14px;align-items:end}
 .fld{display:flex;flex-direction:column;gap:2px;font-size:11px}
 .fld span{display:flex;align-items:center;gap:4px}
@@ -165,7 +165,10 @@ a:hover{text-decoration:underline}
 .prog div{height:100%;width:0;background:var(--rust);transition:width .2s}
 .prog-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+/* min-width:0 lets a wide table scroll inside its card instead of widening the page */
+.grid2>*,.stack>*{min-width:0}
+.stack{display:flex;flex-direction:column;gap:12px}
+@media(max-width:1020px){.grid2{grid-template-columns:1fr}}
 .plot-box canvas{display:block;width:100%}
 table.tbl{border-collapse:collapse;font-size:11px;width:100%;font-family:var(--mono)}
 .tbl th,.tbl td{padding:4px 7px;border-bottom:1px solid #e6e0d6;text-align:right;white-space:nowrap}
@@ -210,7 +213,6 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
   .hiw-inner{flex-direction:column}
   .hdr-sub{display:none}.hdr-main{font-size:12px}
   .right-col{padding:8px}
-  .wrap{padding:10px}
 }
 </style>
 </head>
@@ -248,7 +250,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
     <div class="hiw-card"><div class="hiw-num">3</div><div class="hiw-text"><b>Rafts (right-hand runs only).</b> Idle anchors let go of the shore and detached pieces float as rafts that drift, collide, and dock, instead of dispersing.</div></div>
   </div></div>
   <div class="body">
-    <aside class="panel"><div class="panel-inner" id="param-panel"></div></aside>
+    <aside class="panel" id="slot-explorer"><div class="panel-inner" id="param-panel"></div></aside>
     <div class="right-col">
       <div class="toolbar">
         <button class="btn primary play" id="btn-play"><span class="lbl-run">▶ Run</span><span class="lbl-pause">❚❚ Pause</span></button>
@@ -274,7 +276,10 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
 
 <!-- ═══════════════ BATCH ═══════════════ -->
 <section class="pane" id="pane-batch">
-  <div class="wrap">
+  <div class="body">
+    <!-- the parameter panel moves here from the Explorer while this tab is open -->
+    <aside class="panel" id="slot-batch"></aside>
+    <div class="right-col batch-col">
     <div class="card">
       <div class="card-h">Replicated 2 × 2 experiment</div>
       <div class="batch-ctl">
@@ -296,11 +301,11 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <button class="btn" id="b-csv" disabled>Download CSV</button>
         <div class="prog-row" style="flex:1"><div class="prog"><div id="b-bar"></div></div><span id="b-status">idle</span></div>
       </div>
-      <div class="card-note">The batch uses the parameters currently set in the panel on the <a href="#explorer" data-tab="explorer">Explorer</a> tab. Runs are spread over parallel background workers where the browser allows it.</div>
-      <div class="params-sum" id="b-params" style="margin-top:6px"></div>
+      <div class="card-note">The batch uses the model parameters in the side panel, the same panel as on the <a href="#explorer" data-tab="explorer">Explorer</a> tab, so a change made on either tab applies to both. Runs are spread over parallel background workers where the browser allows it.</div>
     </div>
 
     <div id="b-results"><div class="empty">No batch yet. Press <b>Run batch</b>; 30 replicates per condition take well under a minute on most machines.</div></div>
+    </div>
   </div>
 </section>
 
@@ -788,7 +793,7 @@ function syncDim() {
 let _pcTimer = null;
 function onParamChange() {
   syncDim();
-  document.getElementById('b-params').textContent = 'Parameters: ' + paramSummary();
+  syncStale();
   clearTimeout(_pcTimer);
   _pcTimer = setTimeout(() => resetLive(false), 120);
 }
@@ -1196,7 +1201,7 @@ function renderResults(final, cancelled) {
   const tr = v => R.log ? fmt(Math.exp(v), 2) + '×' : fmt(v, R.time ? 0 : 3);
   const effName = R.log ? 'raft speedup (ratio)' : R.time ? 'steps saved by rafts' : 'gain in completion probability';
 
-  let h = '';
+  let h = '<div class="warn" id="b-stale" hidden>The panel\'s parameters have changed since this batch ran. The results below use the parameters listed at the bottom of this tab; run the batch again to use the new ones.</div>';
   if (cancelled) h += '<div class="warn">Batch cancelled; the results below use the ' + nRep + ' complete replicates finished so far.</div>';
   else if (!final) h += '<div class="warn">Running… interim results from ' + nRep + ' complete replicates; permutation tests run when the batch finishes.</div>';
 
@@ -1222,7 +1227,7 @@ function renderResults(final, cancelled) {
   h += '<div class="card"><div class="card-h">Mean bridge span</div><div class="plot-box"><canvas id="pl-span"></canvas></div><div class="clegend">' + legendHTML() + '</div><div class="card-note">Mean span across runs (shaded: ±1 SE), with completed runs held at 100%.</div></div>';
   h += '</div>';
 
-  h += '<div class="grid2">';
+  h += '<div class="stack">';
   h += '<div class="card"><div class="card-h">Interaction plot · ' + R.name + '</div><div class="plot-box"><canvas id="pl-int"></canvas></div><div class="clegend"><span><span class="sw" style="border-color:#1d4ed8"></span>no rafts</span><span><span class="sw" style="border-color:#c2410c"></span>rafts</span></div><div class="card-note">Cell means with 95% CIs (pooled error), and each run as a dot. Parallel lines mean no interaction.</div></div>';
   h += '<div class="card"><div class="card-h">Condition summaries</div><div class="tbl-scroll"><table class="tbl"><tr><th>Condition</th><th>n</th><th>completed</th><th>median T</th><th>RMST</th><th>mean resp.</th><th>SD</th><th>raft ants</th><th>ants lost</th></tr>';
   CONDS.forEach((c, k) => {
@@ -1232,7 +1237,7 @@ function renderResults(final, cancelled) {
   h += '</table></div><div class="card-note">RMST is the mean of min(T, T<sub>max</sub>). "Raft ants" is the time-averaged number of ants in rafts; "ants lost" counts ants that drifted out of the arena.</div></div>';
   h += '</div>';
 
-  h += '<div class="grid2">';
+  h += '<div class="stack">';
   h += '<div class="card"><div class="card-h">Two-way ANOVA · ' + R.name + '</div><div class="tbl-scroll"><table class="tbl"><tr><th>Source</th><th>df</th><th>SS</th><th>MS</th><th>F</th><th>p (F)</th><th>p (perm.)</th></tr>';
   const arow = (nm, r, pp, hl) => '<tr' + (hl ? ' class="hl"' : '') + '><td>' + nm + '</td><td>' + r.df + '</td><td>' + fmt(r.ss, 4) + '</td><td>' + fmt(r.ms, 4) + '</td><td>' + fmt(r.F, 3) + '</td><td>' + fmtP(r.p) + '</td><td>' + pp + '</td></tr>';
   h += arow('Rafting', av.A, '–') + arow('Confinement', av.B, '–') + arow('Rafting × confinement', av.AB, fl ? fmtP(fl.p) : '…', true);
@@ -1248,12 +1253,18 @@ function renderResults(final, cancelled) {
 
   h += '<div class="card"><div class="card-h">Reproduce in R</div><div class="card-note" style="margin:0 0 6px">Download the CSV, then:</div><pre class="code" id="rcode">' + rCode() + '</pre><div class="toolbar" style="margin-top:6px"><button class="btn small" id="b-copy-r">Copy R code</button></div></div>';
 
+  h += '<div class="params-sum">Parameters for these results: ' + M.summary + ' · replicates ' + nRep + ' · T<sub>max</sub> ' + M.Tmax + ' · base seed ' + M.base + '</div>';
   out.innerHTML = h;
+  syncStale();
   document.getElementById('b-copy-r').addEventListener('click', e => {
     navigator.clipboard && navigator.clipboard.writeText(document.getElementById('rcode').textContent).then(() => { e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy R code', 1200); });
   });
   batch.view = { rows, y, a, b, av, key, R, M };
   drawBatchPlots();
+}
+function syncStale() {
+  const el = document.getElementById('b-stale');
+  if (el && batch.meta) el.hidden = paramSummary() === batch.meta.summary;
 }
 function legendHTML() {
   return CONDS.map(c => '<span><span class="sw' + (c.dash ? ' dash' : '') + '" style="border-color:' + c.color + '"></span>' + c.label + '</span>').join('');
@@ -1371,6 +1382,9 @@ function rCode() {
 // ── Tabs ───────────────────────────────────────────────────────────
 function tabNames() { return [...document.querySelectorAll('.main-tab')].map(b => b.dataset.tab); }
 function switchTab(tab) {
+  // One parameter panel serves both the Explorer and the batch tab
+  const slot = document.getElementById('slot-' + tab);
+  if (slot) slot.appendChild(document.getElementById('param-panel'));
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + tab));
   document.querySelectorAll('.main-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   const sel = document.getElementById('tab-sel-mobile'); if (sel) sel.value = tab;
@@ -1414,7 +1428,6 @@ window.addEventListener('resize', () => {
 const _initTab = location.hash.slice(1);
 buildPanel();
 buildArenas();
-document.getElementById('b-params').textContent = 'Parameters: ' + paramSummary();
 resetLive(false);
 switchTab('explorer');
 if (tabNames().includes(_initTab) && _initTab !== 'explorer') switchTab(_initTab);
