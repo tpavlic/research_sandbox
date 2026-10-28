@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pontoon Rafts – Rafting × Confinement in Fire-Ant Bridging</title>
+<meta name="description" content="Ask whether floating rafts speed fire-ant pontoon bridging only because a dish is confined, with a live 2 × 2 lattice simulation (rafting × confinement), parallel batch runs, and a two-way ANOVA with permutation tests on restricted completion time.">
+
+<!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Pontoon Rafts – Rafting × Confinement in Fire-Ant Bridging">
+<meta property="og:description" content="Ask whether floating rafts speed fire-ant pontoon bridging only because a dish is confined, with a live 2 × 2 lattice simulation (rafting × confinement), parallel batch runs, and a two-way ANOVA with permutation tests on restricted completion time.">
+<meta property="og:image" content="https://tpavlic.github.io/research_sandbox/pontoon_rafts/pontoon_rafts-preview.png">
+<meta property="og:image:width" content="2400">
+<meta property="og:image:height" content="1200">
+<meta property="og:url" content="https://tpavlic.github.io/research_sandbox/pontoon_rafts/pontoon_rafts.html">
+<meta property="fb:app_id" content="2385695445236853">
+
+<!-- Twitter/X card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pontoon Rafts – Rafting × Confinement in Fire-Ant Bridging">
+<meta name="twitter:description" content="Ask whether floating rafts speed fire-ant pontoon bridging only because a dish is confined, with a live 2 × 2 lattice simulation (rafting × confinement), parallel batch runs, and a two-way ANOVA with permutation tests on restricted completion time.">
+<meta name="twitter:image" content="https://tpavlic.github.io/research_sandbox/pontoon_rafts/pontoon_rafts-preview.png">
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1GJE3Z9182"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-1GJE3Z9182');
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --cream:    #faf6f0;
+  --cream-dk: #ede8df;
+  --rust:     #9a3412;
+  --rust-dk:  #7c2d12;
+  --rust-pale:#f6e6dc;
+  --blue:     #1d4ed8;
+  --orange:   #c2410c;
+  --text:     #1c1c1c;
+  --muted:    #6e6860;
+  --border:   #cdc7bc;
+  --shadow:   rgba(0,0,0,0.08);
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Outfit', sans-serif;
+  --r: 8px; --pill: 20px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--cream);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.5}
+.app{display:flex;flex-direction:column;min-height:100vh}
+a{color:var(--rust);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ── Header ──────────────────────────────── */
+.hdr{background:var(--rust);color:white;padding:9px 0;flex-shrink:0}
+.hdr-inner{max-width:1120px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hdr-main{font-family:var(--mono);font-weight:600;font-size:14px;letter-spacing:.03em;white-space:nowrap}
+.hdr-sub{font-size:11px;opacity:.8;font-weight:300}
+.hdr-copy{margin-left:auto;font-size:11px;opacity:.8;font-weight:300;text-align:right;line-height:1.35}
+.hdr-copy a{color:inherit;text-decoration:none}
+.hdr-copy a:hover{text-decoration:underline}
+.hdr-copy .hcr-sep{display:none;margin:0 .3em}
+@media(max-width:600px){
+  .hdr-inner{row-gap:4px}
+  .hdr-copy{width:100%;margin-left:0;text-align:left}
+  .hdr-copy .hcr-sep{display:inline}
+  .hdr-copy .hcr-br{display:none}
+}
+@media(max-width:400px){
+  .hdr-copy .hcr-sep{display:none}
+  .hdr-copy .hcr-br{display:inline}
+}
+
+/* ── Tab bar ─────────────────────────────── */
+.tab-bar{background:var(--cream-dk);border-bottom:3px solid var(--border);flex-shrink:0}
+.tab-bar-inner{max-width:1120px;margin:0 auto;display:flex;padding:0}
+.main-tab{padding:11px 24px;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;letter-spacing:.03em;border-bottom:3px solid transparent;margin-bottom:-3px;transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-block}
+.main-tab:hover{color:var(--text);text-decoration:none}
+.main-tab.on{color:var(--rust);background:var(--cream);border-bottom-color:var(--rust)}
+.tab-sel-mobile{display:none;margin:8px 12px;font-family:var(--mono);font-size:11px;padding:5px 8px;border-radius:var(--pill);border:1.5px solid var(--border);background:var(--cream);color:var(--text);cursor:pointer;outline:none;width:calc(100% - 24px)}
+@media(max-width:480px){.tab-bar{display:none}.tab-sel-mobile{display:block}}
+.pane{display:none}
+.pane.on{display:block}
+
+/* ── How-it-works strip ─────────────────── */
+.hiw{background:var(--cream-dk);border-bottom:2px solid var(--border)}
+.hiw-inner{max-width:1120px;margin:0 auto;padding:10px 14px;display:flex;gap:10px;flex-wrap:wrap}
+.hiw-card{flex:1;min-width:200px;display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--cream);border:1px solid var(--border);border-radius:var(--r)}
+.hiw-num{font-family:var(--mono);font-weight:700;font-size:11px;color:white;background:var(--rust);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.hiw-text{font-size:11px;color:var(--muted);line-height:1.45}.hiw-text b{color:var(--text)}
+
+/* ── Explorer layout ─────────────────────── */
+.body{display:flex;max-width:1120px;margin:0 auto;width:100%}
+.panel{width:280px;min-width:280px;background:var(--cream-dk);border-right:1px solid var(--border);flex-shrink:0}
+.panel-inner{padding:11px;display:flex;flex-direction:column;gap:8px}
+.right-col{flex:1;min-width:0;padding:12px;display:flex;flex-direction:column;gap:10px}
+.grp{background:var(--cream);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px}
+.grp-h{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--rust);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.grp-note{font-size:10px;color:var(--muted);line-height:1.4;margin:-2px 0 6px}
+.prm{margin-bottom:7px}
+.prm:last-child{margin-bottom:0}
+.prm-top{display:flex;align-items:baseline;gap:4px;font-size:11px}
+.prm-lbl{flex:1;color:var(--text)}
+.prm-val{font-family:var(--mono);font-size:10.5px;color:var(--rust);font-weight:600;white-space:nowrap}
+.prm input[type=range]{width:100%;accent-color:var(--rust);height:16px}
+.prm select{width:100%;font-family:var(--sans);font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text);margin-top:2px}
+.prm.dim{opacity:.45}
+.tip{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1px solid var(--border);font-size:9px;font-family:var(--mono);color:var(--muted);cursor:help;position:relative;flex-shrink:0;background:white}
+.tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:50%;top:17px;transform:translateX(-60%);width:230px;background:#2a2420;color:#f7f2ea;font-family:var(--sans);font-size:11px;line-height:1.45;padding:7px 9px;border-radius:6px;z-index:50;white-space:normal;text-align:left;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.btn{font-family:var(--mono);font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--pill);border:1.5px solid var(--rust);background:var(--cream);color:var(--rust);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--rust-pale)}
+.btn.primary{background:var(--rust);color:white}
+.btn.primary:hover{background:var(--rust-dk)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.small{font-size:10px;padding:3px 9px}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tb-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.toolbar input[type=range]{width:110px;accent-color:var(--rust)}
+.toolbar input[type=number]{width:74px;font-family:var(--mono);font-size:11px;padding:3px 5px;border-radius:6px;border:1px solid var(--border)}
+.toolbar label{font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer}
+.chk{accent-color:var(--rust)}
+
+#arenas{display:flex;flex-direction:column;gap:10px}
+.arena-row{display:flex;gap:10px;flex-wrap:wrap}
+.arena{background:white;border:1px solid var(--border);border-radius:var(--r);padding:6px 8px 6px;box-shadow:0 2px 8px var(--shadow);min-width:0}
+.arena-h{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;font-weight:600;margin-bottom:4px}
+.sw{display:inline-block;width:22px;height:0;border-top:3px solid;flex-shrink:0}
+.sw.dash{border-top-style:dashed}
+.arena canvas{display:block}
+.arena-st{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5}
+.arena-st b{color:var(--text)}
+.arena-st .ok{color:#15803d;font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:5px 10px;font-size:10.5px;color:var(--muted)}
+.lg{display:flex;align-items:center;gap:4px}
+.lg i{display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid rgba(0,0,0,.15)}
+.card{background:white;border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;box-shadow:0 2px 8px var(--shadow)}
+.card-h{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--rust);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.card-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
+.clegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--mono);font-size:10px;margin-top:4px}
+.clegend span{display:flex;align-items:center;gap:5px}
+
+/* ── Batch tab ───────────────────────────── */
+.wrap{max-width:1120px;margin:0 auto;padding:14px 16px 18px;display:flex;flex-direction:column;gap:12px}
+.batch-ctl{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px 14px;align-items:end}
+.fld{display:flex;flex-direction:column;gap:2px;font-size:11px}
+.fld span{display:flex;align-items:center;gap:4px}
+.fld input,.fld select{font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text)}
+.prog{height:8px;background:var(--cream-dk);border-radius:4px;overflow:hidden;border:1px solid var(--border);flex:1;min-width:120px}
+.prog div{height:100%;width:0;background:var(--rust);transition:width .2s}
+.prog-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+.plot-box canvas{display:block;width:100%}
+table.tbl{border-collapse:collapse;font-size:11px;width:100%;font-family:var(--mono)}
+.tbl th,.tbl td{padding:4px 7px;border-bottom:1px solid #e6e0d6;text-align:right;white-space:nowrap}
+.tbl th{font-weight:600;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.03em;border-bottom:1.5px solid var(--border)}
+.tbl td:first-child,.tbl th:first-child{text-align:left}
+.tbl tr.hl td{background:var(--rust-pale);font-weight:600}
+.tbl-scroll{overflow-x:auto}
+.verdict{font-size:12.5px;line-height:1.6;padding:9px 12px;border-left:3px solid var(--rust);background:var(--rust-pale);border-radius:0 6px 6px 0}
+.warn{font-size:11.5px;line-height:1.5;padding:7px 10px;border-left:3px solid #b45309;background:#fdf3e1;border-radius:0 6px 6px 0}
+.params-sum{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;word-break:break-word}
+pre.code{background:#2a2420;color:#f3ede4;font-family:var(--mono);font-size:11px;line-height:1.55;padding:10px 12px;border-radius:6px;overflow-x:auto;white-space:pre}
+#b-results{display:flex;flex-direction:column;gap:12px}
+.empty{font-size:12px;color:var(--muted);font-style:italic;padding:8px 0}
+
+/* ── Model tab ───────────────────────────── */
+.prose{max-width:820px;margin:0 auto;padding:20px 18px 18px}
+.prose h2{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--rust);letter-spacing:.03em;margin:20px 0 6px;padding-bottom:3px;border-bottom:1.5px solid var(--rust-pale)}
+.prose h2:first-child{margin-top:0}
+.prose p{font-size:13px;line-height:1.7;margin-bottom:9px}
+.prose ul,.prose ol{margin:0 0 10px 20px;font-size:13px;line-height:1.65}
+.prose li{margin-bottom:4px}
+.prose .eq{font-family:var(--mono);font-size:12px;background:var(--rust-pale);border:1px solid #e9cdbd;border-radius:6px;padding:7px 12px;margin:6px 0 10px;line-height:1.9;overflow-x:auto}
+.prose .note{font-size:12px;color:var(--muted);font-style:italic;line-height:1.55;padding:7px 11px;background:var(--cream-dk);border-left:3px solid var(--border);border-radius:0 5px 5px 0;margin:8px 0 12px}
+.prose code{font-family:var(--mono);font-size:11.5px;background:var(--cream-dk);padding:0 3px;border-radius:3px}
+
+/* ── Footer ──────────────────────────────── */
+/* Scoped away from #back-link-footer, which is a <footer> too. */
+footer:not(#back-link-footer){background:var(--cream-dk);border-top:1px solid var(--border);padding:6px 16px;font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.7;margin-top:auto}
+footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:center}
+.footer-br{display:none}.footer-sep{margin:0 .3em}
+@media(max-width:360px){.footer-br{display:block}.footer-sep{display:none}}
+
+/* ── Responsive ──────────────────────────── */
+@media(max-width:800px){
+  .body{flex-direction:column}
+  .panel{width:100%;min-width:0;border-right:none;border-top:1px solid var(--border);order:2}
+  .panel-inner{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .right-col{order:1;padding:10px}
+}
+@media(max-width:520px){
+  .panel-inner{grid-template-columns:1fr}
+  .hiw-inner{flex-direction:column}
+  .hdr-sub{display:none}.hdr-main{font-size:12px}
+  .right-col{padding:8px}
+  .wrap{padding:10px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header class="hdr">
+  <div class="hdr-inner">
+    <div>
+      <div class="hdr-main">Pontoon Rafts</div>
+      <div class="hdr-sub">Rafting × Confinement in Fire-Ant Bridging · a 2 × 2 simulation sandbox</div>
+    </div>
+    <div class="hdr-copy">&copy; 2026 Theodore&nbsp;P.&nbsp;Pavlic<span class="hcr-sep"> &middot; </span><br class="hcr-br"><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT&nbsp;License</a></div>
+  </div>
+</header>
+
+<nav class="tab-bar">
+  <div class="tab-bar-inner">
+    <a href="#explorer" class="main-tab on" data-tab="explorer">Explorer</a>
+    <a href="#batch" class="main-tab" data-tab="batch">Batch experiment</a>
+    <a href="#model" class="main-tab" data-tab="model">Model &amp; analysis</a>
+  </div>
+</nav>
+<select class="tab-sel-mobile" id="tab-sel-mobile" aria-label="Section">
+  <option value="explorer">Explorer</option>
+  <option value="batch">Batch experiment</option>
+  <option value="model">Model &amp; analysis</option>
+</select>
+
+<!-- ═══════════════ EXPLORER ═══════════════ -->
+<section class="pane on" id="pane-explorer">
+  <div class="hiw"><div class="hiw-inner">
+    <div class="hiw-card"><div class="hiw-num">1</div><div class="hiw-text"><b>Ants step onto the water.</b> Foragers walk the shore and any standing structure, drawn toward food scent, and link onto open water at the edge, more readily the closer the water is to the target.</div></div>
+    <div class="hiw-card"><div class="hiw-num">2</div><div class="hiw-text"><b>Traffic locks the structure.</b> An ant that others walk over is held in place; an ant nobody uses lets go. Only well-used proto-bridges persist.</div></div>
+    <div class="hiw-card"><div class="hiw-num">3</div><div class="hiw-text"><b>Rafts (right-hand runs only).</b> Idle anchors let go of the shore and detached pieces float as rafts that drift, collide, and dock, instead of dispersing.</div></div>
+  </div></div>
+  <div class="body">
+    <aside class="panel"><div class="panel-inner" id="param-panel"></div></aside>
+    <div class="right-col">
+      <div class="toolbar">
+        <button class="btn primary" id="btn-play">▶ Run</button>
+        <button class="btn" id="btn-step">Step ×10</button>
+        <button class="btn" id="btn-reset">Reset</button>
+        <span class="tb-lbl">Speed</span><input type="range" id="speed" min="1" max="60" value="12" aria-label="Steps per frame">
+        <span class="tb-lbl">Seed</span><input type="number" id="seed" value="1" min="0" aria-label="Random seed">
+        <button class="btn small" id="btn-newseed">New seed</button>
+        <label><input type="checkbox" class="chk" id="scent"> Scent overlay</label>
+      </div>
+      <div id="arenas"></div>
+      <div class="legend" id="cell-legend"></div>
+      <div class="card">
+        <div class="card-h">Bridge span over time (live runs)</div>
+        <div class="plot-box"><canvas id="live-plot"></canvas></div>
+        <div class="clegend" id="live-legend"></div>
+        <div class="card-note">Span is the fraction of the gap covered by the shore-anchored structure that reaches farthest toward the target; it jumps to 100% when one connected structure touches both the shore and the target. A single run per condition says little, as runs vary widely; use the <a href="#batch" data-tab="batch">Batch experiment</a> tab for replicated comparisons.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ BATCH ═══════════════ -->
+<section class="pane" id="pane-batch">
+  <div class="wrap">
+    <div class="card">
+      <div class="card-h">Replicated 2 × 2 experiment</div>
+      <div class="batch-ctl">
+        <label class="fld"><span>Replicates per condition</span><input type="number" id="b-n" value="30" min="3" max="500"></label>
+        <label class="fld"><span>Time limit T<sub>max</sub> (steps) <span class="tip" tabindex="0" data-tip="Runs that have not completed a bridge by this step are stopped and treated as censored at Tmax. Every run shares the same limit, so the censoring is administrative.">?</span></span><input type="number" id="b-tmax" value="8000" min="500" max="100000" step="500"></label>
+        <label class="fld"><span>Base seed</span><input type="number" id="b-seed" value="1000" min="0"></label>
+        <label class="fld"><span>Permutations</span><input type="number" id="b-perm" value="5000" min="199" max="100000" step="100"></label>
+        <label class="fld"><span>Response <span class="tip" tabindex="0" data-tip="What the ANOVA and permutation tests analyze. The default, log restricted completion time, makes the interaction a ratio of raft speedup factors (see the Model & analysis tab).">?</span></span>
+          <select id="b-resp">
+            <option value="logT">log restricted completion time</option>
+            <option value="T">restricted completion time (RMST)</option>
+            <option value="logT50">log time to half span</option>
+            <option value="done">completed by Tmax (0/1)</option>
+          </select></label>
+      </div>
+      <div class="toolbar" style="margin-top:10px">
+        <button class="btn primary" id="b-run">Run batch</button>
+        <button class="btn" id="b-cancel" disabled>Cancel</button>
+        <button class="btn" id="b-csv" disabled>Download CSV</button>
+        <div class="prog-row" style="flex:1"><div class="prog"><div id="b-bar"></div></div><span id="b-status">idle</span></div>
+      </div>
+      <div class="card-note">The batch uses the parameters currently set in the panel on the <a href="#explorer" data-tab="explorer">Explorer</a> tab. Runs are spread over parallel background workers where the browser allows it.</div>
+      <div class="params-sum" id="b-params" style="margin-top:6px"></div>
+    </div>
+
+    <div id="b-results"><div class="empty">No batch yet. Press <b>Run batch</b>; 30 replicates per condition take well under a minute on most machines.</div></div>
+  </div>
+</section>
+
+<!-- ═══════════════ MODEL ═══════════════ -->
+<section class="pane" id="pane-model">
+  <div class="prose">
+    <h2>The question</h2>
+    <p>In dish assays, fire ants (<em>Solenopsis invicta</em>) held on the rim of a water-filled dish assemble a floating pontoon bridge out to food at its center. Besides the proto-bridges anchored at the rim, clusters of linked ants sometimes break free and float as small rafts, which can drift into one another and into growing structures. Suppose such rafts do speed up bridging in a dish. Does that benefit carry over to the settings where fire ants actually bridge, such as across a stream?</p>
+    <p>A dish differs from open water in at least three ways. It is closed, and so a raft has nowhere to go except into the rim, another structure, or the food. It is radially symmetric, and so every launch point on the rim faces the food, and proto-bridges converge on one another as they grow inward. It is also still, with no current. Along a bank, none of these holds. If the raft effect comes from confinement, a model that produces it in a dish should lose much of it in an unconfined arena, which shows up as a <b>rafting × confinement interaction</b>. The excursion therefore poses the question as a 2 × 2 factorial design, in which the interaction term, not either main effect by itself, answers it.</p>
+    <p class="note">The laboratory system that motivates this is summarized publicly on <a href="https://horacesnature.com/research/" target="_blank" rel="noopener">Horace Zeng's research page</a> (8000-ant subcolonies, bridges of about 500 ants, and several proto-bridges of which only one completes). The model here is an independent toy built to frame the design question; it is not that study's model, and its parameters are not fitted to any data.</p>
+
+    <h2>Arenas</h2>
+    <p>Space is a square lattice whose cells are about one worker body length (taken as 3&nbsp;mm), with one structural ant per water cell. The <b>gap</b> is the number of water cells between the shore and the target, 20 by default (about 6&nbsp;cm, the rim-to-food distance of a 15&nbsp;cm dish with a 3&nbsp;cm food drop).</p>
+    <ul>
+      <li><b>Confined:</b> a circular dish of radius <i>R</i> = gap + target radius, with a rim two cells wide on which ants walk, and the food as a disk at the center.</li>
+      <li><b>Unconfined:</b> a straight shore two cells deep whose length equals the dish's rim circumference, so the same forager pool is spread at the same density per unit of shoreline. By default it faces a <b>far bank</b> at the same gap (a river crossing, where the target is as wide as the shore, just as the dish's food is equally near every rim point). The alternative target is a <b>food item</b> of the dish's size, at the same distance from the shore, in open water. The water is open at the arena's ends (and, for the food-item target, beyond it): a raft that drifts out is lost unless edges are set to reflect.</li>
+    </ul>
+    <p>Confinement in this design therefore bundles closure, convergent geometry, and still water. The geometry controls let you take these apart: set the unconfined edges to reflect to remove the loss of rafts, add current to make the open arena more river-like, or switch the target to see what radial convergence alone contributes.</p>
+
+    <h2>Rules, applied once per step</h2>
+    <ol>
+      <li><b>Recruitment.</b> Each forager in the pool of <i>N</i> enters a random shore cell with probability <i>r</i><sub>in</sub>; a walker on the shore returns to the pool with probability <i>r</i><sub>out</sub>.</li>
+      <li><b>Walking.</b> A walker moves to one of its four neighbors that it can stand on (shore, structure, or target) or stays put, with weights <span style="white-space:nowrap">exp(−<i>b</i>&thinsp;Δ<i>d</i>)</span>, where <i>d</i> is the distance to the target's edge. A walker that reaches the target feeds and returns to the pool.</li>
+      <li><b>Joining.</b> Before moving, a walker tries one random neighbor; if it is open water, the walker links onto it with probability
+        <div class="eq">p<sub>join</sub>(d) = min{1, p<sub>0</sub> · exp[(gap − d) / λ]}</div>
+        and becomes a structural ant. At the shoreline this equals <i>p</i><sub>0</sub>, and it rises toward the target, which is the local scent cue.</li>
+      <li><b>Locking and release.</b> A structural ant is held while a walker stands on it and for τ steps afterward, and also whenever at least <i>k</i> of its four neighbors are structural ants. Otherwise it lets go with probability <i>p</i><sub>rel</sub> and swims back to the pool.</li>
+      <li><b>Connectivity.</b> The structure is split into connected pieces. A piece that touches the shore or the target is anchored; the bridge is complete as soon as one piece touches both.</li>
+      <li><b>The treatment: what happens to a piece that touches neither.</b>
+        <ul>
+          <li><i>No rafts:</i> it disperses at once, and its ants return to the pool.</li>
+          <li><i>Rafts:</i> it persists as a raft. Each step, a raft of <i>m</i> ants moves one cell with probability <i>D</i><sub>0</sub>/<i>m</i><sup>γ</sup> (pushed downstream with probability equal to the current, in the unconfined arena), carrying any walkers on it. It merges with whatever it touches, so a raft that reaches a proto-bridge extends it, and one that reaches the target anchors there. In addition, an <b>anchor</b> (a structural ant touching the shore) with no traffic lets go of the shore with probability <i>p</i><sub>calve</sub>, even when its neighbors would otherwise hold it, and so idle clusters can break away whole.</li>
+        </ul>
+      </li>
+    </ol>
+    <p>The defaults were tuned for one thing only: that rafting clearly speeds bridging in the dish, so that the question about confinement has an effect to ask about. In checks with 100 replicates per condition, the defaults give a raft speedup of about 1.5× in the dish and about 0.9× (a slight slowdown) in the unconfined far-bank arena. Nearby settings of the scent length, raft mobility, and anchor release rate that keep the dish speedup near 1.5× put the unconfined speedup anywhere from about 0.9× to 1.2×, and so the size of the interaction, unlike its direction, is not robust in this model. None of these values is fitted to a measurement.</p>
+
+    <h2>Choosing the response</h2>
+    <p>The natural outcome is the <b>time to completion</b> <i>T</i>, the step at which shore and target are first connected. Runs that have not finished by <i>T</i><sub>max</sub> are stopped. As every run shares the same horizon, this is administrative censoring, and the mean of min(<i>T</i>, <i>T</i><sub>max</sub>) is exactly the <b>restricted mean completion time</b> (RMST) up to <i>T</i><sub>max</sub>, a standard survival estimand, rather than an ad hoc fill-in for missing values. It does compress differences when many runs are censored, so the batch reports censoring counts for every cell; if they are large, raise <i>T</i><sub>max</sub>.</p>
+    <p>The default analysis is on the <b>log scale</b>. A raft speedup is naturally a ratio, and the two arenas need not share a baseline speed. On the raw scale, the same proportional speedup in a slow arena and a fast one yields a nonzero interaction purely because the baselines differ. On the log scale, the interaction contrast is the log of a ratio of speedups:</p>
+    <div class="eq">speedup<sub>arena</sub> = exp[ mean ln T<sub>no rafts</sub> − mean ln T<sub>rafts</sub> ]<br>interaction ratio = speedup<sub>confined</sub> / speedup<sub>unconfined</sub></div>
+    <p>An interaction ratio near 1 says rafts help equally in both arenas, and a ratio well above 1 says the dish amplifies the raft effect. Two other responses are offered: the log time to half span, which is censored far less often and captures early growth, and completion by <i>T</i><sub>max</sub> as a 0/1 outcome, analyzed here as a linear probability model (a logistic model in R is the better choice for that outcome).</p>
+
+    <h2>Tests</h2>
+    <ul>
+      <li><b>Two-way ANOVA</b> with F tests for rafting, confinement, and their interaction. The design is balanced, so sequential and marginal sums of squares coincide.</li>
+      <li><b>Freedman–Lane permutation test of the interaction.</b> Fit the additive model, permute its residuals, add them back to the additive fit, and recompute the interaction F. This keeps the test valid when the errors are skewed or heavy tailed, as completion times often are, even on the log scale.</li>
+      <li><b>Stratified permutation tests</b> of the raft effect within each arena, permuting raft labels among the runs of that arena only. These answer the more direct question of whether rafts matter at all once the dish is gone.</li>
+    </ul>
+    <p>The cumulative completion curves on the batch tab are one minus the Kaplan–Meier survival curves (with all censoring at <i>T</i><sub>max</sub>, they are simply empirical distribution functions). In the exported CSV, <code>T</code> and <code>event</code> are ready for a Cox model or an accelerated failure time model with an interaction term; with a lognormal AFT, the interaction coefficient is the log interaction ratio defined above. The R code on the batch tab does both.</p>
+    <p>The same machinery doubles as a rough power analysis for an empirical version: rerun the batch with the number of colonies a lab could realistically test per condition (say 6 to 10) and see how often the interaction would be detected. An empirical analogue of the unconfined arm could be a long, narrow trough with food or a far bank across its width, in which rafts can drift away from the launch site.</p>
+
+    <h2>Caveats</h2>
+    <ul>
+      <li>The model is a single-layer lattice; real pontoon bridges are thick and multilayered, and real rafts deform.</li>
+      <li>Steps are not seconds, and the parameters are illustrative, not calibrated; absolute times mean nothing, only the comparison among the four cells does.</li>
+      <li>Rafts here drift passively. If ants on a raft can steer toward scent, rafts would reach the target more often in open water too, and the interaction would shrink.</li>
+      <li>Results can be sensitive to the parameters, and the sign of the raft effect in the unconfined arena can change with the anchor release rate and current. That sensitivity is itself an argument for testing the interaction empirically rather than assuming the dish result generalizes.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <span style="white-space:nowrap">© 2026 Theodore&nbsp;P.&nbsp;Pavlic</span><span class="footer-sep"> · </span><br class="footer-br"><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener" style="color:var(--rust);text-decoration:none;white-space:nowrap" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">MIT&nbsp;License</a>
+  </div>
+</footer>
+<footer id="back-link-footer" style="padding:0 16px 1.5rem;">
+  <div style="max-width:1120px;margin:0 auto;padding-top:0.35rem;font-size:0.8rem;color:#888;">
+    <a href="../" style="color:#9a3412;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><span style="font-family:sans-serif">&larr;</span> All excursions</a>
+  </div>
+</footer>
+</div><!-- /app -->
+
+<script id="sim-core">
+// ═══════════════════════════════════════════════════════════════════
+// PONTOON RAFTS · simulation core · © 2026 Theodore P. Pavlic · MIT License
+// Also loaded verbatim into the batch workers.
+// ═══════════════════════════════════════════════════════════════════
+// Cell types
+const WATER = 0, LAND = 1, FOOD = 2, WALL = 3;
+
+function makeRNG(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const DEFAULTS = {
+  R: 25,          // dish radius (cells ≈ body lengths)
+  rf: 5,          // food radius (cells)
+  N: 2000,        // forager pool
+  rIn: 0.002,     // per-step entry prob from the pool
+  rOut: 0.01,     // per-step prob a walker on land returns to the pool
+  bias: 0.6,      // scent-gradient bias of walkers
+  p0: 0.008,       // join prob at shore distance
+  lam: 6,         // scent length scale (cells)
+  pRel: 0.02,     // release prob of an unlocked structural ant
+  tau: 3,        // lock memory after last walker (steps)
+  kLock: 3,       // structural neighbours that hold an ant in place
+  pCalve: 0.0005,  // per-step let-go prob of an idle anchor (raft mode)
+  D0: 2,        // raft move prob for a 1-ant raft (capped at 1)
+  gam: 0.5,       // size exponent of raft mobility
+  depth: 3,       // open water beyond the food, in gaps (unconfined)
+  current: 0,     // downstream drift bias (unconfined)
+  absorb: true,   // rafts reaching the open edge are lost (unconfined)
+  target: 'bank', // unconfined target: 'bank' (far bank) or 'point' (food item)
+};
+
+function buildArena(confined, P) {
+  const R = P.R, rf = P.rf, gap = R - rf;
+  const bank = !confined && P.target === 'bank';
+  let W, H, cx, cy;
+  if (confined) {
+    W = H = 2 * (R + 2) + 1; cx = cy = R + 2;
+  } else {
+    W = Math.round(2 * Math.PI * R) | 1;        // same shoreline length as the dish rim
+    cx = (W - 1) / 2; cy = gap + rf + 1;
+    H = bank ? gap + 4 : Math.ceil(cy + rf + P.depth * gap) + 1;
+  }
+  const n = W * H;
+  const type = new Uint8Array(n), dist = new Float32Array(n);
+  const land = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x;
+    let t, d;
+    if (bank) {
+      t = y < 2 ? LAND : (y < gap + 2 ? WATER : FOOD);
+      d = Math.max(0, gap + 1 - y);
+    } else {
+      const r = Math.hypot(x - cx, y - cy);
+      d = Math.max(0, r - rf);
+      if (r < rf) t = FOOD;
+      else if (confined) t = r < R ? WATER : (r < R + 2 ? LAND : WALL);
+      else t = y < 2 ? LAND : WATER;
+    }
+    type[i] = t; dist[i] = d;
+    if (t === LAND) land.push(i);
+  }
+  return { confined, bank, W, H, n, cx, cy, gap, type, dist, land: Int32Array.from(land) };
+}
+
+class Sim {
+  constructor(confined, rafts, P, seed) {
+    this.P = Object.assign({}, DEFAULTS, P);
+    this.A = buildArena(confined, this.P);
+    this.rafts = rafts;
+    this.rng = makeRNG(seed);
+    const n = this.A.n;
+    this.struct = new Uint8Array(n);
+    this.lastT = new Int32Array(n).fill(-1e9);
+    this.wcount = new Uint16Array(n);
+    this.comp = new Int32Array(n);
+    this.sIdx = new Int32Array(n).fill(-1);   // index into sList
+    this.sList = new Int32Array(n); this.sN = 0;
+    this.queue = new Int32Array(n);
+    this.wPos = new Int32Array(this.P.N); this.wN = 0;
+    this.pool = this.P.N;
+    this.lost = 0; this.fed = 0;
+    this.t = 0; this.done = -1;
+    this.span = 0; this.nRafts = 0; this.raftAnts = 0;
+    this.comps = [];
+    // join probability by distance
+    const A = this.A, P2 = this.P;
+    this.pJoin = new Float32Array(n);
+    for (let i = 0; i < n; i++) this.pJoin[i] = Math.min(1, P2.p0 * Math.exp((A.gap - A.dist[i]) / P2.lam));
+  }
+  inGridNb(i, k) {           // neighbour index or -1
+    const W = this.A.W, x = i % W;
+    if (k === 0) return x > 0 ? i - 1 : -1;
+    if (k === 1) return x < W - 1 ? i + 1 : -1;
+    if (k === 2) return i >= W ? i - W : -1;
+    return i + W < this.A.n ? i + W : -1;
+  }
+  addS(i) { this.struct[i] = 1; this.sIdx[i] = this.sN; this.sList[this.sN++] = i; }
+  remS(i) {
+    this.struct[i] = 0; const k = this.sIdx[i], last = this.sList[--this.sN];
+    this.sList[k] = last; this.sIdx[last] = k; this.sIdx[i] = -1;
+  }
+  walkable(i) { const t = this.A.type[i]; return t === LAND || t === FOOD || this.struct[i] === 1; }
+  remWalker(k) { this.wcount[this.wPos[k]]--; this.wPos[k] = this.wPos[--this.wN]; }
+  step() {
+    const P = this.P, A = this.A, rng = this.rng, type = A.type, struct = this.struct;
+    const t = ++this.t;
+    // 1. entry from the pool
+    const enter = Math.floor(this.pool * P.rIn + rng());
+    for (let e = 0; e < enter && this.pool > 0; e++) {
+      const c = A.land[(rng() * A.land.length) | 0];
+      this.wPos[this.wN++] = c; this.wcount[c]++; this.pool--;
+    }
+    // 2. walkers
+    const cand = [0, 0, 0, 0, 0], wts = [0, 0, 0, 0, 0];
+    for (let k = 0; k < this.wN; k++) {
+      const c = this.wPos[k];
+      if (!this.walkable(c)) { this.remWalker(k); this.pool++; k--; continue; }
+      if (type[c] === LAND && rng() < P.rOut) { this.remWalker(k); this.pool++; k--; continue; }
+      // join attempt at a random neighbour
+      const j = this.inGridNb(c, (rng() * 4) | 0);
+      if (j >= 0 && type[j] === WATER && !struct[j] && rng() < this.pJoin[j]) {
+        this.addS(j); this.lastT[j] = -1e9;
+        this.remWalker(k); k--; continue;
+      }
+      // move
+      let m = 0, tot = 0; const dc = A.dist[c];
+      cand[m] = c; wts[m] = 1; tot += 1; m++;
+      for (let q = 0; q < 4; q++) {
+        const j2 = this.inGridNb(c, q);
+        if (j2 >= 0 && this.walkable(j2)) { cand[m] = j2; wts[m] = Math.exp(-P.bias * (A.dist[j2] - dc)); tot += wts[m]; m++; }
+      }
+      let r = rng() * tot, s = 0;
+      for (s = 0; s < m - 1; s++) { r -= wts[s]; if (r <= 0) break; }
+      const d = cand[s];
+      if (type[d] === FOOD) { this.wcount[c]--; this.wPos[k] = this.wPos[--this.wN]; this.pool++; this.fed++; k--; continue; }
+      this.wcount[c]--; this.wcount[d]++; this.wPos[k] = d; this.lastT[d] = t;
+    }
+    // 3. release of unlocked structural ants
+    for (let q = this.sN - 1; q >= 0; q--) {
+      const i = this.sList[q];
+      if (this.wcount[i] > 0) { this.lastT[i] = t; continue; }
+      if (t - this.lastT[i] <= P.tau) continue;
+      let ns = 0;
+      for (let z = 0; z < 4; z++) { const j = this.inGridNb(i, z); if (j >= 0 && struct[j]) ns++; }
+      if (ns >= P.kLock) continue;
+      if (rng() < P.pRel) { this.remS(i); this.pool++; }
+    }
+    // 4. components
+    this.label();
+    // 5. fate of detached fragments, raft drift, calving
+    this.fates();
+    this.metrics();
+  }
+  label() {
+    const A = this.A, struct = this.struct, comp = this.comp, Q = this.queue, type = A.type;
+    for (let q = 0; q < this.sN; q++) comp[this.sList[q]] = 0;
+    const comps = []; let id = 0;
+    for (let q = 0; q < this.sN; q++) {
+      const s0 = this.sList[q]; if (comp[s0]) continue;
+      id++; let h = 0, tl = 0; Q[tl++] = s0; comp[s0] = id;
+      let land = false, food = false; const start = tl - 1;
+      const cells = [];
+      while (h < tl) {
+        const i = Q[h++]; cells.push(i);
+        for (let z = 0; z < 4; z++) {
+          const j = this.inGridNb(i, z); if (j < 0) continue;
+          if (struct[j]) { if (!comp[j]) { comp[j] = id; Q[tl++] = j; } }
+          else if (type[j] === LAND) land = true;
+          else if (type[j] === FOOD) food = true;
+        }
+      }
+      comps.push({ id, cells, land, food });
+    }
+    this.comps = comps;
+  }
+  fates() {
+    const P = this.P, A = this.A, rng = this.rng, struct = this.struct;
+    // component of the cell each walker stands on, before anything moves
+    const wComp = new Int32Array(this.wN);
+    for (let k = 0; k < this.wN; k++) { const c = this.wPos[k]; wComp[k] = struct[c] ? this.comp[c] : 0; }
+    const shift = new Map();
+    let rafts = 0, raftAnts = 0;
+    for (const C of this.comps) {
+      C.raft = false;
+      if (C.land && C.food) { if (this.done < 0) this.done = this.t; continue; }
+      if (C.land || C.food) continue;
+      if (!this.rafts) {          // dissolve: the ants swim back to the pool
+        for (const i of C.cells) { this.remS(i); this.pool++; }
+        continue;
+      }
+      C.raft = true; rafts++; raftAnts += C.cells.length;
+      const pm = P.D0 / Math.pow(C.cells.length, P.gam);
+      if (rng() >= pm) continue;
+      let dir;
+      if (!A.confined && P.current > 0 && rng() < P.current) dir = 1;
+      else dir = (rng() * 4) | 0;
+      const dx = dir === 0 ? -1 : dir === 1 ? 1 : 0, dy = dir === 2 ? -1 : dir === 3 ? 1 : 0;
+      let off = false, blocked = false;
+      for (const i of C.cells) {
+        const x = i % A.W + dx, y = ((i / A.W) | 0) + dy;
+        if (x < 0 || x >= A.W || y < 0 || y >= A.H) { off = true; break; }
+        const j = y * A.W + x;
+        if (A.type[j] !== WATER || (struct[j] && this.comp[j] !== C.id)) { blocked = true; break; }
+      }
+      if (off) {
+        if (P.absorb) {           // drifted out of the domain: lost to the colony
+          for (const i of C.cells) { this.remS(i); this.lost++; }
+          shift.set(C.id, null);
+          rafts--; raftAnts -= C.cells.length;
+        }
+        continue;
+      }
+      if (blocked) continue;
+      const delta = dy * A.W + dx, saveT = C.cells.map(i => this.lastT[i]);
+      for (const i of C.cells) this.remS(i);
+      for (let q = 0; q < C.cells.length; q++) {
+        const j = C.cells[q] + delta; this.addS(j); this.comp[j] = C.id; this.lastT[j] = saveT[q];
+        C.cells[q] = j;
+      }
+      shift.set(C.id, delta);
+    }
+    this.nRafts = rafts; this.raftAnts = raftAnts;
+    if (shift.size) {
+      for (let k = 0; k < this.wN; k++) {
+        if (!wComp[k] || !shift.has(wComp[k])) continue;
+        this.wcount[this.wPos[k]]--; wComp[k] = -wComp[k];   // mark as moved
+      }
+      for (let k = 0; k < this.wN; k++) {
+        if (wComp[k] >= 0) continue;
+        const d = shift.get(-wComp[k]);
+        if (d === null) { this.wPos[k] = this.wPos[this.wN - 1]; wComp[k] = wComp[this.wN - 1]; this.wN--; this.lost++; k--; continue; }
+        this.wPos[k] += d; this.wcount[this.wPos[k]]++;
+      }
+    }
+    // anchors letting go (raft mode only): an anchor ant touching the shore, with nobody
+    // on top of it, releases its grip on the shore regardless of its neighbours
+    if (this.rafts && P.pCalve > 0) {
+      const t = this.t, type = A.type;
+      for (let q = this.sN - 1; q >= 0; q--) {
+        const i = this.sList[q];
+        if (this.wcount[i] > 0 || t - this.lastT[i] <= P.tau) continue;
+        let anchor = false;
+        for (let z = 0; z < 4; z++) { const j = this.inGridNb(i, z); if (j >= 0 && type[j] === LAND) { anchor = true; break; } }
+        if (anchor && rng() < P.pCalve) { this.remS(i); this.pool++; }
+      }
+    }
+  }
+  metrics() {
+    const A = this.A; let dmin = Infinity;
+    for (const C of this.comps) {
+      if (!C.land) continue;
+      for (const i of C.cells) if (this.struct[i] && A.dist[i] < dmin) dmin = A.dist[i];
+    }
+    this.span = this.done >= 0 ? 1 : (dmin === Infinity ? 0 : Math.max(0, Math.min(1, (A.gap - dmin) / A.gap)));
+  }
+}
+
+function runOne(confined, rafts, P, seed, Tmax, every) {
+  const s = new Sim(confined, rafts, P, seed), tr = [];
+  let T50 = -1, raftSum = 0;
+  while (s.t < Tmax && s.done < 0) {
+    s.step(); raftSum += s.raftAnts;
+    if (T50 < 0 && s.span >= 0.5) T50 = s.t;
+    if (s.t % every === 0) tr.push(Math.round(s.span * 1000) / 1000);
+  }
+  return {
+    T: s.done < 0 ? Tmax : s.done, event: s.done >= 0 ? 1 : 0,
+    T50: T50 < 0 ? Tmax : T50, event50: T50 < 0 ? 0 : 1,
+    tr, lost: s.lost, raftMean: raftSum / Math.max(1, s.t),
+  };
+}
+if (typeof module !== 'undefined') module.exports = { Sim, runOne, DEFAULTS, buildArena };
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// PONTOON RAFTS · interface, batch runner, and analysis
+// ═══════════════════════════════════════════════════════════════════
+'use strict';
+
+// ── Conditions ─────────────────────────────────────────────────────
+const CONDS = [
+  { conf: true,  raft: false, label: 'Confined · no rafts',   color: '#1d4ed8', dash: false },
+  { conf: true,  raft: true,  label: 'Confined · rafts',      color: '#c2410c', dash: false },
+  { conf: false, raft: false, label: 'Unconfined · no rafts', color: '#1d4ed8', dash: true },
+  { conf: false, raft: true,  label: 'Unconfined · rafts',    color: '#c2410c', dash: true },
+];
+
+// ── Parameter panel ────────────────────────────────────────────────
+const PARAMS = [
+  { grp: 'Geometry' },
+  { k: 'gap', label: 'Gap to target', min: 8, max: 40, step: 1, def: 20, fmt: v => v + ' cells',
+    tip: 'Water cells between the shore (or rim) and the target. One cell is about one worker body length (≈ 3 mm), so 20 cells ≈ 6 cm, the rim-to-food distance of a 15 cm dish.' },
+  { k: 'rf', label: 'Food radius', min: 2, max: 8, step: 1, def: 5, fmt: v => v + ' cells',
+    tip: 'Radius of the food disk at the dish center (and of the food item in the unconfined point-target arena). The dish radius is gap + food radius.' },
+  { k: 'target', label: 'Unconfined target', type: 'select', def: 'bank',
+    opts: [['bank', 'Far bank (river crossing)'], ['point', 'Food item in open water']],
+    tip: 'Far bank: the target is a parallel bank at the same gap, so every shore point is equally near it, as every rim point is in the dish. Food item: a disk of the dish food size at the same distance from the shore, with open water around and beyond it.' },
+  { k: 'absorb', label: 'Rafts at open edges', type: 'select', def: '1',
+    opts: [['1', 'Drift away (lost)'], ['0', 'Bounce back (reflect)']],
+    tip: 'What happens to a raft that reaches an open edge of the unconfined arena. "Bounce back" removes the loss of rafts and isolates the effect of geometry.' },
+  { k: 'current', label: 'Current (unconfined)', min: 0, max: 0.6, step: 0.05, def: 0, fmt: v => v.toFixed(2),
+    tip: 'Probability that a raft move is pushed downstream (to the right) instead of in a random direction. Zero is still water, as in the dish.' },
+  { k: 'depth', label: 'Water beyond food item', min: 1, max: 6, step: 0.5, def: 3, fmt: v => v.toFixed(1) + ' gaps', onlyPoint: true,
+    tip: 'Only for the food-item target: how much open water lies beyond the food, in multiples of the gap.' },
+  { grp: 'Colony' },
+  { k: 'N', label: 'Forager pool N', min: 500, max: 5000, step: 100, def: 2000, fmt: v => v,
+    tip: 'Ants available to the shore. Ants lost on rafts that drift away leave the pool for good.' },
+  { k: 'rIn', label: 'Entry rate r_in', min: 0.0005, max: 0.008, step: 0.0005, def: 0.002, fmt: v => v.toFixed(4),
+    tip: 'Per-step probability that a pooled forager enters a random shore cell.' },
+  { k: 'rOut', label: 'Return rate r_out', min: 0.002, max: 0.05, step: 0.001, def: 0.01, fmt: v => v.toFixed(3),
+    tip: 'Per-step probability that a walker on the shore goes back to the pool.' },
+  { k: 'bias', label: 'Scent bias b', min: 0, max: 1.5, step: 0.05, def: 0.6, fmt: v => v.toFixed(2),
+    tip: 'Strength of the walkers\' bias toward the target: a step that brings a walker one cell closer is weighted by exp(b).' },
+  { grp: 'Building' },
+  { k: 'p0', label: 'Join prob. at shore p₀', min: 0.001, max: 0.04, step: 0.001, def: 0.008, fmt: v => v.toFixed(3),
+    tip: 'Probability that a walker links onto an adjacent open-water cell at the shoreline. It rises toward the target as exp((gap − d)/λ), capped at 1.' },
+  { k: 'lam', label: 'Scent length λ', min: 2, max: 20, step: 0.5, def: 6, fmt: v => v.toFixed(1) + ' cells',
+    tip: 'Distance over which the joining probability rises e-fold toward the target.' },
+  { k: 'pRel', label: 'Release prob. p_rel', min: 0.002, max: 0.1, step: 0.002, def: 0.02, fmt: v => v.toFixed(3),
+    tip: 'Per-step probability that an unlocked structural ant lets go and swims back to the pool.' },
+  { k: 'tau', label: 'Lock memory τ', min: 0, max: 30, step: 1, def: 3, fmt: v => v + ' steps',
+    tip: 'A structural ant stays locked for this many steps after the last walker crossed it.' },
+  { k: 'kLock', label: 'Neighbors that hold k', type: 'select', def: '3',
+    opts: [['2', '2 of 4'], ['3', '3 of 4'], ['4', '4 of 4'], ['5', 'never (traffic only)']],
+    tip: 'A structural ant with at least this many structural neighbors cannot let go, even without traffic (interior ants of a cluster are held by the ants around them).' },
+  { grp: 'Rafts', note: 'Used only by the two runs with rafts.' },
+  { k: 'pCalve', label: 'Anchor let-go p_calve', min: 0, max: 0.01, step: 0.0005, def: 0.0005, fmt: v => v.toFixed(4),
+    tip: 'Per-step probability that an idle anchor ant (touching the shore, no traffic) lets go of the shore even if its neighbors hold it, so a whole idle cluster can break away as a raft.' },
+  { k: 'D0', label: 'Raft mobility D₀', min: 0, max: 4, step: 0.1, def: 2, fmt: v => v.toFixed(2),
+    tip: 'A raft of m ants moves one cell per step with probability D₀ / m^γ (capped at 1).' },
+  { k: 'gam', label: 'Size exponent γ', min: 0, max: 1.5, step: 0.05, def: 0.5, fmt: v => v.toFixed(2),
+    tip: 'How fast raft mobility falls with raft size.' },
+];
+
+const pvals = {};
+PARAMS.forEach(p => { if (p.k) pvals[p.k] = p.def; });
+
+function getParams() {
+  return {
+    R: pvals.gap + pvals.rf, rf: pvals.rf, target: pvals.target, absorb: pvals.absorb === '1',
+    current: pvals.current, depth: pvals.depth, N: pvals.N, rIn: pvals.rIn, rOut: pvals.rOut,
+    bias: pvals.bias, p0: pvals.p0, lam: pvals.lam, pRel: pvals.pRel, tau: pvals.tau,
+    kLock: +pvals.kLock, pCalve: pvals.pCalve, D0: pvals.D0, gam: pvals.gam,
+  };
+}
+function paramSummary() {
+  return PARAMS.filter(p => p.k).map(p => {
+    if (p.onlyPoint && pvals.target !== 'point') return null;
+    const v = pvals[p.k];
+    const s = p.type === 'select' ? p.opts.find(o => o[0] === v)[1] : p.fmt(v);
+    return p.label + ' = ' + s;
+  }).filter(Boolean).join(' · ');
+}
+
+function buildPanel() {
+  const root = document.getElementById('param-panel');
+  let box = null;
+  const mk = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+  PARAMS.forEach(p => {
+    if (p.grp) {
+      box = mk('div', 'grp'); box.appendChild(mk('div', 'grp-h', p.grp));
+      if (p.note) box.appendChild(mk('div', 'grp-note', p.note));
+      root.appendChild(box); return;
+    }
+    const row = mk('div', 'prm'); row.dataset.k = p.k;
+    const top = mk('div', 'prm-top');
+    const id = 'prm-' + p.k;
+    top.appendChild(mk('label', 'prm-lbl', p.label)).setAttribute('for', id);
+    const val = mk('span', 'prm-val');
+    if (p.type !== 'select') top.appendChild(val);
+    const tip = mk('span', 'tip', '?'); tip.tabIndex = 0; tip.dataset.tip = p.tip; top.appendChild(tip);
+    row.appendChild(top);
+    let inp;
+    if (p.type === 'select') {
+      inp = mk('select'); p.opts.forEach(o => { const op = mk('option', null, o[1]); op.value = o[0]; inp.appendChild(op); });
+      inp.value = p.def;
+      inp.addEventListener('change', () => { pvals[p.k] = inp.value; onParamChange(); });
+    } else {
+      inp = mk('input'); inp.type = 'range'; inp.min = p.min; inp.max = p.max; inp.step = p.step; inp.value = p.def;
+      val.textContent = p.fmt(p.def);
+      inp.addEventListener('input', () => { pvals[p.k] = +inp.value; val.textContent = p.fmt(+inp.value); onParamChange(); });
+    }
+    inp.id = id; row.appendChild(inp); box.appendChild(row);
+  });
+  const reset = mk('button', 'btn small', 'Restore defaults'); reset.style.alignSelf = 'flex-start';
+  reset.addEventListener('click', () => {
+    PARAMS.forEach(p => {
+      if (!p.k) return; pvals[p.k] = p.def;
+      const inp = document.getElementById('prm-' + p.k); inp.value = p.def;
+      if (p.type !== 'select') inp.parentNode.querySelector('.prm-val').textContent = p.fmt(p.def);
+    });
+    onParamChange();
+  });
+  root.appendChild(reset);
+  syncDim();
+}
+function syncDim() {
+  PARAMS.forEach(p => {
+    if (!p.onlyPoint) return;
+    document.querySelector('.prm[data-k="' + p.k + '"]').classList.toggle('dim', pvals.target !== 'point');
+  });
+}
+let _pcTimer = null;
+function onParamChange() {
+  syncDim();
+  document.getElementById('b-params').textContent = 'Parameters: ' + paramSummary();
+  clearTimeout(_pcTimer);
+  _pcTimer = setTimeout(() => resetLive(false), 120);
+}
+
+// ── HiDPI canvas helper ────────────────────────────────────────────
+function hidpi(cv, W, H) {
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) {
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
+// ── Live explorer ──────────────────────────────────────────────────
+const COL = {
+  bg: [255, 255, 255], wall: [236, 231, 223], land: [222, 208, 184], landW: [176, 92, 52],
+  water: [214, 232, 245], food: [233, 183, 74], bank: [186, 207, 150],
+  anch: [92, 42, 20], anchW: [190, 84, 42], raft: [234, 140, 40], raftW: [248, 186, 110],
+  done: [150, 22, 22], scent: [250, 226, 150],
+};
+const live = { sims: [], hist: [[], [], [], []], playing: false, panels: [], cell: 4 };
+
+function buildArenas() {
+  const root = document.getElementById('arenas'); root.innerHTML = '';
+  const rowC = document.createElement('div'); rowC.className = 'arena-row';
+  root.appendChild(rowC);
+  live.panels = CONDS.map((c, k) => {
+    const el = document.createElement('div'); el.className = 'arena';
+    el.innerHTML = '<div class="arena-h"><span class="sw' + (c.dash ? ' dash' : '') + '" style="border-color:' + c.color + '"></span>' + c.label + '</div><canvas></canvas><div class="arena-st"></div>';
+    (c.conf ? rowC : root).appendChild(el);
+    const cv = el.querySelector('canvas');
+    return { el, cv, st: el.querySelector('.arena-st'), off: document.createElement('canvas') };
+  });
+  const lg = document.getElementById('cell-legend');
+  const sw = (c, t) => '<span class="lg"><i style="background:rgb(' + c.join(',') + ')"></i>' + t + '</span>';
+  lg.innerHTML = sw(COL.land, 'shore / rim') + sw(COL.water, 'water') + sw(COL.food, 'food') + sw(COL.bank, 'far bank') +
+    sw(COL.anch, 'anchored structure') + sw(COL.raft, 'raft') + sw(COL.anchW, 'ant walking on structure') +
+    sw(COL.landW, 'ant on shore') + sw(COL.done, 'completed bridge');
+  const ll = document.getElementById('live-legend');
+  ll.innerHTML = CONDS.map(c => '<span><span class="sw' + (c.dash ? ' dash' : '') + '" style="border-color:' + c.color + '"></span>' + c.label + '</span>').join('');
+}
+
+function resetLive(newSeed) {
+  if (newSeed) document.getElementById('seed').value = (Math.random() * 1e6) | 0;
+  const seed = +document.getElementById('seed').value || 0;
+  const P = getParams();
+  live.sims = CONDS.map((c, k) => new Sim(c.conf, c.raft, P, seed * 4 + k + 1));
+  live.hist = [[0], [0], [0], [0]];
+  layoutArenas(); drawLive();
+}
+
+function layoutArenas() {
+  if (!live.sims.length) return;
+  const root = document.getElementById('arenas');
+  const Wc = root.clientWidth - 18;                    // panel padding and border
+  const Ad = live.sims[0].A, Au = live.sims[2].A;
+  let s = Math.min(Wc / Au.W, (Wc - 34) / (2 * Ad.W), 8);
+  if (Au.H * s > 300) s = 300 / Au.H;
+  s = Math.max(1, s);
+  live.cell = s;
+  live.panels.forEach((p, k) => {
+    const A = live.sims[k].A;
+    p.W = Math.round(A.W * s); p.H = Math.round(A.H * s) + 14;   // room for the scale bar
+    p.ctx = hidpi(p.cv, p.W, p.H);
+    p.off.width = A.W; p.off.height = A.H;
+    p.octx = p.off.getContext('2d'); p.img = p.octx.createImageData(A.W, A.H);
+  });
+  const lp = document.getElementById('live-plot');
+  live.plotW = Math.max(260, lp.parentNode.clientWidth); live.plotH = 170;
+  live.pctx = hidpi(lp, live.plotW, live.plotH);
+}
+
+function drawSim(k) {
+  const sim = live.sims[k], p = live.panels[k], A = sim.A, d = p.img.data, P = sim.P;
+  const scent = document.getElementById('scent').checked;
+  const kind = new Uint8Array(A.n);           // 1 anchored, 2 raft, 3 completed
+  for (const C of sim.comps) {
+    const v = C.land && C.food ? 3 : (C.land || C.food) ? 1 : 2;
+    for (const i of C.cells) if (sim.struct[i]) kind[i] = v;
+  }
+  for (let y = 0; y < A.H; y++) for (let x = 0; x < A.W; x++) {
+    const i = y * A.W + x, o = ((A.H - 1 - y) * A.W + x) * 4, t = A.type[i];
+    let c;
+    if (sim.struct[i]) {
+      const kd = kind[i] || 1, w = sim.wcount[i] > 0;
+      c = kd === 3 ? COL.done : kd === 2 ? (w ? COL.raftW : COL.raft) : (w ? COL.anchW : COL.anch);
+    } else if (t === WALL) c = COL.wall;
+    else if (t === LAND) c = sim.wcount[i] > 0 ? COL.landW : COL.land;
+    else if (t === FOOD) c = A.bank ? COL.bank : COL.food;
+    else if (scent) {
+      const a = Math.min(1, sim.pJoin[i] / Math.min(1, P.p0 * Math.exp(A.gap / P.lam))) * 0.85;
+      c = [0, 1, 2].map(j => COL.water[j] + (COL.scent[j] - COL.water[j]) * a);
+    } else c = COL.water;
+    d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+  }
+  p.octx.putImageData(p.img, 0, 0);
+  const ctx = p.ctx, s = live.cell, Hpx = Math.round(A.H * s);
+  ctx.clearRect(0, 0, p.W, p.H);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(p.off, 0, 0, Math.round(A.W * s), Hpx);
+  // scale bar: 10 cells ≈ 3 cm
+  const L = 10 * s;
+  ctx.strokeStyle = '#6e6860'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(2, Hpx + 8); ctx.lineTo(2 + L, Hpx + 8);
+  ctx.moveTo(2, Hpx + 5); ctx.lineTo(2, Hpx + 11); ctx.moveTo(2 + L, Hpx + 5); ctx.lineTo(2 + L, Hpx + 11); ctx.stroke();
+  ctx.fillStyle = '#6e6860'; ctx.font = '9px "IBM Plex Mono", monospace'; ctx.textBaseline = 'middle';
+  ctx.fillText(p.W - L > 170 ? '10 body lengths ≈ 3 cm' : '≈ 3 cm', L + 7, Hpx + 8);
+  if (!A.confined && P.current > 0) { ctx.textAlign = 'right'; ctx.fillText('current →', p.W - 2, Hpx + 8); ctx.textAlign = 'left'; }
+  let st = 't = <b>' + sim.t + '</b> · span <b>' + Math.round(sim.span * 100) + '%</b> · structure ' + sim.sN;
+  if (sim.rafts) st += ' · rafts ' + sim.nRafts + ' (' + sim.raftAnts + ' ants)' + (sim.lost ? ' · lost ' + sim.lost : '');
+  if (sim.done >= 0) st += ' · <span class="ok">bridged at t = ' + sim.done + '</span>';
+  p.st.innerHTML = st;
+}
+
+function drawLivePlot() {
+  const ctx = live.pctx, W = live.plotW, H = live.plotH;
+  const tMax = Math.max(500, ...live.sims.map(s => s.t));
+  const ax = axes(ctx, W, H, [0, tMax], [0, 1], { xlab: 'step', ylab: 'span', yfmt: v => Math.round(v * 100) + '%' });
+  CONDS.forEach((c, k) => {
+    const h = live.hist[k]; if (h.length < 2) return;
+    ctx.strokeStyle = c.color; ctx.lineWidth = 1.8; ctx.setLineDash(c.dash ? [5, 4] : []);
+    ctx.beginPath();
+    h.forEach((v, j) => { const x = ax.x(j * 10), y = ax.y(v); j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.stroke(); ctx.setLineDash([]);
+  });
+}
+
+function drawLive() { live.sims.forEach((s, k) => drawSim(k)); drawLivePlot(); }
+
+function advance(n) {
+  for (let q = 0; q < n; q++) {
+    live.sims.forEach((s, k) => {
+      if (s.done >= 0) return;
+      s.step();
+      if (s.t % 10 === 0) live.hist[k].push(s.span);
+    });
+  }
+  if (live.sims.every(s => s.done >= 0) || live.sims.every(s => s.t >= 50000)) setPlaying(false);
+}
+function setPlaying(on) {
+  live.playing = on;
+  document.getElementById('btn-play').textContent = on ? '❚❚ Pause' : '▶ Run';
+  if (on) requestAnimationFrame(loop);
+}
+function loop() {
+  if (!live.playing) return;
+  if (document.getElementById('pane-explorer').classList.contains('on')) {
+    advance(+document.getElementById('speed').value); drawLive();
+  }
+  requestAnimationFrame(loop);
+}
+
+// ── Plot helpers ───────────────────────────────────────────────────
+function niceTicks(lo, hi, n) {
+  const span = hi - lo || 1, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const st = [1, 2, 2.5, 5, 10].map(m => m * mag).find(m => span / m <= n) || 10 * mag;
+  const out = []; for (let v = Math.ceil(lo / st) * st; v <= hi + 1e-9; v += st) out.push(+v.toFixed(10));
+  return out;
+}
+function axes(ctx, W, H, xr, yr, o) {
+  o = o || {};
+  const L = o.left || 46, R = 10, T = 8, B = 30;
+  ctx.clearRect(0, 0, W, H);
+  const x = v => L + (v - xr[0]) / (xr[1] - xr[0]) * (W - L - R);
+  const y = v => H - B - (v - yr[0]) / (yr[1] - yr[0]) * (H - T - B);
+  ctx.font = '10px "IBM Plex Mono", monospace'; ctx.fillStyle = '#6e6860'; ctx.strokeStyle = '#ece6dc'; ctx.lineWidth = 1;
+  const yt = o.yticks || niceTicks(yr[0], yr[1], 5);
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  yt.forEach(v => { ctx.beginPath(); ctx.moveTo(L, y(v)); ctx.lineTo(W - R, y(v)); ctx.stroke(); ctx.fillText((o.yfmt || String)(v), L - 5, y(v)); });
+  if (!o.noX) {
+    const xt = niceTicks(xr[0], xr[1], Math.max(3, Math.floor((W - L) / 70)));
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    xt.forEach(v => ctx.fillText((o.xfmt || String)(v), x(v), H - B + 5));
+  }
+  ctx.strokeStyle = '#b9b2a6'; ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+  ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillStyle = '#8a8378';
+  if (o.xlab) ctx.fillText(o.xlab, W - R, H - 1);
+  ctx.save(); ctx.translate(11, T); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  if (o.ylab) ctx.fillText(o.ylab, 0, 0);
+  ctx.restore();
+  return { x, y, L, R, T, B };
+}
+
+// ── Statistics ─────────────────────────────────────────────────────
+function lgamma(x) {
+  const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+    -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lgamma(1 - x);
+  x -= 1; let a = c[0]; const t = x + 7.5;
+  for (let i = 1; i < 9; i++) a += c[i] / (x + i);
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
+function betacf(a, b, x) {
+  const FP = 1e-300; let qab = a + b, qap = a + 1, qam = a - 1, c = 1, d = 1 - qab * x / qap;
+  if (Math.abs(d) < FP) d = FP; d = 1 / d; let h = d;
+  for (let m = 1; m <= 300; m++) {
+    const m2 = 2 * m; let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FP) d = FP; c = 1 + aa / c; if (Math.abs(c) < FP) c = FP; d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FP) d = FP; c = 1 + aa / c; if (Math.abs(c) < FP) c = FP; d = 1 / d;
+    const del = d * c; h *= del; if (Math.abs(del - 1) < 3e-14) break;
+  }
+  return h;
+}
+function ibeta(x, a, b) {
+  if (x <= 0) return 0; if (x >= 1) return 1;
+  const bt = Math.exp(lgamma(a + b) - lgamma(a) - lgamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+  return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a : 1 - bt * betacf(b, a, 1 - x) / b;
+}
+const pF = (F, d1, d2) => !isFinite(F) ? NaN : F <= 0 ? 1 : ibeta(d2 / (d2 + d1 * F), d2 / 2, d1 / 2);
+const pT2 = (t, df) => ibeta(df / (df + t * t), df / 2, 0.5);
+function tCrit(df) { let lo = 0, hi = 200; for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; pT2(m, df) > 0.05 ? lo = m : hi = m; } return (lo + hi) / 2; }
+
+// Balanced 2 × 2: a = rafts (0/1), b = confined (0/1); cell index 2b + a
+function cellStats(y, a, b) {
+  const s = [0, 0, 0, 0], n = [0, 0, 0, 0];
+  for (let i = 0; i < y.length; i++) { const c = 2 * b[i] + a[i]; s[c] += y[i]; n[c]++; }
+  return { m: s.map((v, c) => v / n[c]), n };
+}
+function anova2(y, a, b) {
+  const { m, n } = cellStats(y, a, b), r = n[0], N = y.length;
+  const g = (m[0] + m[1] + m[2] + m[3]) / 4;
+  const mA = [(m[0] + m[2]) / 2, (m[1] + m[3]) / 2], mB = [(m[0] + m[1]) / 2, (m[2] + m[3]) / 2];
+  const ssA = 2 * r * ((mA[0] - g) ** 2 + (mA[1] - g) ** 2);
+  const ssB = 2 * r * ((mB[0] - g) ** 2 + (mB[1] - g) ** 2);
+  let ssAB = 0; for (let bb = 0; bb < 2; bb++) for (let aa = 0; aa < 2; aa++) ssAB += r * (m[2 * bb + aa] - mA[aa] - mB[bb] + g) ** 2;
+  let ssE = 0; for (let i = 0; i < N; i++) ssE += (y[i] - m[2 * b[i] + a[i]]) ** 2;
+  const dfE = N - 4, mse = ssE / dfE;
+  const row = (ss) => ({ ss, df: 1, ms: ss, F: ss / mse, p: pF(ss / mse, 1, dfE) });
+  return { A: row(ssA), B: row(ssB), AB: row(ssAB), E: { ss: ssE, df: dfE, ms: mse }, m, r, mse, dfE };
+}
+function interF(y, a, b) {
+  const { m } = cellStats(y, a, b), N = y.length, r = N / 4;
+  const ab = r * 4 * ((m[0] - m[1] - m[2] + m[3]) / 4) ** 2;      // SS of the 1-df interaction
+  let ssE = 0; for (let i = 0; i < N; i++) ssE += (y[i] - m[2 * b[i] + a[i]]) ** 2;
+  return ab / (ssE / (N - 4));
+}
+function shuffle(arr, rng) { for (let i = arr.length - 1; i > 0; i--) { const j = (rng() * (i + 1)) | 0; const t = arr[i]; arr[i] = arr[j]; arr[j] = t; } return arr; }
+function freedmanLane(y, a, b, B, rng) {
+  const { m } = cellStats(y, a, b);
+  const g = (m[0] + m[1] + m[2] + m[3]) / 4;
+  const mA = [(m[0] + m[2]) / 2, (m[1] + m[3]) / 2], mB = [(m[0] + m[1]) / 2, (m[2] + m[3]) / 2];
+  const fit = y.map((v, i) => mA[a[i]] + mB[b[i]] - g), e = y.map((v, i) => v - fit[i]);
+  const F0 = interF(y, a, b); let ge = 0;
+  const ys = new Float64Array(y.length), ep = e.slice();
+  for (let k = 0; k < B; k++) {
+    shuffle(ep, rng);
+    for (let i = 0; i < y.length; i++) ys[i] = fit[i] + ep[i];
+    if (interF(ys, a, b) >= F0 - 1e-12) ge++;
+  }
+  return { F: F0, p: (ge + 1) / (B + 1) };
+}
+function stratPerm(y, a, b, level, B, rng) {
+  const idx = []; for (let i = 0; i < y.length; i++) if (b[i] === level) idx.push(i);
+  const yy = idx.map(i => y[i]), lab = idx.map(i => a[i]);
+  const diff = L => { let s0 = 0, s1 = 0, n0 = 0, n1 = 0; L.forEach((v, j) => { if (v) { s1 += yy[j]; n1++; } else { s0 += yy[j]; n0++; } }); return s0 / n0 - s1 / n1; };
+  const d0 = diff(lab); let ge = 0; const L = lab.slice();
+  for (let k = 0; k < B; k++) { shuffle(L, rng); if (Math.abs(diff(L)) >= Math.abs(d0) - 1e-12) ge++; }
+  return { d: d0, p: (ge + 1) / (B + 1) };
+}
+
+// ── Batch runner ───────────────────────────────────────────────────
+const batch = { rows: [], running: false, workers: [], meta: null };
+
+function makeWorkerURL() {
+  const core = document.getElementById('sim-core').textContent;
+  const handler = '\nonmessage = function (e) { const j = e.data; const o = runOne(j.conf, j.raft, j.P, j.seed, j.Tmax, j.every); o.id = j.id; postMessage(o); };\n';
+  return URL.createObjectURL(new Blob([core + handler], { type: 'text/javascript' }));
+}
+
+function startBatch() {
+  if (batch.running) return;
+  const n = Math.max(3, Math.min(500, +document.getElementById('b-n').value | 0));
+  const Tmax = Math.max(500, +document.getElementById('b-tmax').value | 0);
+  const base = +document.getElementById('b-seed').value | 0;
+  const every = Math.max(10, Math.round(Tmax / 200));
+  const P = getParams();
+  const jobs = [];
+  for (let r = 0; r < n; r++) CONDS.forEach((c, k) => jobs.push({
+    id: jobs.length, rep: r, cond: k, conf: c.conf, raft: c.raft, P, Tmax, every,
+    seed: (base * 7919 + r * 104729 + k * 15485863 + 12345) >>> 0,
+  }));
+  batch.rows = new Array(jobs.length).fill(null);
+  batch.meta = { n, Tmax, every, P, summary: paramSummary(), base, jobs };
+  batch.running = true; batch.done = 0;
+  setBatchUI(true);
+  let next = 0;
+  const finish = () => { batch.running = false; stopWorkers(); setBatchUI(false); renderResults(true); };
+  const accept = (o) => {
+    const j = jobs[o.id]; batch.rows[o.id] = Object.assign({ rep: j.rep, cond: j.cond, seed: j.seed }, o);
+    batch.done++; progress();
+    if (batch.done === jobs.length) finish();
+  };
+  let nW = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
+  let url = null;
+  try { url = makeWorkerURL(); for (let w = 0; w < nW; w++) batch.workers.push(new Worker(url)); }
+  catch (err) { stopWorkers(); }
+  if (batch.workers.length) {
+    batch.mode = batch.workers.length + ' background workers';
+    batch.workers.forEach(w => {
+      w.onmessage = e => { if (!batch.running) return; accept(e.data); if (next < jobs.length) w.postMessage(jobs[next++]); };
+      w.onerror = () => { if (batch.running) { batch.status = 'worker error'; cancelBatch(); } };
+      if (next < jobs.length) w.postMessage(jobs[next++]);
+    });
+  } else {
+    batch.mode = 'main thread';
+    const tick = () => {
+      if (!batch.running) return;
+      const t0 = performance.now();
+      while (next < jobs.length && performance.now() - t0 < 40) {
+        const j = jobs[next++]; const o = runOne(j.conf, j.raft, j.P, j.seed, j.Tmax, j.every); o.id = j.id; accept(o);
+      }
+      if (batch.running) setTimeout(tick, 0);
+    };
+    setTimeout(tick, 0);
+  }
+  progress();
+  batch.timer = setInterval(() => { if (batch.running) renderResults(false); }, 1500);
+}
+function stopWorkers() { batch.workers.forEach(w => w.terminate()); batch.workers = []; clearInterval(batch.timer); }
+function cancelBatch() {
+  if (!batch.running) return;
+  batch.running = false; stopWorkers(); setBatchUI(false); renderResults(true, true);
+}
+function progress() {
+  const tot = batch.meta ? batch.meta.jobs.length : 0;
+  document.getElementById('b-bar').style.width = (tot ? 100 * batch.done / tot : 0) + '%';
+  document.getElementById('b-status').textContent = batch.running
+    ? batch.done + ' / ' + tot + ' runs · ' + batch.mode
+    : (tot ? batch.done + ' / ' + tot + ' runs' + (batch.done < tot ? ' (cancelled)' : ' · done') : 'idle');
+}
+function setBatchUI(running) {
+  document.getElementById('b-run').disabled = running;
+  document.getElementById('b-cancel').disabled = !running;
+  document.getElementById('b-csv').disabled = running || !batch.rows.some(Boolean);
+  progress();
+}
+
+// Complete replicates only, so the design stays balanced
+function balancedRows() {
+  const byRep = new Map();
+  batch.rows.forEach(r => { if (!r) return; if (!byRep.has(r.rep)) byRep.set(r.rep, []); byRep.get(r.rep).push(r); });
+  const out = []; byRep.forEach(v => { if (v.length === 4) out.push(...v); });
+  return out;
+}
+function respOf(r, key, Tmax) {
+  if (key === 'logT') return Math.log(Math.min(r.T, Tmax));
+  if (key === 'T') return Math.min(r.T, Tmax);
+  if (key === 'logT50') return Math.log(Math.min(r.T50, Tmax));
+  return r.event;
+}
+const RESP = {
+  logT:   { name: 'log restricted completion time', log: true, time: true },
+  T:      { name: 'restricted completion time (steps)', log: false, time: true },
+  logT50: { name: 'log time to half span', log: true, time: true },
+  done:   { name: 'completed by Tmax (0/1)', log: false, time: false },
+};
+const fmtP = p => !isFinite(p) ? '–' : p < 0.0001 ? '< 0.0001' : p.toFixed(4);
+const fmt = (v, d) => !isFinite(v) ? '–' : v.toFixed(d);
+
+function renderResults(final, cancelled) {
+  const out = document.getElementById('b-results');
+  const M = batch.meta; if (!M) return;
+  const rows = balancedRows(), nRep = rows.length / 4;
+  document.getElementById('b-csv').disabled = batch.running || !batch.rows.some(Boolean);
+  if (nRep < 2) { out.innerHTML = '<div class="empty">Collecting runs… results appear once at least two complete replicates of all four conditions are in.</div>'; return; }
+  const key = document.getElementById('b-resp').value, R = RESP[key];
+  const a = rows.map(r => CONDS[r.cond].raft ? 1 : 0), b = rows.map(r => CONDS[r.cond].conf ? 1 : 0);
+  const y = rows.map(r => respOf(r, key, M.Tmax));
+  const av = anova2(y, a, b);
+  const B = final ? Math.max(199, +document.getElementById('b-perm').value | 0) : 0;
+  const rng = makeRNG(M.base + 99);
+  const fl = B ? freedmanLane(y, a, b, B, rng) : null;
+  const sp = B ? [1, 0].map(lv => stratPerm(y, a, b, lv, B, rng)) : null;
+
+  // per-condition summaries
+  const per = CONDS.map((c, k) => {
+    const rr = rows.filter(r => r.cond === k), Ts = rr.map(r => r.T).sort((u, v) => u - v);
+    const ev = rr.filter(r => r.event).length;
+    const med = ev > rr.length / 2 ? Ts[Math.floor((rr.length - 1) / 2)] : NaN;
+    const rm = rr.reduce((s, r) => s + Math.min(r.T, M.Tmax), 0) / rr.length;
+    const yy = rr.map(r => respOf(r, key, M.Tmax)), mu = yy.reduce((s, v) => s + v, 0) / yy.length;
+    const sd = Math.sqrt(yy.reduce((s, v) => s + (v - mu) ** 2, 0) / Math.max(1, yy.length - 1));
+    const raftM = rr.reduce((s, r) => s + r.raftMean, 0) / rr.length, lost = rr.reduce((s, r) => s + r.lost, 0) / rr.length;
+    return { n: rr.length, ev, med, rm, mu, sd, raftM, lost };
+  });
+
+  // effects: raft benefit within each arena, sign chosen so positive = rafts help
+  const sgn = R.time ? 1 : -1, tq = tCrit(av.dfE), seD = Math.sqrt(2 * av.mse / av.r), seI = Math.sqrt(4 * av.mse / av.r);
+  const eff = [1, 0].map(lv => { const d = sgn * (av.m[2 * lv] - av.m[2 * lv + 1]); return { d, lo: d - tq * seD, hi: d + tq * seD }; });
+  const I = eff[0].d - eff[1].d, Ilo = I - tq * seI, Ihi = I + tq * seI;
+  const tr = v => R.log ? fmt(Math.exp(v), 2) + '×' : fmt(v, R.time ? 0 : 3);
+  const effName = R.log ? 'raft speedup (ratio)' : R.time ? 'steps saved by rafts' : 'gain in completion probability';
+
+  let h = '';
+  if (cancelled) h += '<div class="warn">Batch cancelled; the results below use the ' + nRep + ' complete replicates finished so far.</div>';
+  else if (!final) h += '<div class="warn">Running… interim results from ' + nRep + ' complete replicates; permutation tests run when the batch finishes.</div>';
+
+  const censTot = per.reduce((s, q) => s + (q.n - q.ev), 0);
+  if (final && R.time && key !== 'logT50' && censTot > 0) {
+    const worst = Math.max(...per.map(q => (q.n - q.ev) / q.n));
+    if (worst > 0.2) h += '<div class="warn">' + censTot + ' of ' + rows.length + ' runs did not complete by T<sub>max</sub> = ' + M.Tmax + ' (up to ' + Math.round(worst * 100) + '% in one condition). The restricted mean is still a valid estimand, but it compresses differences between conditions; consider a larger T<sub>max</sub> or the half-span response.</div>';
+  }
+
+  if (final && fl) {
+    const strong = fl.p < 0.05, ratio = R.log ? Math.exp(I) : I;
+    let v = '<b>Interaction (rafting × confinement):</b> ';
+    if (R.log) v += 'the raft speedup is ' + fmt(Math.exp(eff[0].d), 2) + '× in the dish and ' + fmt(Math.exp(eff[1].d), 2) + '× unconfined, a ratio of ' + fmt(ratio, 2) + ' (95% CI ' + fmt(Math.exp(Ilo), 2) + '–' + fmt(Math.exp(Ihi), 2) + ')';
+    else v += 'the raft benefit is ' + tr(eff[0].d) + ' in the dish and ' + tr(eff[1].d) + ' unconfined, a difference of ' + tr(I) + ' (95% CI ' + tr(Ilo) + ' to ' + tr(Ihi) + ')';
+    v += '; Freedman–Lane permutation p = ' + fmtP(fl.p) + '. ';
+    v += strong ? 'The raft effect depends on the arena in these runs.' : 'These runs do not show that the raft effect depends on the arena.';
+    v += ' Raft effect within each arena: dish p = ' + fmtP(sp[0].p) + ', unconfined p = ' + fmtP(sp[1].p) + ' (stratified permutation).';
+    h += '<div class="verdict">' + v + '</div>';
+  }
+
+  h += '<div class="grid2">';
+  h += '<div class="card"><div class="card-h">Cumulative completion</div><div class="plot-box"><canvas id="pl-km"></canvas></div><div class="clegend">' + legendHTML() + '</div><div class="card-note">Fraction of runs with a completed bridge by each step (one minus the Kaplan–Meier survival curve; all censoring is at T<sub>max</sub>). This is the "survival analysis in reverse" view.</div></div>';
+  h += '<div class="card"><div class="card-h">Mean bridge span</div><div class="plot-box"><canvas id="pl-span"></canvas></div><div class="clegend">' + legendHTML() + '</div><div class="card-note">Mean span across runs (shaded: ±1 SE), with completed runs held at 100%.</div></div>';
+  h += '</div>';
+
+  h += '<div class="grid2">';
+  h += '<div class="card"><div class="card-h">Interaction plot · ' + R.name + '</div><div class="plot-box"><canvas id="pl-int"></canvas></div><div class="clegend"><span><span class="sw" style="border-color:#1d4ed8"></span>no rafts</span><span><span class="sw" style="border-color:#c2410c"></span>rafts</span></div><div class="card-note">Cell means with 95% CIs (pooled error), and each run as a dot. Parallel lines mean no interaction.</div></div>';
+  h += '<div class="card"><div class="card-h">Condition summaries</div><div class="tbl-scroll"><table class="tbl"><tr><th>Condition</th><th>n</th><th>completed</th><th>median T</th><th>RMST</th><th>mean resp.</th><th>SD</th><th>raft ants</th><th>ants lost</th></tr>';
+  CONDS.forEach((c, k) => {
+    const q = per[k];
+    h += '<tr><td><span class="sw' + (c.dash ? ' dash' : '') + '" style="border-color:' + c.color + ';margin-right:5px;vertical-align:middle"></span>' + c.label + '</td><td>' + q.n + '</td><td>' + q.ev + '</td><td>' + (isFinite(q.med) ? q.med : '> T<sub>max</sub>') + '</td><td>' + fmt(q.rm, 0) + '</td><td>' + fmt(q.mu, 3) + '</td><td>' + fmt(q.sd, 3) + '</td><td>' + (c.raft ? fmt(q.raftM, 1) : '–') + '</td><td>' + (c.raft ? fmt(q.lost, 1) : '–') + '</td></tr>';
+  });
+  h += '</table></div><div class="card-note">RMST is the mean of min(T, T<sub>max</sub>). "Raft ants" is the time-averaged number of ants in rafts; "ants lost" counts ants that drifted out of the arena.</div></div>';
+  h += '</div>';
+
+  h += '<div class="grid2">';
+  h += '<div class="card"><div class="card-h">Two-way ANOVA · ' + R.name + '</div><div class="tbl-scroll"><table class="tbl"><tr><th>Source</th><th>df</th><th>SS</th><th>MS</th><th>F</th><th>p (F)</th><th>p (perm.)</th></tr>';
+  const arow = (nm, r, pp, hl) => '<tr' + (hl ? ' class="hl"' : '') + '><td>' + nm + '</td><td>' + r.df + '</td><td>' + fmt(r.ss, 4) + '</td><td>' + fmt(r.ms, 4) + '</td><td>' + fmt(r.F, 3) + '</td><td>' + fmtP(r.p) + '</td><td>' + pp + '</td></tr>';
+  h += arow('Rafting', av.A, '–') + arow('Confinement', av.B, '–') + arow('Rafting × confinement', av.AB, fl ? fmtP(fl.p) : '…', true);
+  h += '<tr><td>Residual</td><td>' + av.E.df + '</td><td>' + fmt(av.E.ss, 4) + '</td><td>' + fmt(av.E.ms, 4) + '</td><td></td><td></td><td></td></tr></table></div>';
+  h += '<div class="card-note">Balanced design with ' + nRep + ' replicates per condition. The permutation p-value for the interaction uses the Freedman–Lane residual scheme with ' + (B || '…') + ' permutations.</div></div>';
+  h += '<div class="card"><div class="card-h">Raft effect by arena</div><div class="tbl-scroll"><table class="tbl"><tr><th>Arena</th><th>' + effName + '</th><th>95% CI</th><th>p (perm.)</th></tr>';
+  ['Confined (dish)', 'Unconfined'].forEach((nm, j) => {
+    h += '<tr><td>' + nm + '</td><td>' + tr(eff[j].d) + '</td><td>' + tr(eff[j].lo) + ' to ' + tr(eff[j].hi) + '</td><td>' + (sp ? fmtP(sp[j].p) : '…') + '</td></tr>';
+  });
+  h += '<tr class="hl"><td>' + (R.log ? 'Ratio (dish / unconfined)' : 'Difference (dish − unconfined)') + '</td><td>' + tr(I) + '</td><td>' + tr(Ilo) + ' to ' + tr(Ihi) + '</td><td>' + (fl ? fmtP(fl.p) : '…') + '</td></tr>';
+  h += '</table></div><div class="card-note">' + (R.log ? 'A speedup of 1.5× means runs with rafts finished in two-thirds the (geometric-mean, restricted) time. A ratio above 1 means the dish amplifies the raft effect.' : R.time ? 'Positive values mean rafts finish sooner.' : 'Positive values mean rafts make completion by T<sub>max</sub> more likely.') + ' CIs use the pooled ANOVA error; the p-values come from permuting raft labels within each arena.</div></div>';
+  h += '</div>';
+
+  h += '<div class="card"><div class="card-h">Reproduce in R</div><div class="card-note" style="margin:0 0 6px">Download the CSV, then:</div><pre class="code" id="rcode">' + rCode() + '</pre><div class="toolbar" style="margin-top:6px"><button class="btn small" id="b-copy-r">Copy R code</button></div></div>';
+
+  out.innerHTML = h;
+  document.getElementById('b-copy-r').addEventListener('click', e => {
+    navigator.clipboard && navigator.clipboard.writeText(document.getElementById('rcode').textContent).then(() => { e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy R code', 1200); });
+  });
+  batch.view = { rows, y, a, b, av, key, R, M };
+  drawBatchPlots();
+}
+function legendHTML() {
+  return CONDS.map(c => '<span><span class="sw' + (c.dash ? ' dash' : '') + '" style="border-color:' + c.color + '"></span>' + c.label + '</span>').join('');
+}
+function boxW(id) { const cv = document.getElementById(id); return cv ? Math.max(240, cv.parentNode.clientWidth) : 0; }
+
+function drawBatchPlots() {
+  const V = batch.view; if (!V || !document.getElementById('pl-km')) return;
+  const { rows, M } = V;
+  // cumulative completion
+  let W = boxW('pl-km'), H = 210, ctx = hidpi(document.getElementById('pl-km'), W, H);
+  let ax = axes(ctx, W, H, [0, M.Tmax], [0, 1], { xlab: 'step', ylab: 'completed', yfmt: v => Math.round(v * 100) + '%' });
+  CONDS.forEach((c, k) => {
+    const rr = rows.filter(r => r.cond === k), n = rr.length;
+    const Ts = rr.filter(r => r.event).map(r => r.T).sort((u, v) => u - v);
+    ctx.strokeStyle = c.color; ctx.lineWidth = 1.8; ctx.setLineDash(c.dash ? [5, 4] : []);
+    ctx.beginPath(); ctx.moveTo(ax.x(0), ax.y(0));
+    let f = 0;
+    Ts.forEach(t => { ctx.lineTo(ax.x(t), ax.y(f)); f += 1 / n; ctx.lineTo(ax.x(t), ax.y(f)); });
+    ctx.lineTo(ax.x(M.Tmax), ax.y(f)); ctx.stroke(); ctx.setLineDash([]);
+  });
+  // mean span
+  W = boxW('pl-span'); ctx = hidpi(document.getElementById('pl-span'), W, H);
+  ax = axes(ctx, W, H, [0, M.Tmax], [0, 1], { xlab: 'step', ylab: 'span', yfmt: v => Math.round(v * 100) + '%' });
+  const L = Math.floor(M.Tmax / M.every);
+  CONDS.forEach((c, k) => {
+    const rr = rows.filter(r => r.cond === k), n = rr.length; if (!n) return;
+    const mu = new Float64Array(L + 1), m2 = new Float64Array(L + 1);
+    rr.forEach(r => { for (let j = 0; j <= L; j++) { const v = j === 0 ? 0 : (j - 1 < r.tr.length ? r.tr[j - 1] : (r.event ? 1 : r.tr[r.tr.length - 1] || 0)); mu[j] += v; m2[j] += v * v; } });
+    const se = []; for (let j = 0; j <= L; j++) { mu[j] /= n; se.push(Math.sqrt(Math.max(0, m2[j] / n - mu[j] * mu[j]) / Math.max(1, n - 1))); }
+    ctx.fillStyle = c.color + (c.dash ? '18' : '24');
+    ctx.beginPath();
+    for (let j = 0; j <= L; j++) ctx.lineTo(ax.x(j * M.every), ax.y(Math.min(1, mu[j] + se[j])));
+    for (let j = L; j >= 0; j--) ctx.lineTo(ax.x(j * M.every), ax.y(Math.max(0, mu[j] - se[j])));
+    ctx.fill();
+    ctx.strokeStyle = c.color; ctx.lineWidth = 1.8; ctx.setLineDash(c.dash ? [5, 4] : []);
+    ctx.beginPath(); for (let j = 0; j <= L; j++) { const x = ax.x(j * M.every), y = ax.y(mu[j]); j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke(); ctx.setLineDash([]);
+  });
+  // interaction plot
+  const { y, a, b, av, R } = V;
+  W = boxW('pl-int'); ctx = hidpi(document.getElementById('pl-int'), W, 230);
+  let lo = Math.min(...y), hi = Math.max(...y); const pad = (hi - lo) * 0.08 || 0.5; lo -= pad; hi += pad;
+  const yfmt = R.log ? (v => { const e = Math.round(Math.exp(v)); return e >= 1000 ? +(e / 1000).toFixed(1) + 'k' : String(e); }) : R.time ? (v => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0)) : (v => v.toFixed(1));
+  let yticks;
+  if (R.log) {                                   // ticks at 1, 2, 5 × 10^k steps
+    yticks = [];
+    for (let e = Math.floor(lo / Math.LN10); e <= Math.ceil(hi / Math.LN10); e++)
+      [1, 2, 5].forEach(m => { const v = Math.log(m * Math.pow(10, e)); if (v >= lo && v <= hi) yticks.push(v); });
+    if (yticks.length < 3) yticks = undefined;
+  }
+  ax = axes(ctx, W, 230, [-0.5, 1.5], [lo, hi], { noX: true, yfmt, yticks, ylab: R.log ? 'steps (log scale)' : R.time ? 'steps' : 'P(completed)' });
+  ctx.fillStyle = '#6e6860'; ctx.font = '11px "IBM Plex Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('confined (dish)', ax.x(0), 230 - 26); ctx.fillText('unconfined', ax.x(1), 230 - 26);
+  const tq = tCrit(av.dfE), se = Math.sqrt(av.mse / av.r), rng = makeRNG(7);
+  [0, 1].forEach(aa => {
+    const col = aa ? '#c2410c' : '#1d4ed8', off = aa ? 0.09 : -0.09;
+    for (let i = 0; i < y.length; i++) if (a[i] === aa) {
+      const xx = (1 - b[i]) + off * 2.2 + (rng() - 0.5) * 0.1;
+      ctx.fillStyle = col + '40'; ctx.beginPath(); ctx.arc(ax.x(xx), ax.y(y[i]), 2.2, 0, 7); ctx.fill();
+    }
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 2; ctx.beginPath();
+    [1, 0].forEach((bb, j) => { const m = av.m[2 * bb + aa], X = ax.x(j + off * 2.2); j ? ctx.lineTo(X, ax.y(m)) : ctx.moveTo(X, ax.y(m)); });
+    ctx.stroke();
+    [1, 0].forEach((bb, j) => {
+      const m = av.m[2 * bb + aa], X = ax.x(j + off * 2.2);
+      ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X, ax.y(m - tq * se)); ctx.lineTo(X, ax.y(m + tq * se)); ctx.stroke();
+      ctx.beginPath(); ctx.arc(X, ax.y(m), 4, 0, 7); ctx.fill();
+    });
+  });
+}
+
+function csvText() {
+  const M = batch.meta;
+  let s = '# pontoon_rafts batch export; Tmax=' + M.Tmax + '; params: ' + JSON.stringify(M.P) + '\n';
+  s += 'rep,confinement,rafts,seed,T,event,T50,event50,Tmax,raft_ants_mean,ants_lost\n';
+  batch.rows.filter(Boolean).sort((u, v) => u.rep - v.rep || u.cond - v.cond).forEach(r => {
+    const c = CONDS[r.cond];
+    s += [r.rep + 1, c.conf ? 'confined' : 'unconfined', c.raft ? 'rafts' : 'none', r.seed, r.T, r.event, r.T50, r.event50, M.Tmax, r.raftMean.toFixed(2), r.lost].join(',') + '\n';
+  });
+  return s;
+}
+function downloadCSV() {
+  const blob = new Blob([csvText()], { type: 'text/csv' }), a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'pontoon_rafts_batch.csv'; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function rCode() {
+  return [
+    'd <- read.csv("pontoon_rafts_batch.csv", comment.char = "#")',
+    'd$rafts <- factor(d$rafts, levels = c("none", "rafts"))',
+    'd$confinement <- factor(d$confinement, levels = c("confined", "unconfined"))',
+    'd$Tr <- pmin(d$T, d$Tmax)   # restricted completion time (censored at Tmax)',
+    '',
+    '# Two-way ANOVA on the log scale: the interaction is a ratio of raft speedups',
+    'summary(aov(log(Tr) ~ rafts * confinement, data = d))',
+    '',
+    '# Freedman-Lane permutation test (install.packages("permuco"))',
+    'permuco::aovperm(log(Tr) ~ rafts * confinement, data = d, np = 5000,',
+    '                 method = "freedman_lane")',
+    '',
+    '# Survival framing: bridge completion is the "event"',
+    'library(survival)',
+    'plot(survfit(Surv(T, event) ~ rafts + confinement, data = d), fun = "event",',
+    '     col = c(4, 4, 2, 2), lty = c(1, 2, 1, 2), xlab = "step", ylab = "completed")',
+    'summary(coxph(Surv(T, event) ~ rafts * confinement, data = d))',
+    '# Lognormal AFT: exp(-coef of the interaction) is the speedup ratio',
+    'summary(survreg(Surv(T, event) ~ rafts * confinement, data = d, dist = "lognormal"))',
+    '',
+    '# Completion by Tmax as a binary outcome',
+    'summary(glm(event ~ rafts * confinement, family = binomial, data = d))',
+  ].join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────
+function tabNames() { return [...document.querySelectorAll('.main-tab')].map(b => b.dataset.tab); }
+function switchTab(tab) {
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + tab));
+  document.querySelectorAll('.main-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  const sel = document.getElementById('tab-sel-mobile'); if (sel) sel.value = tab;
+  history.replaceState(null, '', '#' + tab);
+  if (tab === 'explorer') requestAnimationFrame(() => { layoutArenas(); drawLive(); });
+  if (tab === 'batch') requestAnimationFrame(drawBatchPlots);
+}
+document.querySelectorAll('[data-tab]').forEach(el =>
+  el.addEventListener('click', e => { e.preventDefault(); switchTab(el.dataset.tab); window.scrollTo(0, 0); }));
+document.getElementById('tab-sel-mobile').addEventListener('change', e => switchTab(e.target.value));
+window.addEventListener('hashchange', () => {
+  const t = location.hash.slice(1); if (tabNames().includes(t)) switchTab(t);
+});
+
+// ── Wiring ─────────────────────────────────────────────────────────
+document.getElementById('btn-play').addEventListener('click', () => {
+  if (!live.playing && live.sims.every(s => s.done >= 0)) resetLive(false);
+  setPlaying(!live.playing);
+});
+document.getElementById('btn-step').addEventListener('click', () => { advance(10); drawLive(); });
+document.getElementById('btn-reset').addEventListener('click', () => resetLive(false));
+document.getElementById('btn-newseed').addEventListener('click', () => resetLive(true));
+document.getElementById('seed').addEventListener('change', () => resetLive(false));
+document.getElementById('scent').addEventListener('change', drawLive);
+document.getElementById('b-run').addEventListener('click', startBatch);
+document.getElementById('b-cancel').addEventListener('click', cancelBatch);
+document.getElementById('b-csv').addEventListener('click', downloadCSV);
+document.getElementById('b-resp').addEventListener('change', () => { if (batch.meta && !batch.running) renderResults(true, batch.done < batch.meta.jobs.length); });
+let _rz = false;
+window.addEventListener('resize', () => {
+  if (_rz) return; _rz = true;
+  requestAnimationFrame(() => { _rz = false; layoutArenas(); drawLive(); drawBatchPlots(); });
+});
+
+// ── Init ───────────────────────────────────────────────────────────
+// Capture the incoming hash before switchTab('explorer') below overwrites it.
+const _initTab = location.hash.slice(1);
+buildPanel();
+buildArenas();
+document.getElementById('b-params').textContent = 'Parameters: ' + paramSummary();
+resetLive(false);
+switchTab('explorer');
+if (tabNames().includes(_initTab) && _initTab !== 'explorer') switchTab(_initTab);
+</script>
+<script>
+if (window.self !== window.top) {
+  var f = document.getElementById('back-link-footer'); if (f) { f.style.display = 'none'; }
+  // A min-height tied to the viewport (the "fill the window" idiom) would track the frame's
+  // own height and keep the frame from ever shrinking, so neutralize such rules here, where
+  // the frame is sized to the content. Cross-origin sheets (web fonts) throw and are skipped.
+  (function () {
+    function drop(rules) {
+      for (var i = 0; i < rules.length; i++) {
+        var r = rules[i];
+        if (r.style && /vh\b/.test(r.style.minHeight)) { r.style.minHeight = '0'; }
+        if (r.cssRules) { drop(r.cssRules); }
+      }
+    }
+    for (var s = 0; s < document.styleSheets.length; s++) { try { drop(document.styleSheets[s].cssRules); } catch (e) {} }
+  })();
+  // Embedded in another page: report the content height to the host so the iframe can
+  // grow and shrink with the active tab instead of scrolling inside itself. Canvas LMS
+  // listens for this message on every page and resizes whichever iframe sent it. It is
+  // never sent on a direct visit, and it never leaves the browser.
+  (function () {
+    var last = 0;
+    function report(force) {
+      var h = Math.ceil(document.documentElement.getBoundingClientRect().height);
+      if (h > 0 && (force || h !== last)) { last = h; window.parent.postMessage({ subject: 'lti.frameResize', height: h }, '*'); }
+    }
+    if (window.ResizeObserver) { new ResizeObserver(function () { report(false); }).observe(document.documentElement); }
+    window.addEventListener('load', function () { report(true); });
+    // The host's listener may attach after this page has loaded (Canvas boots a large
+    // bundle after its HTML arrives), so repeat the current height a few times.
+    [500, 1500, 3000, 6000, 12000].forEach(function (ms) { setTimeout(function () { report(true); }, ms); });
+    report(true);
+  })();
+}
+</script>
+</body>
+</html>

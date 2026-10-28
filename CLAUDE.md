@@ -200,5 +200,5 @@ both tags (`rsf, v2v: …`), though splitting it is usually better.
 - **Copyright:** (c) Theodore P. Pavlic, MIT License (`LICENSE` file at repo root). The MIT License covers the page code, not the underlying research ideas.
 - **fb:app_id:** `2385695445236853` – include in all OG blocks
 - **GitHub Pages base URL:** `https://tpavlic.github.io/research_sandbox/`
-- **Google Analytics:** GA4 measurement ID `G-1GJE3Z9182`. The landing page and all four excursions carry the gtag block with this ID; include it in any new excursion's `<head>`
+- **Google Analytics:** GA4 measurement ID `G-1GJE3Z9182`. The landing page and every excursion carry the gtag block with this ID; include it in any new excursion's `<head>`
 - **Git commits:** do **not** add a `Co-Authored-By: Claude` (or any AI co-author) trailer to commit messages
