@@ -268,7 +268,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <span class="tb-lbl">Seed</span><input type="number" id="seed" value="1" min="0" aria-label="Random seed">
         <button class="seed-prev" id="seed-prev" hidden title="Restore the previous seed">prev</button>
         <label title="Draw a fresh random seed whenever a run is restarted"><input type="checkbox" class="chk" id="autoseed" checked> New seed each run</label>
-        <label><input type="checkbox" class="chk" id="scent"> Scent overlay</label>
+        <label title="Shading deepens evenly toward the food on a log scale of the join probability; each ring marks a further e-fold rise, one every λ cells"><input type="checkbox" class="chk" id="scent"> Scent overlay</label>
       </div>
       <div id="arenas"></div>
       <div class="legend" id="cell-legend"></div>
@@ -719,6 +719,11 @@ const PARAMS = [
     tip: 'Probability that a raft move is pushed downstream (to the right) instead of in a random direction. Zero is still water, as in the dish.' },
   { k: 'depth', label: 'Water beyond food item', min: 1, max: 6, step: 0.5, def: 3, fmt: v => v.toFixed(1) + ' gaps', onlyPoint: true,
     tip: 'Only for the food-item target: how much open water lies beyond the food, in multiples of the gap.' },
+  { grp: 'Food scent', note: 'The scent rises e-fold every λ cells toward the target (the food, or the far bank in a river crossing). It raises the join probability and draws walkers toward the target.' },
+  { k: 'lam', label: 'Scent length <i>λ</i>', min: 2, max: 20, step: 0.5, def: 6, fmt: v => v.toFixed(1) + ' cells',
+    tip: 'Distance over which the joining probability rises e-fold toward the target.' },
+  { k: 'bias', label: 'Scent bias <i>b</i>', min: 0, max: 1.5, step: 0.05, def: 0.6, fmt: v => v.toFixed(2),
+    tip: 'Strength of the walkers\' bias toward the target: a step that brings a walker one cell closer is weighted by exp(b).' },
   { grp: 'Colony' },
   { k: 'N', label: 'Forager pool <i>N</i>', min: 500, max: 5000, step: 100, def: 2000, fmt: v => v,
     tip: 'Ants available to the shore. Ants lost on rafts that drift away leave the pool for good.' },
@@ -726,13 +731,9 @@ const PARAMS = [
     tip: 'Per-step probability that a pooled forager enters a random shore cell.' },
   { k: 'rOut', label: 'Return rate <i>r</i><sub>out</sub>', min: 0.002, max: 0.05, step: 0.001, def: 0.01, fmt: v => v.toFixed(3),
     tip: 'Per-step probability that a walker on the shore goes back to the pool.' },
-  { k: 'bias', label: 'Scent bias <i>b</i>', min: 0, max: 1.5, step: 0.05, def: 0.6, fmt: v => v.toFixed(2),
-    tip: 'Strength of the walkers\' bias toward the target: a step that brings a walker one cell closer is weighted by exp(b).' },
   { grp: 'Building' },
   { k: 'p0', label: 'Join prob. at shore <i>p</i><sub>0</sub>', min: 0.001, max: 0.04, step: 0.001, def: 0.008, fmt: v => v.toFixed(3),
     tip: 'Probability that a walker links onto an adjacent open-water cell at the shoreline. It rises toward the target as exp((gap − d)/λ), capped at 1.' },
-  { k: 'lam', label: 'Scent length <i>λ</i>', min: 2, max: 20, step: 0.5, def: 6, fmt: v => v.toFixed(1) + ' cells',
-    tip: 'Distance over which the joining probability rises e-fold toward the target.' },
   { k: 'pRel', label: 'Release prob. <i>p</i><sub>rel</sub>', min: 0.002, max: 0.1, step: 0.002, def: 0.02, fmt: v => v.toFixed(3),
     tip: 'Per-step probability that an unlocked structural ant lets go and swims back to the pool.' },
   { k: 'tau', label: 'Lock memory <i>τ</i>', min: 0, max: 30, step: 1, def: 3, fmt: v => v + ' steps',
@@ -841,7 +842,7 @@ const COL = {
   bg: [255, 255, 255], wall: [236, 231, 223], land: [222, 208, 184], landW: [176, 92, 52],
   water: [214, 232, 245], food: [233, 183, 74], bank: [186, 207, 150],
   anch: [92, 42, 20], anchW: [190, 84, 42], raft: [234, 140, 40], raftW: [248, 186, 110],
-  done: [150, 22, 22], scent: [250, 226, 150],
+  done: [150, 22, 22], scent: [244, 204, 120],
 };
 const live = { sims: [], hist: [[], [], [], []], playing: false, panels: [], cell: 4 };
 
@@ -922,8 +923,11 @@ function drawSim(k) {
     else if (t === LAND) c = sim.wcount[i] > 0 ? COL.landW : COL.land;
     else if (t === FOOD) c = A.bank ? COL.bank : COL.food;
     else if (scent) {
-      const a = Math.min(1, sim.pJoin[i] / Math.min(1, P.p0 * Math.exp(A.gap / P.lam))) * 0.85;
-      c = [0, 1, 2].map(j => COL.water[j] + (COL.scent[j] - COL.water[j]) * a);
+      // The join probability rises exponentially toward the food, so shade it on a log scale
+      // (linear in distance across the gap) and mark each e-fold rise with a ring every λ cells
+      const d = A.dist[i], a = Math.max(0, Math.min(1, 1 - d / A.gap));
+      const u = (A.gap - d) / P.lam, ring = d < A.gap && u - Math.floor(u) < 0.5 / P.lam * 2;
+      c = [0, 1, 2].map(j => (COL.water[j] + (COL.scent[j] - COL.water[j]) * a) * (ring ? 0.9 : 1));
     } else c = COL.water;
     d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
   }
