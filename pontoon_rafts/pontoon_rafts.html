@@ -174,7 +174,8 @@ table.tbl{border-collapse:collapse;font-size:11px;width:100%;font-family:var(--m
 .tbl th,.tbl td{padding:4px 7px;border-bottom:1px solid #e6e0d6;text-align:right;white-space:nowrap}
 .tbl th{font-weight:600;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.03em;border-bottom:1.5px solid var(--border)}
 .tbl td:first-child,.tbl th:first-child{text-align:left}
-.tbl tr.hl td{background:var(--rust-pale);font-weight:600}
+.tbl tr.hl td{background:var(--rust-pale)}
+.sig{font-weight:700;color:var(--rust)}
 .tbl-scroll{overflow-x:auto}
 .verdict{font-size:12.5px;line-height:1.6;padding:9px 12px;border-left:3px solid var(--rust);background:var(--rust-pale);border-radius:0 6px 6px 0}
 .warn{font-size:11.5px;line-height:1.5;padding:7px 10px;border-left:3px solid #b45309;background:#fdf3e1;border-radius:0 6px 6px 0}
@@ -1164,6 +1165,9 @@ const RESP = {
   logT50: { name: 'log time to half span', log: true, time: true },
   done:   { name: 'completed by Tmax (0/1)', log: false, time: false },
 };
+// Significance is marked on the p-value itself; the shaded row only marks the interaction
+const pCell = p => p < 0.05 ? '<span class="sig">' + fmtP(p) + '</span>' : fmtP(p);
+const SIG_NOTE = 'The shaded row is the interaction the design asks about, whatever its p-value; p-values below 0.05 are in <span class="sig">bold color</span>.';
 const fmtP = p => !isFinite(p) ? '–' : p < 0.0001 ? '< 0.0001' : p.toFixed(4);
 const fmt = (v, d) => !isFinite(v) ? '–' : v.toFixed(d);
 
@@ -1239,16 +1243,16 @@ function renderResults(final, cancelled) {
 
   h += '<div class="stack">';
   h += '<div class="card"><div class="card-h">Two-way ANOVA · ' + R.name + '</div><div class="tbl-scroll"><table class="tbl"><tr><th>Source</th><th>df</th><th>SS</th><th>MS</th><th>F</th><th>p (F)</th><th>p (perm.)</th></tr>';
-  const arow = (nm, r, pp, hl) => '<tr' + (hl ? ' class="hl"' : '') + '><td>' + nm + '</td><td>' + r.df + '</td><td>' + fmt(r.ss, 4) + '</td><td>' + fmt(r.ms, 4) + '</td><td>' + fmt(r.F, 3) + '</td><td>' + fmtP(r.p) + '</td><td>' + pp + '</td></tr>';
-  h += arow('Rafting', av.A, '–') + arow('Confinement', av.B, '–') + arow('Rafting × confinement', av.AB, fl ? fmtP(fl.p) : '…', true);
+  const arow = (nm, r, pp, hl) => '<tr' + (hl ? ' class="hl"' : '') + '><td>' + nm + '</td><td>' + r.df + '</td><td>' + fmt(r.ss, 4) + '</td><td>' + fmt(r.ms, 4) + '</td><td>' + fmt(r.F, 3) + '</td><td>' + pCell(r.p) + '</td><td>' + pp + '</td></tr>';
+  h += arow('Rafting', av.A, '–') + arow('Confinement', av.B, '–') + arow('Rafting × confinement', av.AB, fl ? pCell(fl.p) : '…', true);
   h += '<tr><td>Residual</td><td>' + av.E.df + '</td><td>' + fmt(av.E.ss, 4) + '</td><td>' + fmt(av.E.ms, 4) + '</td><td></td><td></td><td></td></tr></table></div>';
-  h += '<div class="card-note">Balanced design with ' + nRep + ' replicates per condition. The permutation p-value for the interaction uses the Freedman–Lane residual scheme with ' + (B || '…') + ' permutations.</div></div>';
+  h += '<div class="card-note">Balanced design with ' + nRep + ' replicates per condition. The permutation p-value for the interaction uses the Freedman–Lane residual scheme with ' + (B || '…') + ' permutations. ' + SIG_NOTE + '</div></div>';
   h += '<div class="card"><div class="card-h">Raft effect by arena</div><div class="tbl-scroll"><table class="tbl"><tr><th>Arena</th><th>' + effName + '</th><th>95% CI</th><th>p (perm.)</th></tr>';
   ['Confined (dish)', 'Unconfined'].forEach((nm, j) => {
-    h += '<tr><td>' + nm + '</td><td>' + tr(eff[j].d) + '</td><td>' + tr(eff[j].lo) + ' to ' + tr(eff[j].hi) + '</td><td>' + (sp ? fmtP(sp[j].p) : '…') + '</td></tr>';
+    h += '<tr><td>' + nm + '</td><td>' + tr(eff[j].d) + '</td><td>' + tr(eff[j].lo) + ' to ' + tr(eff[j].hi) + '</td><td>' + (sp ? pCell(sp[j].p) : '…') + '</td></tr>';
   });
-  h += '<tr class="hl"><td>' + (R.log ? 'Ratio (dish / unconfined)' : 'Difference (dish − unconfined)') + '</td><td>' + tr(I) + '</td><td>' + tr(Ilo) + ' to ' + tr(Ihi) + '</td><td>' + (fl ? fmtP(fl.p) : '…') + '</td></tr>';
-  h += '</table></div><div class="card-note">' + (R.log ? 'A speedup of 1.5× means runs with rafts finished in two-thirds the (geometric-mean, restricted) time. A ratio above 1 means the dish amplifies the raft effect.' : R.time ? 'Positive values mean rafts finish sooner.' : 'Positive values mean rafts make completion by T<sub>max</sub> more likely.') + ' CIs use the pooled ANOVA error; the p-values come from permuting raft labels within each arena.</div></div>';
+  h += '<tr class="hl"><td>' + (R.log ? 'Ratio (dish / unconfined)' : 'Difference (dish − unconfined)') + '</td><td>' + tr(I) + '</td><td>' + tr(Ilo) + ' to ' + tr(Ihi) + '</td><td>' + (fl ? pCell(fl.p) : '…') + '</td></tr>';
+  h += '</table></div><div class="card-note">' + (R.log ? 'A speedup of 1.5× means runs with rafts finished in two-thirds the (geometric-mean, restricted) time. A ratio above 1 means the dish amplifies the raft effect.' : R.time ? 'Positive values mean rafts finish sooner.' : 'Positive values mean rafts make completion by T<sub>max</sub> more likely.') + ' CIs use the pooled ANOVA error. The arena rows\' p-values come from permuting raft labels within each arena, and the ratio\'s from the Freedman–Lane test. ' + SIG_NOTE + '</div></div>';
   h += '</div>';
 
   h += '<div class="card"><div class="card-h">Reproduce in R</div><div class="card-note" style="margin:0 0 6px">Download the CSV, then:</div><pre class="code" id="rcode">' + rCode() + '</pre><div class="toolbar" style="margin-top:6px"><button class="btn small" id="b-copy-r">Copy R code</button></div></div>';
