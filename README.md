@@ -32,13 +32,14 @@ and merged into this one, so the per-excursion commit history is still visible h
 On the live site, each excursion is tagged with a status pill, and the legend in the page's
 intro box doubles as a filter (click a pill to show only that status): **WIP** (work in progress),
 **Published** (completed and carried through to publication; the pill links to the paper's DOI), or
-**Archived** (set aside and no longer active, never published). All four excursions below are
+**Archived** (set aside and no longer active, never published). All five excursions below are
 currently work in progress.
 
 ### Collective Behavior
 
 - [`ytree_detrend/`](ytree_detrend/) – Detrend and spectrally analyze trajectories of collective-transport groups (weaver ants) moving loads vertically up trees, including forked trees, by projecting motion onto the tree.
 - [`rsf_explorer/`](rsf_explorer/) – Test field hypotheses about how distance interacts with other nest properties in the navigational choices of collective-transport groups and individual ants in polydomous colonies, framed through a resource selection function (RSF) for subnest destination choice.
+- [`pontoon_rafts/`](pontoon_rafts/) – Ask whether floating rafts speed the assembly of fire-ant pontoon bridges only because a laboratory dish confines them, through a 2 × 2 simulation (rafting × confinement) with replicated batch runs, a two-way ANOVA, and permutation tests on restricted completion time.
 
 ### Multi-Robot Systems
 
