@@ -116,7 +116,7 @@ a:hover{text-decoration:underline}
 .btn.primary{background:var(--rust);color:white}
 .btn.primary:hover{background:var(--rust-dk)}
 .btn:disabled{opacity:.45;cursor:default}
-/* both labels share one grid cell, so the button keeps the wider one's width */
+/* both labels share one grid cell, so that the button keeps the wider one's width */
 .play{display:inline-grid}
 .play>span{grid-area:1/1;text-align:center}
 .play .lbl-pause,.play.on .lbl-run{visibility:hidden}
@@ -134,7 +134,7 @@ a:hover{text-decoration:underline}
 
 #arenas{display:flex;flex-direction:column;gap:10px}
 .arena-row{display:flex;gap:10px}
-/* equal halves, so the readout wraps inside the card instead of widening it */
+/* equal halves, so that the readout wraps inside the card instead of widening it */
 .arena-row .arena{flex:1 1 0}
 .arena canvas{margin:0 auto}
 .arena{background:white;border:1px solid var(--border);border-radius:var(--r);padding:6px 8px 6px;box-shadow:0 2px 8px var(--shadow);min-width:0}
@@ -247,7 +247,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
   <div class="hiw"><div class="hiw-inner">
     <div class="hiw-card"><div class="hiw-num">1</div><div class="hiw-text"><b>Ants step onto the water.</b> Foragers walk the shore and any standing structure, drawn toward food scent, and link onto open water at the edge, more readily the closer the water is to the target.</div></div>
     <div class="hiw-card"><div class="hiw-num">2</div><div class="hiw-text"><b>Traffic locks the structure.</b> An ant that others walk over is held in place; an ant nobody uses lets go. Only well-used proto-bridges persist.</div></div>
-    <div class="hiw-card"><div class="hiw-num">3</div><div class="hiw-text"><b>Rafts (right-hand runs only).</b> Idle anchors let go of the shore and detached pieces float as rafts that drift, collide, and dock, instead of dispersing.</div></div>
+    <div class="hiw-card"><div class="hiw-num">3</div><div class="hiw-text"><b>Rafts (right-hand runs only).</b> Idle anchors let go of the shore, and detached pieces float as rafts that drift, collide, and dock instead of dispersing.</div></div>
   </div></div>
   <div class="body">
     <aside class="panel" id="slot-explorer"><div class="panel-inner" id="param-panel"></div></aside>
@@ -284,7 +284,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
       <div class="card-h">Replicated 2 × 2 experiment</div>
       <div class="batch-ctl">
         <label class="fld"><span>Replicates per condition</span><input type="number" id="b-n" value="30" min="3" max="500"></label>
-        <label class="fld"><span>Time limit T<sub>max</sub> (steps) <span class="tip" tabindex="0" data-tip="Runs that have not completed a bridge by this step are stopped and treated as censored at Tmax. Every run shares the same limit, so the censoring is administrative.">?</span></span><input type="number" id="b-tmax" value="8000" min="500" max="100000" step="500"></label>
+        <label class="fld"><span>Time limit T<sub>max</sub> (steps) <span class="tip" tabindex="0" data-tip="Runs that have not completed a bridge by this step are stopped and treated as censored at Tmax. Every run shares the same limit, and so the censoring is administrative.">?</span></span><input type="number" id="b-tmax" value="8000" min="500" max="100000" step="500"></label>
         <label class="fld"><span>Base seed</span><input type="number" id="b-seed" value="1000" min="0"></label>
         <label class="fld"><span>Permutations</span><input type="number" id="b-perm" value="5000" min="199" max="100000" step="100"></label>
         <label class="fld"><span>Response <span class="tip" tabindex="0" data-tip="What the ANOVA and permutation tests analyze. The default, log restricted completion time, makes the interaction a ratio of raft speedup factors (see the Model & analysis tab).">?</span></span>
@@ -301,7 +301,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <button class="btn" id="b-csv" disabled>Download CSV</button>
         <div class="prog-row" style="flex:1"><div class="prog"><div id="b-bar"></div></div><span id="b-status">idle</span></div>
       </div>
-      <div class="card-note">The batch uses the model parameters in the side panel, the same panel as on the <a href="#explorer" data-tab="explorer">Explorer</a> tab, so a change made on either tab applies to both. Runs are spread over parallel background workers where the browser allows it.</div>
+      <div class="card-note">The batch uses the model parameters in the side panel. It is the same panel as on the <a href="#explorer" data-tab="explorer">Explorer</a> tab, and so a change made on either tab applies to both. Runs are spread over parallel background workers where the browser allows it.</div>
     </div>
 
     <div id="b-results"><div class="empty">No batch yet. Press <b>Run batch</b>; 30 replicates per condition take well under a minute on most machines.</div></div>
@@ -314,14 +314,14 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
   <div class="prose">
     <h2>The question</h2>
     <p>In dish assays, fire ants (<em>Solenopsis invicta</em>) held on the rim of a water-filled dish assemble a floating pontoon bridge out to food at its center. Besides the proto-bridges anchored at the rim, clusters of linked ants sometimes break free and float as small rafts, which can drift into one another and into growing structures. Suppose such rafts do speed up bridging in a dish. Does that benefit carry over to the settings where fire ants actually bridge, such as across a stream?</p>
-    <p>A dish differs from open water in at least three ways. It is closed, and so a raft has nowhere to go except into the rim, another structure, or the food. It is radially symmetric, and so every launch point on the rim faces the food, and proto-bridges converge on one another as they grow inward. It is also still, with no current. Along a bank, none of these holds. If the raft effect comes from confinement, a model that produces it in a dish should lose much of it in an unconfined arena, which shows up as a <b>rafting × confinement interaction</b>. The excursion therefore poses the question as a 2 × 2 factorial design, in which the interaction term, not either main effect by itself, answers it.</p>
+    <p>A dish differs from open water in at least three ways. It is closed, and so a raft has nowhere to go except into the rim, another structure, or the food. It is radially symmetric, and so every launch point on the rim faces the food, and proto-bridges converge on one another as they grow inward. It is also still, with no current. Along a bank, none of these holds. If the raft effect comes from confinement, a model that produces it in a dish should lose much of it in an unconfined arena, and that loss shows up as a <b>rafting × confinement interaction</b>. The excursion therefore poses the question as a 2 × 2 factorial design, in which the interaction term, not either main effect by itself, answers it.</p>
     <p class="note">The laboratory system that motivates this is summarized publicly on <a href="https://horacesnature.com/research/" target="_blank" rel="noopener">Horace Zeng's research page</a> (8000-ant subcolonies, bridges of about 500 ants, and several proto-bridges of which only one completes). The model here is an independent toy built to frame the design question; it is not that study's model, and its parameters are not fitted to any data.</p>
 
     <h2>Arenas</h2>
     <p>Space is a square lattice whose cells are about one worker body length (taken as 3&nbsp;mm), with one structural ant per water cell. The <b>gap</b> is the number of water cells between the shore and the target, 20 by default (about 6&nbsp;cm, the rim-to-food distance of a 15&nbsp;cm dish with a 3&nbsp;cm food drop).</p>
     <ul>
       <li><b>Confined:</b> a circular dish of radius <i>R</i> = gap + target radius, with a rim two cells wide on which ants walk, and the food as a disk at the center.</li>
-      <li><b>Unconfined:</b> a straight shore two cells deep whose length equals the dish's rim circumference, so the same forager pool is spread at the same density per unit of shoreline. By default it faces a <b>far bank</b> at the same gap (a river crossing, where the target is as wide as the shore, just as the dish's food is equally near every rim point). The alternative target is a <b>food item</b> of the dish's size, at the same distance from the shore, in open water. The water is open at the arena's ends (and, for the food-item target, beyond it): a raft that drifts out is lost unless edges are set to reflect.</li>
+      <li><b>Unconfined:</b> a straight shore two cells deep whose length equals the dish's rim circumference, so that the same forager pool is spread at the same density per unit of shoreline. By default, it faces a <b>far bank</b> at the same gap (a river crossing, in which every shore point is as near the target as every rim point is to the dish's food). The alternative target is a <b>food item</b> of the dish's size, at the same distance from the shore, in open water. The water is open at the arena's ends (and, for the food-item target, beyond it): a raft that drifts out is lost unless edges are set to reflect.</li>
     </ul>
     <p>Confinement in this design therefore bundles closure, convergent geometry, and still water. The geometry controls let you take these apart: set the unconfined edges to reflect to remove the loss of rafts, add current to make the open arena more river-like, or switch the target to see what radial convergence alone contributes.</p>
 
@@ -331,38 +331,38 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
       <li><b>Walking.</b> A walker moves to one of its four neighbors that it can stand on (shore, structure, or target) or stays put, with weights <span style="white-space:nowrap">exp(−<i>b</i>&thinsp;Δ<i>d</i>)</span>, where <i>d</i> is the distance to the target's edge. A walker that reaches the target feeds and returns to the pool.</li>
       <li><b>Joining.</b> Before moving, a walker tries one random neighbor; if it is open water, the walker links onto it with probability
         <div class="eq">p<sub>join</sub>(d) = min{1, p<sub>0</sub> · exp[(gap − d) / λ]}</div>
-        and becomes a structural ant. At the shoreline this equals <i>p</i><sub>0</sub>, and it rises toward the target, which is the local scent cue.</li>
-      <li><b>Locking and release.</b> A structural ant is held while a walker stands on it and for τ steps afterward, and also whenever at least <i>k</i> of its four neighbors are structural ants. Otherwise it lets go with probability <i>p</i><sub>rel</sub> and swims back to the pool.</li>
+        and becomes a structural ant. At the shoreline, this equals <i>p</i><sub>0</sub>, and it rises toward the target; that rise stands in for the local scent cue.</li>
+      <li><b>Locking and release.</b> A structural ant is held while a walker stands on it and for τ steps afterward, and also whenever at least <i>k</i> of its four neighbors are structural ants. Otherwise, it lets go with probability <i>p</i><sub>rel</sub> and swims back to the pool.</li>
       <li><b>Connectivity.</b> The structure is split into connected pieces. A piece that touches the shore or the target is anchored; the bridge is complete as soon as one piece touches both.</li>
       <li><b>The treatment: what happens to a piece that touches neither.</b>
         <ul>
           <li><i>No rafts:</i> it disperses at once, and its ants return to the pool.</li>
-          <li><i>Rafts:</i> it persists as a raft. Each step, a raft of <i>m</i> ants moves one cell with probability <i>D</i><sub>0</sub>/<i>m</i><sup>γ</sup> (pushed downstream with probability equal to the current, in the unconfined arena), carrying any walkers on it. It merges with whatever it touches, so a raft that reaches a proto-bridge extends it, and one that reaches the target anchors there. In addition, an <b>anchor</b> (a structural ant touching the shore) with no traffic lets go of the shore with probability <i>p</i><sub>calve</sub>, even when its neighbors would otherwise hold it, and so idle clusters can break away whole.</li>
+          <li><i>Rafts:</i> it persists as a raft. Each step, a raft of <i>m</i> ants moves one cell with probability <i>D</i><sub>0</sub>/<i>m</i><sup>γ</sup> (pushed downstream with probability equal to the current, in the unconfined arena), carrying any walkers on it. It merges with whatever it touches: a raft that reaches a proto-bridge extends it, and one that reaches the target anchors there. In addition, an <b>anchor</b> (a structural ant touching the shore) with no traffic lets go of the shore with probability <i>p</i><sub>calve</sub>, even when its neighbors would otherwise hold it, and so idle clusters can break away whole.</li>
         </ul>
       </li>
     </ol>
     <p>The defaults were tuned for one thing only: that rafting clearly speeds bridging in the dish, so that the question about confinement has an effect to ask about. In checks with 100 replicates per condition, the defaults give a raft speedup of about 1.5× in the dish and about 0.9× (a slight slowdown) in the unconfined far-bank arena. Nearby settings of the scent length, raft mobility, and anchor release rate that keep the dish speedup near 1.5× put the unconfined speedup anywhere from about 0.9× to 1.2×, and so the size of the interaction, unlike its direction, is not robust in this model. None of these values is fitted to a measurement.</p>
 
     <h2>Choosing the response</h2>
-    <p>The natural outcome is the <b>time to completion</b> <i>T</i>, the step at which shore and target are first connected. Runs that have not finished by <i>T</i><sub>max</sub> are stopped. As every run shares the same horizon, this is administrative censoring, and the mean of min(<i>T</i>, <i>T</i><sub>max</sub>) is exactly the <b>restricted mean completion time</b> (RMST) up to <i>T</i><sub>max</sub>, a standard survival estimand, rather than an ad hoc fill-in for missing values. It does compress differences when many runs are censored, so the batch reports censoring counts for every cell; if they are large, raise <i>T</i><sub>max</sub>.</p>
+    <p>The natural outcome is the <b>time to completion</b> <i>T</i>, the step at which shore and target are first connected. Runs that have not finished by <i>T</i><sub>max</sub> are stopped. As every run shares the same horizon, this is administrative censoring, and the mean of min(<i>T</i>, <i>T</i><sub>max</sub>) is exactly the <b>restricted mean completion time</b> (RMST) up to <i>T</i><sub>max</sub>, a standard survival estimand, rather than an ad hoc fill-in for missing values. It does compress differences when many runs are censored, and so the batch reports censoring counts for every cell; if they are large, raise <i>T</i><sub>max</sub>.</p>
     <p>The default analysis is on the <b>log scale</b>. A raft speedup is naturally a ratio, and the two arenas need not share a baseline speed. On the raw scale, the same proportional speedup in a slow arena and a fast one yields a nonzero interaction purely because the baselines differ. On the log scale, the interaction contrast is the log of a ratio of speedups:</p>
     <div class="eq">speedup<sub>arena</sub> = exp[ mean ln T<sub>no rafts</sub> − mean ln T<sub>rafts</sub> ]<br>interaction ratio = speedup<sub>confined</sub> / speedup<sub>unconfined</sub></div>
     <p>An interaction ratio near 1 says rafts help equally in both arenas, and a ratio well above 1 says the dish amplifies the raft effect. Two other responses are offered: the log time to half span, which is censored far less often and captures early growth, and completion by <i>T</i><sub>max</sub> as a 0/1 outcome, analyzed here as a linear probability model (a logistic model in R is the better choice for that outcome).</p>
 
     <h2>Tests</h2>
     <ul>
-      <li><b>Two-way ANOVA</b> with F tests for rafting, confinement, and their interaction. The design is balanced, so sequential and marginal sums of squares coincide.</li>
+      <li><b>Two-way ANOVA</b> with F tests for rafting, confinement, and their interaction. The design is balanced, and so sequential and marginal sums of squares coincide.</li>
       <li><b>Freedman–Lane permutation test of the interaction.</b> Fit the additive model, permute its residuals, add them back to the additive fit, and recompute the interaction F. This keeps the test valid when the errors are skewed or heavy tailed, as completion times often are, even on the log scale.</li>
       <li><b>Stratified permutation tests</b> of the raft effect within each arena, permuting raft labels among the runs of that arena only. These answer the more direct question of whether rafts matter at all once the dish is gone.</li>
     </ul>
     <p>The cumulative completion curves on the batch tab are one minus the Kaplan–Meier survival curves (with all censoring at <i>T</i><sub>max</sub>, they are simply empirical distribution functions). In the exported CSV, <code>T</code> and <code>event</code> are ready for a Cox model or an accelerated failure time model with an interaction term; with a lognormal AFT, the interaction coefficient is the log interaction ratio defined above. The R code on the batch tab does both.</p>
-    <p>The same machinery doubles as a rough power analysis for an empirical version: rerun the batch with the number of colonies a lab could realistically test per condition (say 6 to 10) and see how often the interaction would be detected. An empirical analogue of the unconfined arm could be a long, narrow trough with food or a far bank across its width, in which rafts can drift away from the launch site.</p>
+    <p>The same machinery doubles as a rough power analysis for an empirical version: rerun the batch several times, each with a different base seed and with the number of colonies a lab could realistically test per condition (say 6 to 10), and see how often the interaction is detected. An empirical analogue of the unconfined arm could be a long, narrow trough with food or a far bank across its width, in which rafts can drift away from the launch site.</p>
 
     <h2>Caveats</h2>
     <ul>
       <li>The model is a single-layer lattice; real pontoon bridges are thick and multilayered, and real rafts deform.</li>
-      <li>Steps are not seconds, and the parameters are illustrative, not calibrated; absolute times mean nothing, only the comparison among the four cells does.</li>
-      <li>Rafts here drift passively. If ants on a raft can steer toward scent, rafts would reach the target more often in open water too, and the interaction would shrink.</li>
+      <li>Steps are not seconds, and the parameters are illustrative, not calibrated; absolute times mean nothing, and only the comparison among the four cells carries information.</li>
+      <li>Rafts here drift passively. If ants on a raft could steer toward scent, rafts would reach the target more often in open water too, and the interaction would shrink.</li>
       <li>Results can be sensitive to the parameters, and the sign of the raft effect in the unconfined arena can change with the anchor release rate and current. That sensitivity is itself an argument for testing the interaction empirically rather than assuming the dish result generalizes.</li>
     </ul>
   </div>
@@ -679,12 +679,12 @@ const CONDS = [
 const PARAMS = [
   { grp: 'Geometry' },
   { k: 'gap', label: 'Gap to target', min: 8, max: 40, step: 1, def: 20, fmt: v => v + ' cells',
-    tip: 'Water cells between the shore (or rim) and the target. One cell is about one worker body length (≈ 3 mm), so 20 cells ≈ 6 cm, the rim-to-food distance of a 15 cm dish.' },
+    tip: 'Water cells between the shore (or rim) and the target. One cell is about one worker body length (≈ 3 mm), and so 20 cells ≈ 6 cm, the rim-to-food distance of a 15 cm dish.' },
   { k: 'rf', label: 'Food radius', min: 2, max: 8, step: 1, def: 5, fmt: v => v + ' cells',
     tip: 'Radius of the food disk at the dish center (and of the food item in the unconfined point-target arena). The dish radius is gap + food radius.' },
   { k: 'target', label: 'Unconfined target', type: 'select', def: 'bank',
     opts: [['bank', 'Far bank (river crossing)'], ['point', 'Food item in open water']],
-    tip: 'Far bank: the target is a parallel bank at the same gap, so every shore point is equally near it, as every rim point is in the dish. Food item: a disk of the dish food size at the same distance from the shore, with open water around and beyond it.' },
+    tip: 'Far bank: the target is a parallel bank at the same gap, and so every shore point is as near it as every rim point is to the food in the dish. Food item: a disk of the dish food size at the same distance from the shore, with open water around and beyond it.' },
   { k: 'absorb', label: 'Rafts at open edges', type: 'select', def: '1',
     opts: [['1', 'Drift away (lost)'], ['0', 'Bounce back (reflect)']],
     tip: 'What happens to a raft that reaches an open edge of the unconfined arena. "Bounce back" removes the loss of rafts and isolates the effect of geometry.' },
@@ -715,7 +715,7 @@ const PARAMS = [
     tip: 'A structural ant with at least this many structural neighbors cannot let go, even without traffic (interior ants of a cluster are held by the ants around them).' },
   { grp: 'Rafts', note: 'Used only by the two runs with rafts.' },
   { k: 'pCalve', label: 'Anchor let-go p_calve', min: 0, max: 0.01, step: 0.0005, def: 0.0005, fmt: v => v.toFixed(4),
-    tip: 'Per-step probability that an idle anchor ant (touching the shore, no traffic) lets go of the shore even if its neighbors hold it, so a whole idle cluster can break away as a raft.' },
+    tip: 'Per-step probability that an idle anchor ant (touching the shore, no traffic) lets go of the shore, even if its neighbors hold it, and so a whole idle cluster can break away as a raft.' },
   { k: 'D0', label: 'Raft mobility D₀', min: 0, max: 4, step: 0.1, def: 2, fmt: v => v.toFixed(2),
     tip: 'A raft of m ants moves one cell per step with probability D₀ / m^γ (capped at 1).' },
   { k: 'gam', label: 'Size exponent γ', min: 0, max: 1.5, step: 0.05, def: 0.5, fmt: v => v.toFixed(2),
@@ -843,7 +843,7 @@ function resetLive(newSeed) {
   const box = document.getElementById('seed');
   if (newSeed) box.value = (Math.random() * 1e6) | 0;
   const seed = +box.value || 0;
-  // Keep the seed being replaced, so a run worth revisiting is one click away
+  // Keep the seed being replaced, so that a run worth revisiting is one click away
   if (live.seed !== undefined && seed !== live.seed) {
     live.prev = live.seed;
     const pv = document.getElementById('seed-prev');
@@ -913,7 +913,7 @@ function drawSim(k) {
   ctx.fillStyle = '#6e6860'; ctx.font = '9px "IBM Plex Mono", monospace'; ctx.textBaseline = 'middle';
   ctx.fillText(p.W - L > 170 ? '10 body lengths ≈ 3 cm' : '≈ 3 cm', L + 7, Hpx + 8);
   if (!A.confined && P.current > 0) { ctx.textAlign = 'right'; ctx.fillText('current →', p.W - 2, Hpx + 8); ctx.textAlign = 'left'; }
-  // Three lines in every card, so the four cards keep the same layout and height
+  // Three lines in every card, so that the four cards keep the same layout and height
   let st = '<div>t = <b>' + sim.t + '</b> · span <b>' + Math.round(sim.span * 100) + '%</b> · structure ' + sim.sN + '</div>';
   st += '<div>' + (sim.rafts ? 'rafts ' + sim.nRafts + ' (' + sim.raftAnts + ' ants)' + (A.confined ? '' : ' · lost ' + sim.lost)
     : 'no rafts (pieces disperse)') + '</div>';
@@ -1145,7 +1145,7 @@ function setBatchUI(running) {
   progress();
 }
 
-// Complete replicates only, so the design stays balanced
+// Complete replicates only, so that the design stays balanced
 function balancedRows() {
   const byRep = new Map();
   batch.rows.forEach(r => { if (!r) return; if (!byRep.has(r.rep)) byRep.set(r.rep, []); byRep.get(r.rep).push(r); });
@@ -1371,7 +1371,8 @@ function rCode() {
     'plot(survfit(Surv(T, event) ~ rafts + confinement, data = d), fun = "event",',
     '     col = c(4, 4, 2, 2), lty = c(1, 2, 1, 2), xlab = "step", ylab = "completed")',
     'summary(coxph(Surv(T, event) ~ rafts * confinement, data = d))',
-    '# Lognormal AFT: exp(-coef of the interaction) is the speedup ratio',
+    '# Lognormal AFT: exp(interaction coefficient) is the interaction ratio',
+    '# (raft speedup in the dish / raft speedup unconfined)',
     'summary(survreg(Surv(T, event) ~ rafts * confinement, data = d, dist = "lognormal"))',
     '',
     '# Completion by Tmax as a binary outcome',
@@ -1388,7 +1389,7 @@ function switchTab(tab) {
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + tab));
   document.querySelectorAll('.main-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   const sel = document.getElementById('tab-sel-mobile'); if (sel) sel.value = tab;
-  // A sandboxed preview (an about:srcdoc frame) refuses any URL change, so a failure
+  // A sandboxed preview (an about:srcdoc frame) refuses any URL change, and so a failure
   // here only costs the deep link and must not stop the tab switch.
   try { history.replaceState(null, '', '#' + tab); } catch (e) {}
   if (tab === 'explorer') requestAnimationFrame(() => { layoutArenas(); drawLive(); });
