@@ -1424,6 +1424,8 @@ function rCode() {
 function tabNames() { return [...document.querySelectorAll('.main-tab')].map(b => b.dataset.tab); }
 function switchTab(tab) {
   // One parameter panel serves both the Explorer and the batch tab
+  // Leaving the Explorer pauses its runs, and they stay paused on return
+  if (tab !== 'explorer' && live.playing) setPlaying(false);
   const slot = document.getElementById('slot-' + tab);
   if (slot) slot.appendChild(document.getElementById('param-panel'));
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + tab));
