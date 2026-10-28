@@ -125,7 +125,10 @@ a:hover{text-decoration:underline}
 .chk{accent-color:var(--rust)}
 
 #arenas{display:flex;flex-direction:column;gap:10px}
-.arena-row{display:flex;gap:10px;flex-wrap:wrap}
+.arena-row{display:flex;gap:10px}
+/* equal halves, so the readout wraps inside the card instead of widening it */
+.arena-row .arena{flex:1 1 0}
+.arena-row .arena canvas{margin:0 auto}
 .arena{background:white;border:1px solid var(--border);border-radius:var(--r);padding:6px 8px 6px;box-shadow:0 2px 8px var(--shadow);min-width:0}
 .arena-h{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;font-weight:600;margin-bottom:4px}
 .sw{display:inline-block;width:22px;height:0;border-top:3px solid;flex-shrink:0}
@@ -134,6 +137,7 @@ a:hover{text-decoration:underline}
 .arena-st{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5}
 .arena-st b{color:var(--text)}
 .arena-st .ok{color:#15803d;font-weight:600}
+.arena-st .wait{font-style:italic}
 .legend{display:flex;flex-wrap:wrap;gap:5px 10px;font-size:10.5px;color:var(--muted)}
 .lg{display:flex;align-items:center;gap:4px}
 .lg i{display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid rgba(0,0,0,.15)}
@@ -886,9 +890,11 @@ function drawSim(k) {
   ctx.fillStyle = '#6e6860'; ctx.font = '9px "IBM Plex Mono", monospace'; ctx.textBaseline = 'middle';
   ctx.fillText(p.W - L > 170 ? '10 body lengths ≈ 3 cm' : '≈ 3 cm', L + 7, Hpx + 8);
   if (!A.confined && P.current > 0) { ctx.textAlign = 'right'; ctx.fillText('current →', p.W - 2, Hpx + 8); ctx.textAlign = 'left'; }
-  let st = 't = <b>' + sim.t + '</b> · span <b>' + Math.round(sim.span * 100) + '%</b> · structure ' + sim.sN;
-  if (sim.rafts) st += ' · rafts ' + sim.nRafts + ' (' + sim.raftAnts + ' ants)' + (sim.lost ? ' · lost ' + sim.lost : '');
-  if (sim.done >= 0) st += ' · <span class="ok">bridged at t = ' + sim.done + '</span>';
+  // Three lines in every card, so the four cards keep the same layout and height
+  let st = '<div>t = <b>' + sim.t + '</b> · span <b>' + Math.round(sim.span * 100) + '%</b> · structure ' + sim.sN + '</div>';
+  st += '<div>' + (sim.rafts ? 'rafts ' + sim.nRafts + ' (' + sim.raftAnts + ' ants)' + (A.confined ? '' : ' · lost ' + sim.lost)
+    : 'no rafts (pieces disperse)') + '</div>';
+  st += '<div>' + (sim.done >= 0 ? '<span class="ok">bridged at t = ' + sim.done + '</span>' : '<span class="wait">not yet bridged</span>') + '</div>';
   p.st.innerHTML = st;
 }
 
