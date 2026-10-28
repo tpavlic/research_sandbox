@@ -161,6 +161,8 @@ a:hover{text-decoration:underline}
 .fld{display:flex;flex-direction:column;gap:2px;font-size:11px}
 .fld span{display:flex;align-items:center;gap:4px}
 .fld input,.fld select{font-family:var(--mono);font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text)}
+.fld-chk{margin-left:auto;display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap}
+.fld .fld-chk input{padding:0}
 .prog{height:8px;background:var(--cream-dk);border-radius:4px;overflow:hidden;border:1px solid var(--border);flex:1;min-width:120px}
 .prog div{height:100%;width:0;background:var(--rust);transition:width .2s}
 .prog-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
@@ -290,7 +292,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
       <div class="batch-ctl">
         <label class="fld"><span>Replicates per condition</span><input type="number" id="b-n" value="30" min="3" max="500"></label>
         <label class="fld"><span>Time limit T<sub>max</sub> (steps) <span class="tip" tabindex="0" data-tip="Runs that have not completed a bridge by this step are stopped and treated as censored at Tmax. Every run shares the same limit, and so the censoring is administrative.">?</span></span><input type="number" id="b-tmax" value="8000" min="500" max="100000" step="500"></label>
-        <label class="fld"><span>Base seed</span><input type="number" id="b-seed" value="1000" min="0"></label>
+        <div class="fld"><span><label for="b-seed">Base seed</label><button class="seed-prev" id="b-seed-prev" hidden title="Restore the previous batch's base seed">prev</button><label class="fld-chk" title="Draw a fresh base seed for each batch, unless you have typed in or restored one"><input type="checkbox" class="chk" id="b-autoseed" checked> new each batch</label></span><input type="number" id="b-seed" value="1000" min="0"></div>
         <label class="fld"><span>Permutations</span><input type="number" id="b-perm" value="5000" min="199" max="100000" step="100"></label>
         <label class="fld"><span>Response <span class="tip" tabindex="0" data-tip="What each run contributes to the tests:&#10;• log restricted time: ln min(T, Tmax), the default&#10;• restricted time: min(T, Tmax); condition means are RMSTs&#10;• log time to half span: ln of the step at which span reaches 50%&#10;• completed by Tmax: 1 or 0&#10;Details are on the Model & analysis tab.">?</span></span>
           <select id="b-resp">
@@ -1093,7 +1095,16 @@ function startBatch() {
   if (batch.running) return;
   const n = Math.max(3, Math.min(500, +document.getElementById('b-n').value | 0));
   const Tmax = Math.max(500, +document.getElementById('b-tmax').value | 0);
-  const base = +document.getElementById('b-seed').value | 0;
+  // A fresh base seed for each batch, unless the box no longer holds the last
+  // batch's seed (typed in, or restored with "prev"), in which case that one is used
+  const box = document.getElementById('b-seed');
+  if (document.getElementById('b-autoseed').checked && batch.meta && (+box.value | 0) === batch.meta.base)
+    box.value = (Math.random() * 1e6) | 0;
+  const base = +box.value | 0;
+  if (batch.meta && base !== batch.meta.base) {
+    const pv = document.getElementById('b-seed-prev');
+    pv.textContent = 'prev ' + batch.meta.base; pv.dataset.seed = batch.meta.base; pv.hidden = false;
+  }
   const every = Math.max(10, Math.round(Tmax / 200));
   const P = getParams();
   const jobs = [];
@@ -1355,7 +1366,7 @@ function drawBatchPlots() {
 
 function csvText() {
   const M = batch.meta;
-  let s = '# pontoon_rafts batch export; Tmax=' + M.Tmax + '; params: ' + JSON.stringify(M.P) + '\n';
+  let s = '# pontoon_rafts batch export; Tmax=' + M.Tmax + '; base seed=' + M.base + '; params: ' + JSON.stringify(M.P) + '\n';
   s += 'rep,confinement,rafts,seed,T,event,T50,event50,Tmax,raft_ants_mean,ants_lost\n';
   batch.rows.filter(Boolean).sort((u, v) => u.rep - v.rep || u.cond - v.cond).forEach(r => {
     const c = CONDS[r.cond];
@@ -1433,6 +1444,7 @@ document.getElementById('scent').addEventListener('change', drawLive);
 document.getElementById('b-run').addEventListener('click', startBatch);
 document.getElementById('b-cancel').addEventListener('click', cancelBatch);
 document.getElementById('b-csv').addEventListener('click', downloadCSV);
+document.getElementById('b-seed-prev').addEventListener('click', e => { document.getElementById('b-seed').value = e.currentTarget.dataset.seed; });
 document.getElementById('b-resp').addEventListener('change', () => { if (batch.meta && !batch.running) renderResults(true, batch.done < batch.meta.jobs.length); });
 let _rz = false;
 window.addEventListener('resize', () => {
