@@ -1229,11 +1229,11 @@ function renderResults(final, cancelled) {
   if (final && fl) {
     const strong = fl.p < 0.05, ratio = R.log ? Math.exp(I) : I;
     let v = '<b>Interaction (rafting × confinement):</b> ';
-    if (R.log) v += 'the raft speedup is ' + fmt(Math.exp(eff[0].d), 2) + '× in the dish and ' + fmt(Math.exp(eff[1].d), 2) + '× unconfined, a ratio of ' + fmt(ratio, 2) + ' (95% CI ' + fmt(Math.exp(Ilo), 2) + '–' + fmt(Math.exp(Ihi), 2) + ')';
-    else v += 'the raft benefit is ' + tr(eff[0].d) + ' in the dish and ' + tr(eff[1].d) + ' unconfined, a difference of ' + tr(I) + ' (95% CI ' + tr(Ilo) + ' to ' + tr(Ihi) + ')';
+    if (R.log) v += 'the raft speedup is ' + fmt(Math.exp(eff[0].d), 2) + '× confined and ' + fmt(Math.exp(eff[1].d), 2) + '× unconfined, a ratio of ' + fmt(ratio, 2) + ' (95% CI ' + fmt(Math.exp(Ilo), 2) + '–' + fmt(Math.exp(Ihi), 2) + ')';
+    else v += 'the raft benefit is ' + tr(eff[0].d) + ' confined and ' + tr(eff[1].d) + ' unconfined, a difference of ' + tr(I) + ' (95% CI ' + tr(Ilo) + ' to ' + tr(Ihi) + ')';
     v += '; Freedman–Lane permutation p = ' + fmtP(fl.p) + '. ';
     v += strong ? 'The raft effect depends on the arena in these runs.' : 'These runs do not show that the raft effect depends on the arena.';
-    v += ' Raft effect within each arena: dish p = ' + fmtP(sp[0].p) + ', unconfined p = ' + fmtP(sp[1].p) + ' (stratified permutation).';
+    v += ' Raft effect within each arena: confined p = ' + fmtP(sp[0].p) + ', unconfined p = ' + fmtP(sp[1].p) + ' (stratified permutation).';
     h += '<div class="verdict">' + v + '</div>';
   }
 
@@ -1262,8 +1262,8 @@ function renderResults(final, cancelled) {
   ['Confined (dish)', 'Unconfined'].forEach((nm, j) => {
     h += '<tr><td>' + nm + '</td><td>' + tr(eff[j].d) + '</td><td>' + tr(eff[j].lo) + ' to ' + tr(eff[j].hi) + '</td><td>' + (sp ? pCell(sp[j].p) : '…') + '</td></tr>';
   });
-  h += '<tr class="hl"><td>' + (R.log ? 'Ratio (dish / unconfined)' : 'Difference (dish − unconfined)') + '</td><td>' + tr(I) + '</td><td>' + tr(Ilo) + ' to ' + tr(Ihi) + '</td><td>' + (fl ? pCell(fl.p) : '…') + '</td></tr>';
-  h += '</table></div><div class="card-note">' + (R.log ? 'A speedup of 1.5× means runs with rafts finished in two-thirds the (geometric-mean, restricted) time. A ratio above 1 means the dish amplifies the raft effect.' : R.time ? 'Positive values mean rafts finish sooner.' : 'Positive values mean rafts make completion by T<sub>max</sub> more likely.') + ' CIs use the pooled ANOVA error. The arena rows\' p-values come from permuting raft labels within each arena, and the ratio\'s from the Freedman–Lane test. ' + SIG_NOTE + '</div></div>';
+  h += '<tr class="hl"><td>' + (R.log ? 'Ratio (confined / unconfined)' : 'Difference (confined − unconfined)') + '</td><td>' + tr(I) + '</td><td>' + tr(Ilo) + ' to ' + tr(Ihi) + '</td><td>' + (fl ? pCell(fl.p) : '…') + '</td></tr>';
+  h += '</table></div><div class="card-note">' + (R.log ? 'A speedup of 1.5× means runs with rafts finished in two-thirds the (geometric-mean, restricted) time. A ratio above 1 means confinement amplifies the raft effect.' : R.time ? 'Positive values mean rafts finish sooner.' : 'Positive values mean rafts make completion by T<sub>max</sub> more likely.') + ' CIs use the pooled ANOVA error. The arena rows\' p-values come from permuting raft labels within each arena, and the ratio\'s from the Freedman–Lane test. ' + SIG_NOTE + '</div></div>';
   h += '</div>';
 
   h += '<div class="card"><div class="card-h">Reproduce in R</div><div class="card-note" style="margin:0 0 6px"><a href="#" id="b-csv-link">Download the CSV</a>, then:</div><pre class="code" id="rcode">' + rCode() + '</pre><div class="toolbar" style="margin-top:6px"><button class="btn small" id="b-copy-r">Copy R code</button></div></div>';
@@ -1388,7 +1388,7 @@ function rCode() {
     '     col = c(4, 4, 2, 2), lty = c(1, 2, 1, 2), xlab = "step", ylab = "completed")',
     'summary(coxph(Surv(T, event) ~ rafts * confinement, data = d))',
     '# Lognormal AFT: exp(interaction coefficient) is the interaction ratio',
-    '# (raft speedup in the dish / raft speedup unconfined)',
+    '# (raft speedup confined / raft speedup unconfined)',
     'summary(survreg(Surv(T, event) ~ rafts * confinement, data = d, dist = "lognormal"))',
     '',
     '# Completion by Tmax as a binary outcome',
