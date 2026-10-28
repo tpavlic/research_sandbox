@@ -198,6 +198,7 @@ table.tbl{border-collapse:collapse;font-size:11px;width:100%;font-family:var(--m
 pre.code{background:#2a2420;color:#f3ede4;font-family:var(--mono);font-size:11px;line-height:1.55;padding:10px 12px;border-radius:6px;overflow-x:auto;white-space:pre}
 #b-results{display:flex;flex-direction:column;gap:12px}
 .tbl .ci{color:var(--muted);font-size:10px}
+.tbl td.cens{color:#b45309;font-weight:600}
 .empty{font-size:12px;color:var(--muted);font-style:italic;padding:8px 0}
 
 /* ── Model tab ───────────────────────────── */
@@ -1613,7 +1614,8 @@ function sweepStats(final) {
     const I = eff[0].d - eff[1].d;
     const fl = final ? freedmanLane(y, a, b, 999, rng) : null;
     const done = rows.filter(r => r.event).length;
-    return { k, nRep, eff, I, Ilo: I - tq * seI, Ihi: I + tq * seI, p: fl ? fl.p : NaN, done, total: rows.length };
+    const condDone = CONDS.map((c, ci) => rows.filter(r => r.cond === ci && r.event).length);
+    return { k, nRep, eff, I, Ilo: I - tq * seI, Ihi: I + tq * seI, p: fl ? fl.p : NaN, done, condDone, total: rows.length };
   });
 }
 
@@ -1625,6 +1627,15 @@ function renderSweep(final, cancelled) {
   const x = v => fmt(Math.exp(v), 2) + '×';
   let h = '';
   if (cancelled) h += '<div class="warn" style="margin-top:10px">Sweep cancelled; the results use the complete replicates finished so far.</div>';
+  // As in the batch, flag any gain at which a condition has more than 20% of its runs unfinished
+  const cens = s => s.condDone.some(d => d < 0.8 * s.nRep);
+  const flagged = ok.filter(cens);
+  if (flagged.length) {
+    h += '<div class="warn" style="margin-top:10px">Many runs did not finish by the time limit of T<sub>max</sub> = ' + M.Tmax + ' steps: ' +
+      flagged.map(s => { const ci = s.condDone.indexOf(Math.min(...s.condDone));
+        return 'at <i>κ</i> = ' + s.k + ', only ' + s.condDone[ci] + ' of ' + s.nRep + ' “' + CONDS[ci].label + '” runs'; }).join('; ') +
+      '. Unfinished runs count as T<sub>max</sub>, which pulls the speedups in those rows toward 1×; raise the time limit above to see the full effect.</div>';
+  }
   h += '<div class="stack" style="margin-top:10px"><div class="plot-box"><canvas id="s-plot"></canvas><div class="clegend">' +
     '<span><span class="sw" style="border-color:#c2410c"></span>confined (dish)</span><span><span class="sw dash" style="border-color:#c2410c"></span>unconfined</span></div>' +
     '<div class="card-note">Raft speedup in each arena (the geometric-mean ratio of restricted completion times without and with rafts) at each recruitment gain, with 95% CIs from that gain\'s own two-way ANOVA. At 1×, rafts make no difference.</div></div>';
@@ -1633,7 +1644,7 @@ function renderSweep(final, cancelled) {
     if (s.nRep < 2) { h += '<tr><td>' + s.k + '</td><td colspan="5">…</td></tr>'; return; }
     h += '<tr><td>' + s.k + '</td><td>' + x(s.eff[0].d) + ' <span class="ci">(' + x(s.eff[0].lo) + '–' + x(s.eff[0].hi) + ')</span></td><td>' +
       x(s.eff[1].d) + ' <span class="ci">(' + x(s.eff[1].lo) + '–' + x(s.eff[1].hi) + ')</span></td><td>' + x(s.I) + '</td><td>' +
-      (final ? pCell(s.p) : '…') + '</td><td>' + s.done + ' / ' + s.total + '</td></tr>';
+      (final ? pCell(s.p) : '…') + '</td><td' + (cens(s) ? ' class="cens" title="More than 20% of one condition\'s runs did not finish"' : '') + '>' + s.done + ' / ' + s.total + '</td></tr>';
   });
   h += '</table></div><div class="card-note">Ratio is the confined speedup over the unconfined one; its p-value is the Freedman–Lane permutation test of the interaction at that gain (999 permutations). ' +
     'Replicates per condition: ' + Math.min(...ok.map(s => s.nRep)) + (ok.some(s => s.nRep !== ok[0].nRep) ? ' or more' : '') + '; time limit ' + M.Tmax + '; base seed ' + M.base + '.</div></div></div>';
