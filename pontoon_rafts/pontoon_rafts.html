@@ -91,9 +91,10 @@ a:hover{text-decoration:underline}
 /* ── How-it-works strip ─────────────────── */
 .hiw{background:var(--cream-dk);border-bottom:2px solid var(--border)}
 .hiw-inner{max-width:1120px;margin:0 auto;padding:10px 14px;display:flex;gap:10px;flex-wrap:wrap}
-.hiw-card{flex:1;min-width:200px;display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--cream);border:1px solid var(--border);border-radius:var(--r)}
-.hiw-num{font-family:var(--mono);font-weight:700;font-size:11px;color:white;background:var(--rust);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.hiw-text{font-size:11px;color:var(--muted);line-height:1.45}.hiw-text b{color:var(--text)}
+.hiw-line{font-size:12px;color:var(--muted);line-height:1.55}
+/* a picture of the tooltip icon in running text: same look, no tooltip */
+.tip-static{vertical-align:-2px;cursor:default}
+.tip.tip-static:hover::after,.tip.tip-static:focus::after{content:none;display:none}
 
 /* ── Explorer layout ─────────────────────── */
 .body{display:flex;max-width:1120px;margin:0 auto;width:100%}
@@ -264,9 +265,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
 <!-- ═══════════════ EXPLORER ═══════════════ -->
 <section class="pane on" id="pane-explorer">
   <div class="hiw"><div class="hiw-inner">
-    <div class="hiw-card"><div class="hiw-num">1</div><div class="hiw-text"><b>Ants step onto the water.</b> Foragers walk the shore and any standing structure, drawn toward food scent, and link onto open water at the edge, more readily the closer the water is to the target.</div></div>
-    <div class="hiw-card"><div class="hiw-num">2</div><div class="hiw-text"><b>Traffic locks the structure.</b> An ant that others walk over is held in place; an ant nobody uses lets go. Only well-used proto-bridges persist.</div></div>
-    <div class="hiw-card"><div class="hiw-num">3</div><div class="hiw-text"><b>Rafts (right-hand runs only).</b> Idle anchors let go of the shore, and detached pieces float as rafts that drift, collide, and dock instead of dispersing.</div></div>
+    <p class="hiw-line">Four different treatments test the joint effects of arena confinement (confined vs. unconfined) and the ability to form rafts (rafts vs. no rafts). The behavioral rules and what each control does are explained in brief in each <span class="tip tip-static" aria-hidden="true">?</span> tooltip and in more detail in the <a href="#model" data-tab="model">Model &amp; analysis</a> tab.</p>
   </div></div>
   <div class="body">
     <aside class="panel" id="slot-explorer"><div class="panel-inner" id="param-panel"></div></aside>
