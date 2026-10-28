@@ -367,7 +367,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
     <h2>Rules, applied once per step</h2>
     <ol>
       <li><b>Recruitment.</b> Each forager in the pool of <i>N</i> enters a random shore cell with probability <i>r</i><sub>in</sub>; a walker on the shore returns to the pool with probability <i>r</i><sub>out</sub>.</li>
-      <li><b>Walking.</b> A walker moves to one of its four neighbors that it can stand on (shore, structure, or target) or stays put, with weights <span style="white-space:nowrap">exp(−<i>b</i>&thinsp;Δ<i>d</i>)</span>, where <i>d</i> is the distance to the target's edge. With <i>bias fades with scent</i> on, <i>b</i> is multiplied by min{1, exp[(gap − <i>d</i>)/<i>λ</i>]}, and so walkers farther than one gap from the target feel the pull e-fold more weakly every <i>λ</i> cells, as a fading scent would allow. A walker that reaches the target feeds and returns to the pool.</li>
+      <li><b>Walking.</b> A walker moves to one of its four neighbors that it can stand on (shore, structure, or target) or stays put, with weights <span style="white-space:nowrap">exp(−<i>b</i>&thinsp;Δ<i>d</i>)</span>, where <i>d</i> is the distance to the target's edge. With <i>walking bias fades with scent</i> on, <i>b</i> is multiplied by min{1, exp[(gap − <i>d</i>)/<i>λ</i>]}, and so walkers farther than one gap from the target feel the pull e-fold more weakly every <i>λ</i> cells, as a fading scent would allow. A walker that reaches the target feeds and returns to the pool.</li>
       <li><b>Joining.</b> Before moving, a walker tries one random neighbor; if it is open water, the walker links onto it with probability
         <div class="eq">p<sub>join</sub>(d) = min{1, p<sub>0</sub> · exp[(gap − d) / λ]}</div>
         and becomes a structural ant. At the shoreline, this equals <i>p</i><sub>0</sub>, and it rises toward the target; that rise stands in for the local scent cue.</li>
@@ -789,7 +789,7 @@ const PARAMS = [
     tip: 'What happens to a raft that reaches an open edge of the unconfined arena. "Bounce back" removes the loss of rafts and isolates the effect of geometry.' },
   { k: 'current', label: 'Current (unconfined)', min: 0, max: 0.6, step: 0.05, def: 0, fmt: v => v.toFixed(2),
     tip: 'Probability that a raft move is pushed downstream (to the right) instead of in a random direction. Zero is still water, as in the dish.' },
-  { grp: 'Food scent', note: 'The scent rises e-fold every λ cells toward the target (the food, or the far bank in a river crossing). How strongly ants respond to it is set by the scent bias (Colony) and the join probability (Building).' },
+  { grp: 'Food scent', note: 'The scent rises e-fold every λ cells toward the target (the food, or the far bank in a river crossing). How strongly ants respond to it is set by the walking scent bias (Colony) and the join probability (Building).' },
   { k: 'lam', label: 'Scent length <i>λ</i>', min: 2, max: 20, step: 0.5, def: 6, fmt: v => v.toFixed(1) + ' cells',
     tip: 'Distance over which the joining probability rises e-fold toward the target.' },
   { grp: 'Colony' },
@@ -799,10 +799,10 @@ const PARAMS = [
     tip: 'Per-step probability that a pooled forager enters a random shore cell.' },
   { k: 'rOut', label: 'Return rate <i>r</i><sub>out</sub>', min: 0.002, max: 0.05, step: 0.001, def: 0.01, fmt: v => v.toFixed(3),
     tip: 'Per-step probability that a walker on the shore goes back to the pool.' },
-  { k: 'bias', label: 'Scent bias <i>b</i>', min: 0, max: 1.5, step: 0.05, def: 0.6, fmt: v => v.toFixed(2),
+  { k: 'bias', label: 'Walking scent bias <i>b</i>', min: 0, max: 1.5, step: 0.05, def: 0.6, fmt: v => v.toFixed(2),
     tip: 'Strength of the walkers\' bias toward the target: a step that brings a walker one cell closer is weighted by exp(b).' },
-  { k: 'concBias', label: 'Bias fades with scent', type: 'check', def: false,
-    tip: 'When on, the scent bias b is scaled by the scent concentration relative to its level one gap from the target, capped at 1: walkers within a gap of the target feel the full pull, and farther ones feel it e-fold more weakly every λ cells. When off, every walker feels the full pull wherever it is.' },
+  { k: 'concBias', label: 'Walking bias fades with scent', type: 'check', def: false,
+    tip: 'When on, the walking scent bias b is scaled by the scent concentration relative to its level one gap from the target, capped at 1: walkers within a gap of the target feel the full pull, and farther ones feel it e-fold more weakly every λ cells. When off, every walker feels the full pull wherever it is.' },
   { grp: 'Building' },
   { k: 'p0', label: 'Join prob. at shore <i>p</i><sub>0</sub>', min: 0.001, max: 0.04, step: 0.001, def: 0.008, fmt: v => v.toFixed(3),
     tip: 'Probability that a walker links onto an adjacent open-water cell at the shoreline. It rises toward the target as exp((gap − d)/λ), capped at 1.' },
