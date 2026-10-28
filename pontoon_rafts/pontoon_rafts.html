@@ -134,10 +134,12 @@ a:hover{text-decoration:underline}
 .toolbar input[type=range]{width:110px;accent-color:var(--rust)}
 .toolbar input[type=number]{width:74px;font-family:var(--mono);font-size:11px;padding:3px 5px;border-radius:6px;border:1px solid var(--border)}
 .toolbar label{font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer}
+/* the two overlay checkboxes wrap together, never one without the other */
+.tb-grp{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
 .chk{accent-color:var(--rust)}
-.seed-prev{font-family:var(--mono);font-size:10.5px;color:var(--muted);background:none;border:none;padding:0;cursor:pointer}
-.seed-prev:hover{color:var(--rust);text-decoration:underline}
-.seed-prev[hidden]{display:none}
+/* a seed label with a previous seed to restore: its tooltip names it, and a click restores it */
+.has-prev{text-decoration:underline dotted;text-underline-offset:2px;cursor:pointer}
+.has-prev:hover{color:var(--rust)}
 
 #arenas{display:flex;flex-direction:column;gap:10px}
 .arena-row{display:flex;gap:10px}
@@ -274,11 +276,12 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <button class="btn" id="btn-step">Step ×10</button>
         <button class="btn" id="btn-reset">Reset</button>
         <span class="tb-lbl">Speed</span><input type="range" id="speed" min="1" max="60" value="12" aria-label="Steps per frame">
-        <span class="tb-lbl">Seed</span><input type="number" id="seed" value="1" min="0" aria-label="Random seed">
-        <button class="seed-prev" id="seed-prev" hidden title="Restore the previous seed">prev</button>
+        <span class="tb-lbl" id="seed-lbl">Seed</span><input type="number" id="seed" value="1" min="0" aria-label="Random seed">
         <label title="Draw a fresh random seed whenever a run is restarted"><input type="checkbox" class="chk" id="autoseed" checked> New seed each run</label>
-        <label title="Shade each water cell by its join probability p_join(d) = min{1, p₀ · exp[(gap − d)/λ]} on a fixed log scale from 0.001 to 1; a stronger scent (smaller λ) or a larger p₀ shows as more and deeper color"><input type="checkbox" class="chk" id="scent"> <span><i>p</i><sub>join</sub> overlay</span></label>
-        <label title="Tint the shore and structure by trail level (recruitment only)"><input type="checkbox" class="chk" id="trailov"> Trail overlay</label>
+        <span class="tb-grp">
+          <label title="Shade each water cell by its join probability p_join(d) = min{1, p₀ · exp[(gap − d)/λ]} on a fixed log scale from 0.001 to 1; a stronger scent (smaller λ) or a larger p₀ shows as more and deeper color"><input type="checkbox" class="chk" id="scent"> <span><i>p</i><sub>join</sub> overlay</span></label>
+          <label title="Tint the shore and structure by trail level (recruitment only)"><input type="checkbox" class="chk" id="trailov"> Trail overlay</label>
+        </span>
       </div>
       <div id="arenas"></div>
       <div class="legend" id="cell-legend"></div>
@@ -303,7 +306,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
       <div class="batch-ctl">
         <label class="fld"><span>Replicates per condition</span><input type="number" id="b-n" value="30" min="3" max="500"></label>
         <label class="fld"><span>Time limit T<sub>max</sub> (steps) <span class="tip" tabindex="0" data-tip="Runs that have not completed a bridge by this step are stopped and treated as censored at Tmax. Every run shares the same limit, and so the censoring is administrative.">?</span></span><input type="number" id="b-tmax" value="8000" min="500" max="100000" step="500"></label>
-        <div class="fld"><span><label for="b-seed">Base seed</label><button class="seed-prev" id="b-seed-prev" hidden title="Restore the previous batch's base seed">prev</button><label class="fld-chk" title="Draw a fresh base seed for each batch, unless you have typed in or restored one"><input type="checkbox" class="chk" id="b-autoseed" checked> new each batch</label></span><input type="number" id="b-seed" value="1000" min="0"></div>
+        <div class="fld"><span><label for="b-seed" id="b-seed-lbl">Base seed</label><label class="fld-chk" title="Draw a fresh base seed for each batch, unless you have typed in or restored one"><input type="checkbox" class="chk" id="b-autoseed" checked> new each batch</label></span><input type="number" id="b-seed" value="1000" min="0"></div>
         <label class="fld"><span>Permutations</span><input type="number" id="b-perm" value="5000" min="199" max="100000" step="100"></label>
         <label class="fld"><span>Response <span class="tip" tabindex="0" data-tip="What each run contributes to the tests:&#10;• log restricted time: ln min(T, Tmax), the default&#10;• restricted time: min(T, Tmax); condition means are RMSTs&#10;• log time to half span: ln of the step at which span reaches 50%&#10;• completed by Tmax: 1 or 0&#10;Details are on the Model & analysis tab.">?</span></span>
           <select id="b-resp">
@@ -935,6 +938,10 @@ function buildArenas() {
 }
 
 const autoSeed = () => document.getElementById('autoseed').checked;
+// A seed label carries the previous seed in its tooltip, and a click on it restores that seed
+function markPrev(el, seed) {
+  el.classList.add('has-prev'); el.title = 'Previous seed: ' + seed + '. Click to restore it.';
+}
 function resetLive(newSeed) {
   const box = document.getElementById('seed');
   if (newSeed) box.value = (Math.random() * 1e6) | 0;
@@ -942,8 +949,7 @@ function resetLive(newSeed) {
   // Keep the seed being replaced, so that a run worth revisiting is one click away
   if (live.seed !== undefined && seed !== live.seed) {
     live.prev = live.seed;
-    const pv = document.getElementById('seed-prev');
-    pv.textContent = 'prev ' + live.prev; pv.hidden = false;
+    markPrev(document.getElementById('seed-lbl'), live.prev);
   }
   live.seed = seed;
   const P = getParams();
@@ -1195,8 +1201,8 @@ function startBatch() {
     box.value = (Math.random() * 1e6) | 0;
   const base = +box.value | 0;
   if (batch.meta && base !== batch.meta.base) {
-    const pv = document.getElementById('b-seed-prev');
-    pv.textContent = 'prev ' + batch.meta.base; pv.dataset.seed = batch.meta.base; pv.hidden = false;
+    batch.prevSeed = batch.meta.base;
+    markPrev(document.getElementById('b-seed-lbl'), batch.prevSeed);
   }
   const every = Math.max(10, Math.round(Tmax / 200));
   const P = getParams();
@@ -1531,7 +1537,8 @@ document.getElementById('btn-play').addEventListener('click', () => {
 });
 document.getElementById('btn-step').addEventListener('click', () => { advance(10); drawLive(); });
 document.getElementById('btn-reset').addEventListener('click', () => resetLive(autoSeed()));
-document.getElementById('seed-prev').addEventListener('click', () => {
+document.getElementById('seed-lbl').addEventListener('click', () => {
+  if (live.prev === undefined) return;
   document.getElementById('seed').value = live.prev; resetLive(false);
 });
 document.getElementById('seed').addEventListener('change', () => resetLive(false));
@@ -1540,7 +1547,9 @@ document.getElementById('trailov').addEventListener('change', e => { document.ge
 document.getElementById('b-run').addEventListener('click', startBatch);
 document.getElementById('b-cancel').addEventListener('click', cancelBatch);
 document.getElementById('b-csv').addEventListener('click', downloadCSV);
-document.getElementById('b-seed-prev').addEventListener('click', e => { document.getElementById('b-seed').value = e.currentTarget.dataset.seed; });
+document.getElementById('b-seed-lbl').addEventListener('click', () => {
+  if (batch.prevSeed !== undefined) document.getElementById('b-seed').value = batch.prevSeed;
+});
 document.getElementById('b-resp').addEventListener('change', () => { if (batch.meta && !batch.running) renderResults(true, batch.done < batch.meta.jobs.length); });
 let _rz = false;
 window.addEventListener('resize', () => {
