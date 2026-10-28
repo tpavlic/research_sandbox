@@ -1512,7 +1512,8 @@ function showTab(name){
   // sync dropdown
   const sel=document.getElementById('tab-select');if(sel)sel.value=name;
   },40);
-  history.replaceState(null,'','#'+name);
+  // A sandboxed preview (about:srcdoc) refuses URL changes; lose only the deep link there.
+  try{history.replaceState(null,'','#'+name);}catch(e){}
 }
 
 window.addEventListener('hashchange',()=>{

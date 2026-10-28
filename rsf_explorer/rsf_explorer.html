@@ -1465,7 +1465,8 @@ function switchTab(tab){
   document.documentElement.scrollTop=0;
   document.body.scrollTop=0;
   if(tab==='explorer') requestAnimationFrame(resizeArena);
-  history.replaceState(null,'','#'+tab);
+  // A sandboxed preview (about:srcdoc) refuses URL changes; lose only the deep link there.
+  try{history.replaceState(null,'','#'+tab);}catch(e){}
 }
 
 document.querySelectorAll('[data-tab]').forEach(btn=>

@@ -6453,7 +6453,8 @@ function showSimTab() {
   document.getElementById('tabSim').classList.add('active');
   document.getElementById('tabRW').classList.remove('active');
   currentCodeLang = null;
-  history.replaceState(null, '', '#sim');
+  // A sandboxed preview (about:srcdoc) refuses URL changes; lose only the deep link there.
+  try { history.replaceState(null, '', '#sim'); } catch (e) {}
 }
 
 function showRWTab() {
@@ -6464,7 +6465,7 @@ function showRWTab() {
   document.getElementById('tabRW').classList.add('active');
   currentCodeLang = null;
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  history.replaceState(null, '', '#related-work');
+  try { history.replaceState(null, '', '#related-work'); } catch (e) {}
 }
 
 document.getElementById('tabSim').addEventListener('click', (e) => { e.preventDefault(); showSimTab(); });

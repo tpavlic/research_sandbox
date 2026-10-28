@@ -4123,7 +4123,8 @@ scalo |&gt;
         const sel = document.getElementById('mainTabSelect');
         if (sel) sel.value = String(idx);
         renderCurrent();
-        history.replaceState(null, '', '#' + TAB_SLUGS[+idx]);
+        // A sandboxed preview (about:srcdoc) refuses URL changes; lose only the deep link there.
+        try { history.replaceState(null, '', '#' + TAB_SLUGS[+idx]); } catch (e) {}
       }
       function setRTab(group, value) {
         S.rTab[group] = value;
