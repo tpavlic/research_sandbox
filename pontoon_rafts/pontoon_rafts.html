@@ -137,6 +137,7 @@ a:hover{text-decoration:underline}
 .toolbar label{font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer}
 /* the two overlay checkboxes wrap together, never one without the other */
 .tb-grp{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+.toolbar label.off{opacity:.45;cursor:default}
 .chk{accent-color:var(--rust)}
 /* a seed label with a previous seed to restore: its tooltip names it, and a click restores it */
 .has-prev{text-decoration:underline dotted;text-underline-offset:2px;cursor:pointer}
@@ -281,7 +282,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <label title="Draw a fresh random seed whenever a run is restarted"><input type="checkbox" class="chk" id="autoseed" checked> New seed each run</label>
         <span class="tb-grp">
           <label title="Shade each water cell by its join probability p_join(d) = min{1, p₀ · exp[(gap − d)/λ]} on a fixed log scale from 0.001 to 1; a stronger scent (smaller λ) or a larger p₀ shows as more and deeper color"><input type="checkbox" class="chk" id="scent"> <span><i>p</i><sub>join</sub> overlay</span></label>
-          <label title="Tint the shore and structure by trail level (recruitment only)"><input type="checkbox" class="chk" id="trailov"> Trail overlay</label>
+          <label id="trailov-lbl" title="Tint the shore and structure by trail level (recruitment only)"><input type="checkbox" class="chk" id="trailov"> Trail overlay</label>
         </span>
       </div>
       <div id="arenas"></div>
@@ -899,6 +900,14 @@ function buildPanel() {
   syncDim();
 }
 function syncDim() {
+  // No trail is laid unless one of the recruitment switches is on, so the trail overlay waits for one
+  const trailOff = !pvals.follow && !pvals.trailJoin, tov = document.getElementById('trailov');
+  tov.disabled = trailOff;
+  document.getElementById('trailov-lbl').classList.toggle('off', trailOff);
+  document.getElementById('trailov-lbl').title = trailOff
+    ? 'Turn on a recruitment switch in the side panel to lay trail'
+    : 'Tint the shore and structure by trail level';
+  const key = document.getElementById('trail-key'); if (key) key.hidden = trailOff || !tov.checked;
   PARAMS.forEach(p => {
     const off = p.onlyPoint ? pvals.target !== 'point' : p.needs ? !p.needs() : false;
     if (p.k) document.querySelector('.prm[data-k="' + p.k + '"]').classList.toggle('dim', off);
