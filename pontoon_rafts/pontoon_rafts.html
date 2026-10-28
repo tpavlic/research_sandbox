@@ -1350,7 +1350,9 @@ function switchTab(tab) {
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + tab));
   document.querySelectorAll('.main-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   const sel = document.getElementById('tab-sel-mobile'); if (sel) sel.value = tab;
-  history.replaceState(null, '', '#' + tab);
+  // A sandboxed preview (an about:srcdoc frame) refuses any URL change, so a failure
+  // here only costs the deep link and must not stop the tab switch.
+  try { history.replaceState(null, '', '#' + tab); } catch (e) {}
   if (tab === 'explorer') requestAnimationFrame(() => { layoutArenas(); drawLive(); });
   if (tab === 'batch') requestAnimationFrame(drawBatchPlots);
 }
