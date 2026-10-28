@@ -270,7 +270,7 @@ footer:not(#back-link-footer) div{max-width:1120px;margin:0 auto;text-align:cent
         <span class="tb-lbl">Seed</span><input type="number" id="seed" value="1" min="0" aria-label="Random seed">
         <button class="seed-prev" id="seed-prev" hidden title="Restore the previous seed">prev</button>
         <label title="Draw a fresh random seed whenever a run is restarted"><input type="checkbox" class="chk" id="autoseed" checked> New seed each run</label>
-        <label title="Shade each water cell by its join probability on a fixed log scale from 0.001 to 1; a stronger scent shows as more and deeper color"><input type="checkbox" class="chk" id="scent"> Scent overlay</label>
+        <label title="Shade each water cell by its join probability p_join(d) = min{1, p₀ · exp[(gap − d)/λ]} on a fixed log scale from 0.001 to 1; a stronger scent (smaller λ) or a larger p₀ shows as more and deeper color"><input type="checkbox" class="chk" id="scent"> <span><i>p</i><sub>join</sub> overlay</span></label>
       </div>
       <div id="arenas"></div>
       <div class="legend" id="cell-legend"></div>
@@ -864,7 +864,7 @@ function buildArenas() {
   lg.innerHTML = sw(COL.land, 'shore / rim') + sw(COL.water, 'water') + sw(COL.food, 'food') + sw(COL.bank, 'far bank') +
     sw(COL.anch, 'anchored structure') + sw(COL.raft, 'raft') + sw(COL.anchW, 'ant walking on structure') +
     sw(COL.landW, 'ant on shore') + sw(COL.done, 'completed bridge');
-  lg.innerHTML += '<span class="lg" id="scent-key" hidden><i class="scent-ramp"></i>scent overlay: join probability, 0.001 to 1 (log scale)</span>';
+  lg.innerHTML += '<span class="lg" id="scent-key" hidden><i class="scent-ramp"></i><span>join probability <em>p</em><sub>join</sub>, 0.001 to 1 (log scale)</span></span>';
   const ll = document.getElementById('live-legend');
   ll.innerHTML = CONDS.map(c => '<span><span class="sw' + (c.dash ? ' dash' : '') + '" style="border-color:' + c.color + '"></span>' + c.label + '</span>').join('');
 }
